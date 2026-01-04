@@ -1,0 +1,77 @@
+# =========================
+# Python / Django
+# =========================
+
+# Bytecode
+__pycache__/
+*.py[cod]
+
+# Virtuelle Umgebung
+venv/
+.env/
+env/
+
+# Django spezifisch
+*.log
+*.pot
+*.pyc
+db.sqlite3
+media/
+staticfiles/
+*.sqlite3
+
+# Coverage / Test
+.coverage
+htmlcov/
+*.cover
+
+# Migrations optional (falls nicht geteilt werden sollen)
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# =========================
+# Node / Angular
+# =========================
+
+# Node modules
+node_modules/
+
+# Angular / Build
+dist/
+out-tsc/
+tmp/
+temp/
+
+# npm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Angular / IDE / temp
+.angular/
+.cache/
+.angular-cli.json
+
+# =========================
+# Editor / IDE
+# =========================
+
+# VSCode
+.vscode/
+
+# JetBrains / PyCharm / WebStorm
+.idea/
+*.iml
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# =========================
+# System / Backup
+# =========================
+
+*.bak
+*.swp
+*.swo
+*.tmp
