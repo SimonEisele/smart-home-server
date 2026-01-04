@@ -1,0 +1,35 @@
+<div class="auth-container">
+  <div *ngIf="authService.user$ | async as user; else authForms">
+    <div class="welcome">
+      Willkommen, <strong>{{ user.first_name }}</strong>!
+    </div>
+    <button (click)="logout()">Logout</button>
+  </div>
+
+  <ng-template #authForms>
+    <div class="auth-toggle">
+      <button (click)="isRegister=false" [class.active]="!isRegister">Login</button>
+      <button (click)="isRegister=true" [class.active]="isRegister">Registrieren</button>
+    </div>
+
+    <div *ngIf="!isRegister" class="login-form">
+      <input type="text" placeholder="Benutzername" [(ngModel)]="username" />
+      <input type="password" placeholder="Passwort" [(ngModel)]="password" />
+      <button (click)="login()">Login</button>
+    </div>
+
+    <div *ngIf="isRegister" class="register-form">
+      <input type="text" placeholder="Benutzername" [(ngModel)]="newUser.username" />
+      <input type="password" placeholder="Passwort" [(ngModel)]="newUser.password" />
+      <input type="text" placeholder="Vorname" [(ngModel)]="newUser.firstname" />
+      <input type="text" placeholder="Nachname" [(ngModel)]="newUser.lastname" />
+      <input type="email" placeholder="Email" [(ngModel)]="newUser.email" />
+      <input type="text" placeholder="Telefonnummer" [(ngModel)]="newUser.phone_number" />
+      <label>
+        <input type="checkbox" [(ngModel)]="newUser.is_guest" />
+        Gast
+      </label>
+      <button (click)="register()">Registrieren</button>
+    </div>
+  </ng-template>
+</div>

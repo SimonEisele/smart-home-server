@@ -1,0 +1,7 @@
+<div class="add-widget-popover">
+  <div class="add-widget-arrow"></div>
+  <div class="widget-entry" *ngFor="let w of widgets" (click)="onSelect(w.type)">
+    <img src="icons/{{ w.icon }}" alt="">
+    <span>{{ w.title }}</span>
+  </div>
+</div>

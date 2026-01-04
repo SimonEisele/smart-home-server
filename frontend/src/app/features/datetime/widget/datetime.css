@@ -1,0 +1,46 @@
+.datetime-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: sans-serif;
+  gap: 4px;
+}
+
+/* Datum / Zeit */
+.weekday {
+  font-size: 1.1rem;
+  opacity: 0.7;
+  text-transform: capitalize;
+}
+
+.time {
+  font-size: 3rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.date {
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+/* Begrüssung */
+.greeting {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.greeting-text {
+  font-size: 0.95rem;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.username {
+  font-size: 1.3rem;
+  font-weight: 600;
+}

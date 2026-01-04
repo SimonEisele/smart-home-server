@@ -1,0 +1,135 @@
+.weather-widget {
+  flex-direction: column;
+  padding: 0px;
+  height: 100%;
+  width: 100%;
+  font-family: sans-serif;
+}
+
+/* Aktuelles Wetter groß */
+.current-weather {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.current-icon {
+  font-size: 3rem; /* Großes Icon */
+}
+
+.current-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.current-temp {
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.current-label {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.current-precip {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+/* Stunden-Vorschau horizontal */
+.hourly-forecast {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding-bottom: 5px;
+}
+
+.hour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 72px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.hour-time {
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+  opacity: 0.8;
+}
+
+.hour-icon {
+  font-size: 1.5rem;
+  margin-bottom: 2px;
+}
+
+.hour-temp {
+  font-weight: bold;
+}
+
+.hour-precip {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+/* Tage-Vorschau horizontal */
+.daily-forecast {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding-bottom: 5px;
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 72px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.day-date {
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+  opacity: 0.8;
+}
+
+.day-icon {
+  font-size: 1.5rem;
+  margin-bottom: 2px;
+}
+
+.day-maxTemp {
+  font-weight: bold;
+}
+
+.day-precip {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+/* Ladezustand */
+.loading {
+  text-align: center;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* Allgemein */
+.divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 30px 0;
+}

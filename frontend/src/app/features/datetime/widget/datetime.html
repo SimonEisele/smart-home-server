@@ -1,0 +1,25 @@
+<div class="datetime-widget">
+  <div class="weekday">
+    {{ now | date:'EEEE' }}
+  </div>
+
+  <div class="time">
+    {{ now | date:'HH:mm:ss' }}
+  </div>
+
+  <div class="date">
+    {{ now | date:'dd.MM.yyyy' }}
+  </div>
+
+  <div class="greeting" *ngIf="user$ | async as user; else guest">
+    <span class="greeting-text">{{ now | greeting }},</span>
+    <span class="username">{{ user.first_name }}</span>
+  </div>
+
+  <ng-template #guest>
+    <div class="greeting">
+      <span class="greeting-text">{{ now | greeting }},</span>
+      <span class="username">Gast</span>
+    </div>
+  </ng-template>
+</div>

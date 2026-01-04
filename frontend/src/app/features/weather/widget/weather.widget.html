@@ -1,0 +1,40 @@
+<div #container class="weather-widget">
+  <ng-container *ngIf="data; else loading">
+    <!-- Aktuelles Wetter -->
+    <div class="current-weather">
+      <div class="current-icon">{{ data.current.weatherCode | weatherIcon }}</div>
+      <div class="current-info">
+        <div class="current-temp">{{ data.current.temperature }}°C</div>
+        <div class="current-label">{{ data.current.weatherCode | weatherLabel }}</div>
+        <div class="current-precip">{{ data.current.precipitation }} mm Niederschlag</div>
+      </div>
+    </div>
+
+    <!-- Stunden-Vorschau -->
+    <div class="hourly-forecast">
+      <div *ngFor="let h of visibleHourlyData" class="hour">
+        <div class="hour-time">{{ h.time }}</div>
+        <div class="hour-icon">{{ h.weatherCode | weatherIcon }}</div>
+        <div class="hour-temp">{{ h.temperature }}°C</div>
+        <div class="hour-precip">{{ h.precipitation }} mm</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Tage-Vorschau -->
+    <div class="daily-forecast">
+      <div *ngFor="let h of visibleDailyData" class="day">
+        <div class="day-date">{{ h.date | date:'dd.MM' }}</div>
+        <div class="day-icon">{{ h.weatherCode | weatherIcon }}</div>
+        <div class="day-maxTemp">{{ h.maxTemperature }}°C</div>
+        <div class="day-minTemp">{{ h.minTemperature }}°C</div>
+        <div class="day-precip">{{ h.precipitation }} mm</div>
+      </div>
+    </div>
+  </ng-container>
+</div>
+
+<ng-template #loading>
+  <div class="loading">Lade Wetterdaten...</div>
+</ng-template>

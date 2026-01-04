@@ -1,0 +1,57 @@
+.todos-widget {
+  height: 100%;
+  display: block;
+  font-family: sans-serif;
+}
+
+.todo-widget-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.todo-widget-list li {
+  margin-bottom: 12px;
+}
+
+.todo-widget-list li.overdue .todo-title {
+  color: red;
+  font-weight: bold;
+}
+
+.todo-widget-list li.dueToday .todo-title {
+  color: orange;
+  font-weight: bold;
+}
+
+.todo-row {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 500;
+}
+
+.todo-progress {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.progress {
+  height: 6px;
+  margin: 4px 0;
+}
+
+.progress-bar {
+  background-color: rgb(20, 134, 20);
+}
+
+.todo-date {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.all-done {
+  text-align: center;
+  font-size: 0.95rem;
+  opacity: 0.7;
+  padding: 12px 0;
+}

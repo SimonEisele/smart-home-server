@@ -1,0 +1,56 @@
+.add-widget-popover {
+  animation: fadeSlideInUp 120ms ease-out;
+  position: absolute;
+  bottom: calc(100% + 70px);
+  right: -2px;
+  width: 220px;
+  background-color: #212529;
+  color: white;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.08);
+  z-index: 1000;
+}
+
+@keyframes fadeSlideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.add-widget-arrow {
+  position: absolute;
+  bottom: -10px;
+  right: 18px;
+  width: 20px;
+  height: 20px;
+  background-color: #212529;
+  transform: rotate(45deg);
+  border-right: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Widget entries */
+.widget-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.widget-entry:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.widget-entry img {
+  width: 22px;
+  height: 22px;
+}

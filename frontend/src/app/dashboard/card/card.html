@@ -1,0 +1,13 @@
+<div class="dashboard-card-border">
+  <div class="dashboard-card" [class.clickable]="!editMode" (click)="navigate()">
+    <div class="card-header">
+        <img src="icons/{{icon}}" alt="" style="height:40px; margin-right:15px;">
+        <h3>{{title}}</h3>
+        <button *ngIf="editMode" type="button" class="btn-close" aria-label="Close" (click)="remove.emit()"></button>
+    </div>
+    <div class="divider"></div>
+    <div class="card-content">
+      <ng-content></ng-content>
+    </div>
+  </div>
+</div>

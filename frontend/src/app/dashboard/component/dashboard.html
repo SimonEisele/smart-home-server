@@ -1,0 +1,15 @@
+<div *ngIf="dashboardLoaded" class=dashboard-container>
+  <gridster [options]="options">
+    <gridster-item *ngFor="let item of dashboard" [item]="item">
+      <card style="height:100%; width:100%;" [title]="item.title || ''" [editMode]="editMode" [link]="!editMode ? item.widget_type : undefined" [icon]="item.icon || ''"(remove)="removeWidget(item.id)">
+        <widget-host [widget]="item"></widget-host>
+      </card>
+    </gridster-item>
+  </gridster>
+
+  <div #addWidgetButton *ngIf="editMode" class="add-widget-button" (click)="toggleAddWidgetPopover()">
+    <img src="icons/plus.svg">
+  </div>
+</div>
+
+<add-widget-popover *ngIf="showAddWidgetPopover" class="add-widget-popover" [style.top.px]="addWidgetPopoverTop" [style.left.px]="addWidgetPopoverLeft" [widgets]="availableWidgets" (select)="addWidget($event)" (close)="showAddWidgetPopover = false"></add-widget-popover>

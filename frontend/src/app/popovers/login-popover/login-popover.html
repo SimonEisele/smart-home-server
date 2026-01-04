@@ -1,0 +1,33 @@
+<div class="login-popover">
+  <div class="login-arrow"></div>
+  <!-- E-Mail Form -->
+  <form class="row" id="emailForm" (ngSubmit)="checkEmail()" autocomplete="on">
+    <div class="col-md-12 mb-3">
+      <label class="form-label" for="inputEmail">E-Mail</label>
+      <input #emailInput class="form-control" id="inputEmail" type="email" [(ngModel)]="email" name="email" class="form-control" autocomplete="username">
+      <div class="text-danger error" *ngIf="emailError">* Kein Account gefunden</div>
+    </div>
+    <div class="mb-3 form-check d-flex justify-content-end" *ngIf="!showPasswordForm">
+      <button type="submit" class="btn btn-secondary mt-2">Weiter</button>
+    </div>
+  </form>
+
+  <!-- Passwort Form -->
+  <form class="row" id="passwordForm" *ngIf="showPasswordForm" (ngSubmit)="checkPassword()" autocomplete="on">
+    <div class="col-md-12 mb-3">
+      <label class="form-label" for="inputPassword">Passwort</label>
+      <div class="input-group">
+        <input #passwordInput class="form-control" id="inputPassword" type="password" [(ngModel)]="password" name="password" class="form-control" autocomplete="current-password">
+        <div class="input-group-text" (click)="togglePassword()"><img src="{{passwordToggleIcon}}" alt="" width="20" height="20" tabindex="-1"></div>
+      </div>
+      <div class="text-danger error" *ngIf="passwordError">* Passwort falsch</div>
+    </div>
+    <div class="mb-3 form-check d-flex justify-content-end">
+      <button type="submit" class="btn btn-primary mt-2">Login</button>
+    </div>
+  </form>
+  <div class="row">
+    <hr>
+    <p>Noch keinen Account? <a class="link" routerLink="/login">Jetzt erstellen</a></p>
+  </div>
+</div>

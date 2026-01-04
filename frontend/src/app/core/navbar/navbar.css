@@ -1,0 +1,29 @@
+/* Navbar */
+.navbar {
+    height: 80px;
+}
+
+/* Navbar Items */
+.nav-item > * {
+    color: white;
+    margin-right: 10px;
+    align-items: center;
+}
+
+.nav-link:hover {
+    color: rgb(221, 96, 200);
+}
+
+.no-hover:hover {
+    pointer-events: none
+}
+
+.disabled {
+    user-select: none; 
+}
+
+/* Login popover */
+.login-popover {
+  position: absolute;
+  z-index: 1050;
+}

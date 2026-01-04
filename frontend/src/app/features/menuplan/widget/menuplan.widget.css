@@ -1,0 +1,37 @@
+.menu-widget {
+  width: 100%;
+}
+
+.week {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+}
+
+.day {
+  flex: 0 0 auto;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 186px;
+  text-align: center;
+}
+
+.day-date {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.meal {
+  margin: 4px 0;
+}
+
+.meal-label {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.meal-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+}

@@ -1,0 +1,17 @@
+<div #container class="menu-widget">
+  <ng-container class="menu-widget">
+    <div class="week">
+      <div *ngFor="let menu of visibleMenus" class="day">
+        <div class="day-date">{{ menu.date | date:'EEEE, dd.MM' }}</div>
+        <div class="meal lunch">
+          <span class="meal-label">Mittag</span><br>
+          <span class="meal-name">{{ menu.lunch?.name || '-' }}</span>
+        </div>
+        <div class="meal dinner">
+          <span class="meal-label">Abend</span><br>
+          <span class="meal-name">{{ menu.dinner?.name || '-' }}</span>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>
