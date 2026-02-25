@@ -1,0 +1,49 @@
+/* Panel */
+.account-popover-panel {
+  width: 400px;
+  padding: 16px;
+  overflow: visible;
+  border-radius: 12px;
+  background: #212529;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: fadeSlideIn 120ms ease-out;
+  z-index: 1000;
+}
+
+/* Arrow */
+.popover-arrow {
+  position: absolute;
+  top: -10px;
+  width: 20px;
+  height: 20px;
+  background-color: #212529;
+  transform: rotate(45deg);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Account-actions */
+.account-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;   
+  width: 100%;
+}
+
+.account-actions button {
+  width: 100%;
+}
+
+/* Animation */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

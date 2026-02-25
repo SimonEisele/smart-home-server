@@ -1,29 +1,210 @@
-/* Navbar */
+/* =========================
+   NAVBAR CONTAINER
+========================= */
+
 .navbar {
     height: 80px;
+    position: sticky;
+    top: 0;
+    z-index: 2000;
+
+    background: linear-gradient(
+        135deg,
+        rgba(54,120,243,0.25),
+        rgba(221,96,200,0.25)
+    );
+
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+
+    transition: all 0.3s ease;
 }
 
-/* Navbar Items */
-.nav-item > * {
-    color: white;
-    margin-right: 10px;
+/* ===============================
+   BRAND
+================================= */
+
+.navbar-brand {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    font-size: 1.2rem;
+    color: #ffffff !important;
+    transition: 0.3s ease;
+}
+
+.navbar-brand:hover {
+    color: rgb(54,120,243) !important;
+}
+
+/* ===============================
+   NAV LINKS
+================================= */
+
+.navbar-nav .nav-link {
+    position: relative;
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+    padding: 0.5rem 0.9rem;
+    transition: all 0.25s ease;
+}
+
+/* Soft glow hover */
+.navbar-nav .nav-link:hover {
+    color: #ffffff;
+    text-shadow: 0 0 8px rgba(255,255,255,0.5);
+}
+
+/* Animated gradient underline */
+.navbar-nav .nav-link::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0%;
+    height: 3px;
+    border-radius: 3px;
+
+    background: linear-gradient(
+        90deg,
+        rgb(54,120,243),
+        rgb(221,96,200)
+    );
+
+    transition: width 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover::after {
+    width: 70%;
+}
+
+/* ===============================
+   ACTION BUTTONS
+================================= */
+
+.nav-icon-btn {
+    width: 42px;
+    height: 42px;
+
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
+
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.25);
+
+    background: rgba(255,255,255,0.08);
+    color: white;
+
+    backdrop-filter: blur(10px);
+    transition: all 0.25s ease;
 }
 
-.nav-link:hover {
-    color: rgb(221, 96, 200);
+/* Gradient hover glow */
+.nav-icon-btn:hover {
+    background: linear-gradient(
+        135deg,
+        rgba(54,120,243,0.3),
+        rgba(221,96,200,0.3)
+    );
+
+    border-color: rgba(255,255,255,0.4);
+
+    box-shadow:
+        0 0 15px rgba(54,120,243,0.6),
+        0 0 25px rgba(221,96,200,0.4);
+
+    transform: translateY(-2px);
 }
 
-.no-hover:hover {
-    pointer-events: none
+
+/* ===============================
+   ACCOUNT BUTTON
+================================= */
+
+.account-btn {
+    width: 42px;
+    height: 42px;
+
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.3);
+
+    background: rgba(255,255,255,0.1);
+
+    transition: all 0.3s ease;
 }
 
-.disabled {
-    user-select: none; 
+.account-btn:hover {
+    background: linear-gradient(
+        135deg,
+        rgba(54,120,243,0.4),
+        rgba(221,96,200,0.4)
+    );
+
+    box-shadow:
+        0 0 20px rgba(221,96,200,0.5);
+
+    transform: scale(1.08);
 }
 
-/* Login popover */
-.login-popover {
-  position: absolute;
-  z-index: 1050;
+
+/* ===============================
+   TOGGLER
+================================= */
+
+.navbar-toggler {
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08);
+    transition: all 0.25s ease;
+}
+
+.navbar-toggler:hover {
+    background: rgba(54,120,243,0.2);
+    border-color: rgb(54,120,243);
+}
+
+.navbar-toggler-icon {
+    filter: invert(1);
+}
+
+/* ===============================
+   MOBILE EXPANDED PANEL
+================================= */
+
+@media (max-width: 991.98px) {
+
+    .navbar-collapse {
+        position: absolute;
+        top: 80px;
+        left: 10px;
+        right: 10px;
+
+        border-radius: 20px;
+
+        background: linear-gradient(
+            135deg,
+            rgba(54,120,243,0.85),
+            rgba(221,96,200,0.85)
+        );
+
+        backdrop-filter: blur(20px);
+
+        border: 1px solid rgba(255,255,255,0.25);
+
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+
+        padding: 1.2rem;
+
+        animation: slideDown 0.25s ease;
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 }

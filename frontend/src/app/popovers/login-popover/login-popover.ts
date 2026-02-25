@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Output, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
 import { AuthService } from '../../core/auth/service/auth.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms'; 
@@ -17,73 +17,73 @@ export class LoginPopover implements AfterViewInit {
 
   email = '';
   password = '';
+  rememberMe = false;
+
   showPasswordForm = false;
+  showPassword = false;
+
   emailError = false;
   passwordError = false;
-  showPassword = false;
+
   passwordToggleIcon = 'icons/visible.svg'
+
+  @Input() arrowLeft = 0;
 
   @Output() loginSuccess = new EventEmitter<void>();
   @Output() close = new EventEmitter<void>();
 
-  constructor(private authService: AuthService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngAfterViewInit(): void {
+    queueMicrotask(() => this.emailInput.nativeElement.focus())
+  }
 
   checkEmail() {
     this.authService.checkEmail(this.email).subscribe({
       next: res => {
-        if (res.exists) {
-          this.emailError = false;
-          this.showPasswordForm = true;
-          this.emailInput.nativeElement.disabled = true;
-          this.cdr.detectChanges();
-          setTimeout(() => {
-            this.passwordInput.nativeElement.focus();
-          }, 10);
-        } else {
+        if (!res.exists) {
           this.emailError = true;
-          this.cdr.detectChanges();
+          return;
         }
-      },
-      error: () => {
-        this.emailError = true;
+        this.emailError = false;
+        this.showPasswordForm = true;
+        this.emailInput.nativeElement.disabled = true;
+
         this.cdr.detectChanges();
-      }
+        queueMicrotask(() => this.passwordInput.nativeElement.focus())
+      },
+      error: () => this.emailError = true
     });
   }
 
   checkPassword() {
-    this.authService.login(this.email, this.password).subscribe({
+    this.authService.login({
+      email: this.email,
+      password: this.password,
+      rememberMe: this.rememberMe
+    }).subscribe({
       next: () => this.loginSuccess.emit(),
-      error: () => {
-        this.passwordError = true;
-        this.cdr.detectChanges();
-      }
+      error: () => this.passwordError = true
     });
-    this.cdr.detectChanges();
   }
 
   togglePassword() {
     this.showPassword = ! this.showPassword;
-    if(this.showPassword) {
-      this.passwordInput.nativeElement.type = "text";
-      this.passwordToggleIcon = 'icons/not-visible.svg'
-    } else {
-      this.passwordInput.nativeElement.type = "password";
-      this.passwordToggleIcon = 'icons/visible.svg'
-    }
+    this.passwordInput.nativeElement.type = this.showPassword ? 'text' : 'password';
+    this.passwordToggleIcon = this.showPassword ? 'icons/not-visible.svg' : 'icons/visible.svg';
   }
 
-  ngAfterViewInit(): void {
-    setTimeout(() => {
-      this.emailInput.nativeElement.focus();
-    }, 0);
+  closePopover() {
+    this.close.emit();
   }
 
   @HostListener('document:click', ['$event'])
   onOutsideClick(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.login-popover')) {
-      this.close.emit();
+    if (!(event.target as HTMLElement).closest('login-popover')) {
+      this.closePopover();
     }
   }
 }

@@ -11,6 +11,8 @@ import { WidgetDefinition } from '../../widgets/widgets.registry';
 })
 export class AddWidget {
   @Input() widgets: WidgetDefinition[] = [];
+  @Input() arrowLeft = 0;
+
   @Output() select = new EventEmitter<string>();
   @Output() close = new EventEmitter<void>();
 
@@ -18,11 +20,15 @@ export class AddWidget {
     this.select.emit(type);
   }
 
+  closePopover() {
+    this.close.emit();
+  }
+
   @HostListener('document:click', ['$event'])
   onOutsideClick(event: MouseEvent) {
     const target = event.target as HTMLElement;
-    if (!target.closest('.add-widget-popover') && !target.closest('.add-widget-button')) {
-      this.close.emit();
+    if (!target.closest('add-widget-popover') && !target.closest('.add-widget-button')) {
+      this.closePopover();
     }
   }
 }

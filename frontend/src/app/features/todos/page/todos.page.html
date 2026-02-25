@@ -1,2 +1,129 @@
-<h2>Todos</h2>
-<todos-list [todos]="todos"></todos-list>
+<div class="todo-page">
+
+  <div class="todo-header">
+    <h2>Todos</h2>
+
+    <button class="todo-btn-primary" (click)="openModal()">
+      <svg class="btn-icon" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"/>
+      </svg>
+      Neues Todo
+    </button>
+  </div>
+
+	<div class="todo-card">
+		<todos-list [todos]="todos" (edit)="openEditModal($event)"></todos-list>
+	</div>
+
+</div>
+
+<!-- Add Todo Modal -->
+<div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()"></div>
+<div class="modal d-block" tabindex="-1" *ngIf="showModal">
+	<div class="modal-dialog">
+		<div class="modal-content bg-dark text-white border-light">
+			<div class="modal-header border-secondary">
+				<h5 class="modal-title">Neues Todo</h5>
+				<button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="closeModal()"></button>
+			</div>
+			<div class="modal-body">
+				<div class="mb-3">
+					<label class="form-label">Titel</label>
+					<input #titleInput type="text" class="form-control" [class.is-invalid]="!!errors.title" [(ngModel)]="newTodo.title" (keydown.enter)="onEnter()" placeholder="Aufgabe" />
+					<div class="invalid-feedback" *ngIf="errors.title">{{ errors.title }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Startdatum</label>
+					<input type="date" class="form-control" [class.is-invalid]="!!errors.startDate" [(ngModel)]="newTodo.startDate" (keydown.enter)="onEnter()" />
+					<div class="invalid-feedback" *ngIf="errors.startDate">{{ errors.startDate }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Fällig am</label>
+					<input type="date" class="form-control" [class.is-invalid]="!!errors.dueDate" [(ngModel)]="newTodo.dueDate" (keydown.enter)="onEnter()" />
+					<div class="invalid-feedback" *ngIf="errors.dueDate">{{ errors.dueDate }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Dauer (Minuten)</label>
+					<input type="number" class="form-control" [class.is-invalid]="!!errors.duration" [(ngModel)]="newTodo.durationMinutes" (keydown.enter)="onEnter()" min="0" />
+					<div class="invalid-feedback" *ngIf="errors.duration">{{ errors.duration }}</div>
+				</div>
+			</div>
+			<div class="modal-footer border-secondary">
+				<button type="button" class="btn btn-outline-light d-flex align-items-center gap-2" (click)="closeModal()">
+					<svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+					</svg>
+					Abbrechen
+				</button>
+				<button type="button" class="btn btn-primary d-flex align-items-center gap-2" (click)="saveTodo()" [disabled]="!newTodo.title">
+					<svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M17 3H7a2 2 0 0 0-2 2v14l7-3 7 3V5a2 2 0 0 0-2-2z" fill="currentColor"/>
+					</svg>
+					Speichern
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Todo Modal -->
+<div class="modal-backdrop" *ngIf="showEditModal" (click)="closeEditModal()"></div>
+<div class="modal d-block" tabindex="-1" *ngIf="showEditModal">
+	<div class="modal-dialog">
+		<div class="modal-content bg-dark text-white border-light">
+			<div class="modal-header border-secondary">
+				<h5 class="modal-title">Todo bearbeiten</h5>
+				<button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="closeEditModal()"></button>
+			</div>
+			<div class="modal-body">
+				<div class="mb-3">
+					<label class="form-label">Titel</label>
+					<input type="text" class="form-control" [class.is-invalid]="!!errors.title" [(ngModel)]="editTodo.title" />
+					<div class="invalid-feedback" *ngIf="errors.title">{{ errors.title }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Startdatum</label>
+					<input type="date" class="form-control" [class.is-invalid]="!!errors.startDate" [(ngModel)]="editTodo.startDate" />
+					<div class="invalid-feedback" *ngIf="errors.startDate">{{ errors.startDate }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Fällig am</label>
+					<input type="date" class="form-control" [class.is-invalid]="!!errors.dueDate" [(ngModel)]="editTodo.dueDate" />
+					<div class="invalid-feedback" *ngIf="errors.dueDate">{{ errors.dueDate }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Dauer (Minuten)</label>
+					<input type="number" class="form-control" [class.is-invalid]="!!errors.duration" [(ngModel)]="editTodo.durationMinutes" min="0" />
+					<div class="invalid-feedback" *ngIf="errors.duration">{{ errors.duration }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Fortschritt (%)</label>
+					<input type="range" class="form-range" [(ngModel)]="editTodo.progress" min="0" max="100" />
+					<small class="text-muted">{{ editTodo.progress ?? 0 }}%</small>
+				</div>
+				<div class="form-check mb-1">
+					<input class="form-check-input" type="checkbox" [(ngModel)]="editTodo.done" id="editDoneCheck">
+					<label class="form-check-label" for="editDoneCheck">Erledigt</label>
+				</div>
+			</div>
+			<div class="modal-footer border-secondary">
+				<button type="button" class="btn btn-outline-light d-flex align-items-center gap-2" (click)="closeEditModal()">
+					<svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+					</svg>
+					Abbrechen
+				</button>
+				<button type="button" class="btn btn-primary d-flex align-items-center gap-2" (click)="saveEdit()" [disabled]="!editTodo.title">
+					<svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M17 3H7a2 2 0 0 0-2 2v14l7-3 7 3V5a2 2 0 0 0-2-2z" fill="currentColor"/>
+					</svg>
+					Speichern
+				</button>
+			</div>
+		</div>
+	</div>
+</div>

@@ -1,5 +1,5 @@
 export interface Todo {
-  id: number;
+  id: string;
   title: string;
   done: boolean;
   startDate?: string;
@@ -7,4 +7,5 @@ export interface Todo {
   progress?: number;
   durationMinutes?: number;
   userID: string;
+  global?: boolean;
 }

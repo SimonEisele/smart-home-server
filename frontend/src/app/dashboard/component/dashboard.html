@@ -12,4 +12,4 @@
   </div>
 </div>
 
-<add-widget-popover *ngIf="showAddWidgetPopover" class="add-widget-popover" [style.top.px]="addWidgetPopoverTop" [style.left.px]="addWidgetPopoverLeft" [widgets]="availableWidgets" (select)="addWidget($event)" (close)="showAddWidgetPopover = false"></add-widget-popover>
+<add-widget-popover *ngIf="showAddWidgetPopover" class="add-widget-popover" [style.bottom.px]="addWidgetPopoverBottom" [style.left.px]="addWidgetPopoverLeft" [widgets]="availableWidgets" [arrowLeft]="addWidgetPopoverArrowLeft" (select)="addWidget($event)" (close)="showAddWidgetPopover = false"></add-widget-popover>

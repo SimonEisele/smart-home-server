@@ -1,0 +1,24 @@
+<div class="account-popover-panel">
+  <div class="popover-arrow" [style.left.px]="arrowLeft"></div>
+
+  <!-- Header -->
+  <div class="account-header">
+    <div class="user-info" *ngIf="user$ | async as user">
+      <strong>{{ user.first_name }} {{ user.last_name }}</strong><br>
+      <small>{{ user.email }}</small>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- Actions -->
+  <div class="account-actions">
+    <button class="btn btn-secondary" (click)="closePopover()">Profil</button>
+    <button class="btn btn-secondary" (click)="closePopover()">Einstellungen</button>
+  </div>
+
+  <hr>
+
+  <!-- Footer -->
+  <button class="btn btn-primary w-100" (click)="logout()">Abmelden</button>
+</div>

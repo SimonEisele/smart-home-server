@@ -5,15 +5,17 @@ export interface Ingredient {
 }
 
 export interface Dish {
-  id: number;
+  id: string;
   name: string;
   recipe?: string;
   ingredients: Ingredient[];
 }
 
 export interface Menu {
-  id: number;
+  id: string;
   date: string;
   lunch?: Dish;
   dinner?: Dish;
+  lunchPersons?: number;
+  dinnerPersons?: number;
 }

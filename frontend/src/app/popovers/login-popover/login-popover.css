@@ -1,52 +1,39 @@
-.login-popover {
-  animation: fadeSlideIn 120ms ease-out;
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+/* Panel */
+.login-popover-panel {
+  position: fixed;
   width: 400px;
-  background-color: #212529;
-  color: white;
-  border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: visible;
+  border-radius: 12px;
+  background: #212529;
+  color: white;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: fadeSlideIn 120ms ease-out;
 }
 
-@keyframes fadeSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.login-arrow {
+/* Arrow */
+.popover-arrow {
   position: absolute;
   top: -10px;
-  right: 66px;
   width: 20px;
   height: 20px;
   background-color: #212529;
   transform: rotate(45deg);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Inputs */
-.login-popover .form-control {
-  background-color: #2b2b2b;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+.form-control {
+  background: #2b2b2b;
   color: #ffffff;
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.login-panel .form-control:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.25);
+.form-control:focus {
+  border-color: #9b6dff;
+  box-shadow: 0 0 0 0.2rem rgba(155, 109, 255, 0.25);
 }
 
 input:disabled {
@@ -54,7 +41,7 @@ input:disabled {
     cursor: not-allowed;  
 }
 
-.login-popover .input-group-text {
+.login-popover-panel .input-group-text {
   background-color: #2b2b2b;
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #ffffff;
@@ -62,9 +49,14 @@ input:disabled {
   cursor: pointer;
 }
 
-/* Fehler */
-.login-panel .error {
-  font-size: 0.75rem;
+.error {
+  font-size: 1rem;
   color: #ff6b6b;
   margin-top: 4px;
+}
+
+/* Animation */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }

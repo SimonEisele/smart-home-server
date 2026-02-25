@@ -1,0 +1,70 @@
+.menuplan-header {
+	color: white;
+}
+
+.week-nav {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	margin-bottom: 10px;
+}
+
+.week-range {
+	opacity: 0.85;
+}
+
+.hint {
+	opacity: 0.8;
+}
+
+.menu-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 12px;
+}
+
+.menu-day {
+	background: rgba(0,0,0,0.2);
+	border: 1px solid rgba(255,255,255,0.2);
+	border-radius: 8px;
+	color: white;
+	padding: 10px;
+}
+
+.day-head {
+	font-weight: 600;
+	margin-bottom: 8px;
+}
+
+.meal-card {
+	background: rgba(255,255,255,0.08);
+	border: 1px solid rgba(255,255,255,0.2);
+	border-radius: 6px;
+	padding: 8px;
+	margin-bottom: 8px;
+}
+
+.meal-title {
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.meal-controls {
+	display: flex;
+	gap: 8px;
+}
+
+label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 12px;
+}
+
+.flex-1 { flex: 1; }
+
+@media (max-width: 991.98px) {
+	.menu-grid {
+		grid-template-columns: 1fr;
+	}
+}

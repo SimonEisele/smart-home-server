@@ -1,0 +1,61 @@
+.notes-page {
+  padding: 16px;
+  font-family: system-ui, sans-serif;
+}
+
+h1 {
+  margin-bottom: 16px;
+}
+
+.category-list,
+.category-content {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.category-node {
+  margin-bottom: 8px;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.category-header:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.chevron {
+  width: 20px;
+  display: inline-block;
+}
+
+.category-content {
+  margin-left: 20px;
+  margin-top: 4px;
+}
+
+.note {
+  padding: 6px 8px;
+  margin: 4px 0;
+  border-left: 2px solid #ddd;
+}
+
+.note-title {
+  font-weight: 500;
+}
+
+.note-meta {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.global {
+  margin-left: 6px;
+}

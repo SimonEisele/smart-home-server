@@ -1,1 +1,55 @@
-<p>menuplan.page works!</p>
+<div class="menuplan-header">
+	<h2>Wochenmenü</h2>
+	<div class="week-nav">
+		<button class="btn btn-outline-light" (click)="prevWeek()">← Vorherige Woche</button>
+		<span class="week-range">
+			{{ days[0]?.date | date:'dd.MM.yyyy' }} – {{ days[6]?.date | date:'dd.MM.yyyy' }}
+		</span>
+		<button class="btn btn-outline-light" (click)="nextWeek()">Nächste Woche →</button>
+	</div>
+	<a class="btn btn-primary" routerLink="/recipes">Neues Gericht erstellen</a>
+	<p class="hint">Wähle pro Tag das Gericht und die Personenanzahl für Mittag- und Abendessen.</p>
+	<hr>
+</div>
+
+<div class="menu-grid">
+	<div class="menu-day" *ngFor="let d of days">
+		<div class="day-head">
+			<div class="date">{{ d.date | date:'EEEE' }}<br><small>{{ d.date | date:'dd.MM.yyyy' }}</small></div>
+		</div>
+
+		<div class="meal-card">
+			<div class="meal-title">Mittag</div>
+			<div class="meal-controls">
+				<label>
+					Personen
+					<input type="number" min="1" class="form-control" [ngModel]="getMenu(d.dateStr)?.lunchPersons || 2" (ngModelChange)="updateLunchPersons(d.dateStr, $event)" />
+				</label>
+				<label class="flex-1">
+					Gericht
+					<select class="form-select" [ngModel]="getMenu(d.dateStr)?.lunch?.id || ''" (ngModelChange)="updateLunch(d.dateStr, $event)">
+						<option value="">– auswählen –</option>
+						<option *ngFor="let r of recipes" [value]="r.id">{{ r.name }}</option>
+					</select>
+				</label>
+			</div>
+		</div>
+
+		<div class="meal-card">
+			<div class="meal-title">Abend</div>
+			<div class="meal-controls">
+				<label>
+					Personen
+					<input type="number" min="1" class="form-control" [ngModel]="getMenu(d.dateStr)?.dinnerPersons || 2" (ngModelChange)="updateDinnerPersons(d.dateStr, $event)" />
+				</label>
+				<label class="flex-1">
+					Gericht
+					<select class="form-select" [ngModel]="getMenu(d.dateStr)?.dinner?.id || ''" (ngModelChange)="updateDinner(d.dateStr, $event)">
+						<option value="">– auswählen –</option>
+						<option *ngFor="let r of recipes" [value]="r.id">{{ r.name }}</option>
+					</select>
+				</label>
+			</div>
+		</div>
+	</div>
+</div>

@@ -8,8 +8,11 @@ import { WIDGET_REGISTRY, WidgetDefinition } from '../../widgets/widgets.registr
 import { AddWidget } from '../../popovers/add-widget-popver/add-widget-popover';
 import { DashboardService } from '../service/dashboard.service';
 import { AuthService } from '../../core/auth/service/auth.service';
-import { Observable, of } from 'rxjs';
 import { User } from '../../core/auth/model/auth.model';
+
+const ADD_WIDGET_POPOVER_WIDTH = 250;
+const VIEWPORT_PADDING = 8;
+const ARROW_WIDTH = 20;
 
 @Component({
   selector: 'app-dashboard',
@@ -20,14 +23,17 @@ import { User } from '../../core/auth/model/auth.model';
 })
 export class Dashboard implements OnInit {
   @ViewChild('addWidgetButton', { read: ElementRef }) addWidgetBtn!: ElementRef;
+
+  showAddWidgetPopover = false;
+  addWidgetPopoverBottom = 0;
+  addWidgetPopoverLeft = 0;
+  addWidgetPopoverArrowLeft = 0;
+
   options!: GridsterConfig;
   dashboard: DashboardItem[] = [];
   dashboardLoaded = false;
   availableWidgets: WidgetDefinition[] = WIDGET_REGISTRY;
   editMode: boolean = false;
-  showAddWidgetPopover = false;
-  addWidgetPopoverTop = 0;
-  addWidgetPopoverLeft = 0;
   containerWith = window.innerWidth;
   containerHeight = window.innerHeight;
   columns = 12;
@@ -100,10 +106,20 @@ export class Dashboard implements OnInit {
 
   toggleAddWidgetPopover() {
     this.showAddWidgetPopover = !this.showAddWidgetPopover;
-    if (this.showAddWidgetPopover && this.addWidgetBtn) {
-      const rect = this.addWidgetBtn.nativeElement.getBoundingClientRect();
-      this.addWidgetPopoverTop = rect.bottom + window.scrollY + 2;
-      this.addWidgetPopoverLeft = rect.left + window.scrollX + 51;
+
+    if (this.showAddWidgetPopover) {
+      queueMicrotask(() => {
+        const rect = this.addWidgetBtn.nativeElement.getBoundingClientRect();
+
+        this.addWidgetPopoverBottom = window.innerHeight - rect.top + 24;
+
+        let left = rect.left + rect.width / 2 - ADD_WIDGET_POPOVER_WIDTH / 2;
+        const minLeft = VIEWPORT_PADDING;
+        const maxLeft = window.innerWidth - ADD_WIDGET_POPOVER_WIDTH - VIEWPORT_PADDING;
+        this.addWidgetPopoverLeft = Math.round(Math.max(minLeft, Math.min(left, maxLeft)));
+
+        this.addWidgetPopoverArrowLeft = Math.round(rect.left + rect.width / 2 - this.addWidgetPopoverLeft - ARROW_WIDTH / 2);
+      });
     }
   }
 

@@ -6,4 +6,7 @@ urlpatterns = [
 
     # User endpoints
     path('api/users/', include('users.urls')),
+
+    # Feature endpoints
+    path('api/', include('features.urls')),
 ]

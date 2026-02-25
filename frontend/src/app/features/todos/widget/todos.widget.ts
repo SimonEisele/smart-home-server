@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { Todo } from '../model/todos.model';
-import { TodosService } from '../services/todos.service';
+import { TodosService } from '../service/todos.service';
 import { CommonModule } from '@angular/common';
 
 @Component({

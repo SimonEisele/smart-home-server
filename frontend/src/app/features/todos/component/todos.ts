@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Todo } from '../model/todos.model';
 
@@ -11,4 +11,5 @@ import { Todo } from '../model/todos.model';
 })
 export class TodosList {
   @Input() todos: Todo[] = [];
+  @Output() edit = new EventEmitter<Todo>();
 }

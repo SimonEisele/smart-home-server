@@ -1,0 +1,181 @@
+/* =========================
+   PAGE WRAPPER
+========================= */
+
+.todo-page {
+    padding: 40px;
+    min-height: calc(100vh - 80px);
+    color: white;
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.todo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.todo-header h2 {
+    font-weight: 600;
+    margin: 0;
+}
+
+/* =========================
+   CARD STYLE (wie Dashboard)
+========================= */
+
+.todo-card {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgb(112,112,112);
+    border-radius: 20px;
+    padding: 25px;
+
+    backdrop-filter: blur(5px);
+
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+
+    transition: 0.2s ease;
+}
+
+/* Optional leichter Hover wie Dashboard */
+.todo-card:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* =========================
+   BUTTON (passend zu Nav + Add Button)
+========================= */
+
+.todo-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 8px 16px;
+
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.3);
+
+    background: rgba(255,255,255,0.08);
+    color: white;
+
+    font-weight: 500;
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+.todo-btn-primary:hover {
+    background: rgba(54,120,243,0.25);
+    border-color: rgb(54,120,243);
+    transform: translateY(-2px);
+}
+
+/* =========================
+   MODAL BACKDROP
+========================= */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 3000;
+}
+
+/* =========================
+   MODAL WRAPPER
+========================= */
+
+.modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3100;
+}
+
+/* =========================
+   MODAL CONTENT – gleiche Card
+========================= */
+
+.modal-content {
+    width: 100%;
+    max-width: 520px;
+
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgb(112,112,112);
+    border-radius: 20px;
+
+    backdrop-filter: blur(5px);
+
+    color: white;
+
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+
+/* Header/Footer Divider wie deine Cards */
+.modal-header,
+.modal-footer {
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    border-top: none;
+}
+
+/* =========================
+   INPUTS – passend zu Card
+========================= */
+
+.modal .form-control {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: white;
+    border-radius: 12px;
+}
+
+.modal .form-control:focus {
+    border-color: rgb(54,120,243);
+    box-shadow: 0 0 10px rgba(54,120,243,0.4);
+    background: rgba(255,255,255,0.12);
+}
+
+.modal .form-label {
+    color: rgba(255,255,255,0.85);
+}
+
+/* =========================
+   BUTTONS IM MODAL
+========================= */
+
+.btn-outline-light {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    border-radius: 12px;
+}
+
+.btn-outline-light:hover {
+    background: rgba(255,255,255,0.15);
+}
+
+.btn-primary {
+    background: rgb(54,120,243);
+    border: none;
+    border-radius: 12px;
+}
+
+.btn-primary:hover {
+    background: rgb(221,96,200);
+}
+
+/* =========================
+   ICON SIZE
+========================= */
+
+.btn-icon {
+    width: 18px;
+    height: 18px;
+}

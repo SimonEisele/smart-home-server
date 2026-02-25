@@ -1,20 +1,24 @@
-<ul class="todo-list">
-  <li *ngFor="let todo of todos">
-    <div class="todo-title">{{ todo.title }}</div>
-
-    <div class="todo-meta">
-      <span class="due">
-        {{ todo.dueDate | date:'dd.MM.yyyy' }}
-      </span>
-
-      <div class="progress">
-        <div
-          class="progress-bar"
-          [style.width.%]="todo.progress ?? 0">
-        </div>
+<div class="list-group list-group-flush">
+  <div class="list-group-item" *ngFor="let todo of todos">
+    <div class="d-flex w-100 justify-content-between align-items-center">
+      <h6 class="mb-1 todo-title">{{ todo.title }}</h6>
+      <div class="d-flex align-items-center gap-2">
+        <small class="text-muted">
+          {{ todo.dueDate | date:'dd.MM.yyyy' }}
+        </small>
+        <button class="todo-edit-btn" (click)="edit.emit(todo)" aria-label="Bearbeiten">
+          <svg class="todo-edit-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/>
+          </svg>
+        </button>
       </div>
-
-      <span class="percent">{{ todo.progress ?? 0 }}%</span>
     </div>
-  </li>
-</ul>
+
+    <div class="d-flex align-items-center gap-2 mt-2">
+      <div class="progress flex-grow-1" style="height: 6px;">
+        <div class="progress-bar bg-info" [style.width.%]="todo.progress ?? 0"></div>
+      </div>
+      <small class="text-muted">{{ todo.progress ?? 0 }}%</small>
+    </div>
+  </div>
+</div>

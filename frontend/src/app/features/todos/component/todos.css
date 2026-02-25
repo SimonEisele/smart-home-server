@@ -1,0 +1,52 @@
+.list-group-item {
+	background: rgba(255, 255, 255, 0.14);
+	color: #f8f9fa;
+	border-color: rgba(255, 255, 255, 0.28);
+}
+
+.list-group-item:hover {
+	background: rgba(255, 255, 255, 0.22);
+}
+
+.list-group-item .text-muted {
+	color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.todo-title {
+	font-weight: 700;
+	color: #ffffff;
+}
+
+.progress {
+	background: rgba(255, 255, 255, 0.3);
+}
+
+.progress-bar {
+	background: linear-gradient(90deg, rgb(54, 120, 243), rgb(221, 96, 200));
+}
+
+/* Edit button on the right */
+.todo-edit-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 10px;
+	border: 1px solid rgba(255,255,255,0.3);
+	background: rgba(255,255,255,0.08);
+	color: #fff;
+	cursor: pointer;
+	transition: 0.2s ease;
+}
+
+.todo-edit-btn:hover {
+	background: rgba(54,120,243,0.25);
+	border-color: rgb(54,120,243);
+	transform: translateY(-1px);
+}
+
+.todo-edit-icon {
+	width: 16px;
+	height: 16px;
+}

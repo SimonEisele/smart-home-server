@@ -6,17 +6,17 @@ import { Dish, Menu } from '../model/menuplan.model';
 export class DishService {
   private dishes: Dish[] = [
     {
-      id: 1,
+      id: '1',
       name: 'Spaghetti Bolognese',
       ingredients: [{ name: 'Spaghetti', quantityPerPerson: 100, unit: 'g' }, { name: 'Hackfleisch', quantityPerPerson: 150, unit: 'g' }]
     },
     {
-      id: 2,
+      id: '2',
       name: 'Pizza Margherita',
       ingredients: [{ name: 'Mehl', quantityPerPerson: 200, unit: 'g' }, { name: 'Tomaten', quantityPerPerson: 80, unit: 'g' }]
     },
     {
-      id: 3,
+      id: '3',
       name: 'Salat mit Hähnchen',
       ingredients: [{ name: 'Salat', quantityPerPerson: 50, unit: 'g' }, { name: 'Hähnchenbrust', quantityPerPerson: 100, unit: 'g' }]
     }
@@ -57,6 +57,16 @@ export class MenuService {
     this.menus$.next(this.menus);
   }
 
+  setMenuForDate(date: string, menu: Partial<Menu>) {
+    const idx = this.menus.findIndex(m => m.date === date);
+    if (idx >= 0) {
+      this.menus[idx] = { ...this.menus[idx], ...menu } as Menu;
+    } else {
+      this.menus.push({ id: `${this.menus.length + 1}`, date, ...menu } as Menu);
+    }
+    this.menus$.next(this.menus);
+  }
+
   // Woche oder beliebig viele Tage mit Dishes erzeugen
   generateMockMenus(startDate: Date, numberOfDays: number = 14) {
     this.dishService.getDishes().subscribe(dishes => {
@@ -71,10 +81,12 @@ export class MenuService {
         const dinner = dishes[Math.floor(Math.random() * dishes.length)];
 
         this.menus.push({
-          id: i + 1,
+          id: `${i + 1}`,
           date: date.toISOString().split('T')[0],
           lunch,
-          dinner
+          dinner,
+          lunchPersons: 2,
+          dinnerPersons: 2
         });
       }
 

@@ -1,0 +1,57 @@
+<div class="container">
+    <div class="registration-card">
+        <h2>Registrierung</h2>
+        <hr>
+        <form class="row" id="registerForm">
+            <div class="col-md-6 mb-3">
+                <label class="form-label" for="inputPrename">Vorname</label>
+                <input #prenameInput class="form-control" id="inputPrename" type="text" autocomplete="name">
+                <div class="text-danger error" *ngIf="prenameError">* Fehler</div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label" for="inputLastName">Nachname</label>
+                <input #lastNameInput class="form-control" id="inputLastName" type="text" autocomplete="family-name">
+                <div class="text-danger error" *ngIf="lastNameError">* Fehler</div>
+            </div>
+            <div class="col-md-12 mb-3">
+                <label class="form-label" for="inputLastname">E-Mail</label>
+                <input #emailInput class="form-control" id="inputEmail" type="email" autocomplete="email">
+                <div class="text-danger error" *ngIf="emailError">* Fehler</div>
+            </div>
+            <div class="row">
+                <div class="col-md-2 mb-3">
+                    <label class="form-label" for="inputCountryCode">Ländervorwahl</label>
+                    <select #countryCodeSelect class="form-select form-control">
+                        <option value="" disabled selected>Auswählen</option>
+                        <option value="+41">+41 (CH)</option>
+                        <option value="+43">+43 (AU)</option>
+                        <option value="+49">+49 (DE)</option>
+                    </select>
+                    <div class="text-danger error" *ngIf="countryCodeError">* Fehler</div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label" for="inputPhoneNumber">Telefonnummer</label>
+                    <input #phoneNumberInput class="form-control" id="inputPhoneNumber" type="tel" autocomplete="tel">
+                    <div class="text-danger error" *ngIf="phoneNumberError">* Fehler</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label" for="inputPassword">Passwort</label>
+                    <input #passwordInput class="form-control" id="inputPassword" type="password">
+                    <div class="text-danger error" *ngIf="passwordError">* Fehler</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label" for="inputPasswordRepetition">Passwort</label>
+                    <input #passwordRepetitionInput class="form-control" id="inputPasswordRepetition" type="password">
+                    <div class="text-danger error" *ngIf="passwordRepetitionError">* Fehler</div>
+                </div>
+            </div>
+            <div class="mb-3 form-check d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary mt-2">Registrieren</button>
+            </div>
+        </form>
+    </div>
+</div>
