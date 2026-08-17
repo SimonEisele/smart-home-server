@@ -1,102 +1,52 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of } from 'rxjs';
-import { Dish, Menu } from '../model/menuplan.model';
-
-@Injectable({ providedIn: 'root' })
-export class DishService {
-  private dishes: Dish[] = [
-    {
-      id: '1',
-      name: 'Spaghetti Bolognese',
-      ingredients: [{ name: 'Spaghetti', quantityPerPerson: 100, unit: 'g' }, { name: 'Hackfleisch', quantityPerPerson: 150, unit: 'g' }]
-    },
-    {
-      id: '2',
-      name: 'Pizza Margherita',
-      ingredients: [{ name: 'Mehl', quantityPerPerson: 200, unit: 'g' }, { name: 'Tomaten', quantityPerPerson: 80, unit: 'g' }]
-    },
-    {
-      id: '3',
-      name: 'Salat mit Hähnchen',
-      ingredients: [{ name: 'Salat', quantityPerPerson: 50, unit: 'g' }, { name: 'Hähnchenbrust', quantityPerPerson: 100, unit: 'g' }]
-    }
-  ];
-
-  private dishes$ = new BehaviorSubject<Dish[]>(this.dishes);
-
-  // Observable liefert die aktuellen Dishes
-  getDishes(): Observable<Dish[]> {
-    return this.dishes$.asObservable();
-  }
-
-  addDish(dish: Dish) {
-    this.dishes.push(dish);
-    this.dishes$.next(this.dishes);
-  }
-
-  // Später: Backend-Integration
-  fetchDishesFromBackend(): Observable<Dish[]> {
-    // return this.http.get<Dish[]>('/api/dishes');
-    return of(this.dishes); // aktuell Mock
-  }
-}
+import { HttpClient } from '@angular/common/http';
+import { Observable, map } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { Menu } from '../model/menuplan.model';
 
 @Injectable({ providedIn: 'root' })
 export class MenuService {
-  private menus: Menu[] = [];
-  private menus$ = new BehaviorSubject<Menu[]>(this.menus);
+  constructor(private http: HttpClient) {}
 
-  constructor(private dishService: DishService) {}
-
-  getMenus(): Observable<Menu[]> {
-    return this.menus$.asObservable();
+  getMenus(weekStart: string, days: number = 7): Observable<Menu[]> {
+    const url = `${environment.apiUrl}/menus/?weekStart=${weekStart}&days=${days}&autoPersons=true`;
+    return this.http.get<{ data: Menu[] }>(url).pipe(map((res) => res.data));
   }
 
-  addMenu(menu: Menu) {
-    this.menus.push(menu);
-    this.menus$.next(this.menus);
+  createMenu(menu: Partial<Menu>): Observable<Menu> {
+    return this.http.post<{ data: Menu }>(`${environment.apiUrl}/menus/`, menu).pipe(
+      map((res) => res.data)
+    );
   }
 
-  setMenuForDate(date: string, menu: Partial<Menu>) {
-    const idx = this.menus.findIndex(m => m.date === date);
-    if (idx >= 0) {
-      this.menus[idx] = { ...this.menus[idx], ...menu } as Menu;
-    } else {
-      this.menus.push({ id: `${this.menus.length + 1}`, date, ...menu } as Menu);
-    }
-    this.menus$.next(this.menus);
+  updateMenu(id: string, patch: Partial<Menu>): Observable<Menu> {
+    return this.http.patch<{ data: Menu }>(`${environment.apiUrl}/menus/${id}/`, patch).pipe(
+      map((res) => res.data)
+    );
   }
 
-  // Woche oder beliebig viele Tage mit Dishes erzeugen
-  generateMockMenus(startDate: Date, numberOfDays: number = 14) {
-    this.dishService.getDishes().subscribe(dishes => {
-      this.menus = [];
-
-      for (let i = 0; i < numberOfDays; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-
-        // Zufällige Auswahl der Dishes
-        const lunch = dishes[Math.floor(Math.random() * dishes.length)];
-        const dinner = dishes[Math.floor(Math.random() * dishes.length)];
-
-        this.menus.push({
-          id: `${i + 1}`,
-          date: date.toISOString().split('T')[0],
-          lunch,
-          dinner,
-          lunchPersons: 2,
-          dinnerPersons: 2
-        });
-      }
-
-      this.menus$.next(this.menus);
-    });
+  exportWeekToShoppingList(weekStart: string, days: number = 7, resetExisting: boolean = false): Observable<number> {
+    return this.http
+      .post<{ data: unknown[] }>(`${environment.apiUrl}/shopping-items/export-week/`, {
+        weekStart,
+        days,
+        resetExisting,
+      })
+      .pipe(map((res) => res.data.length));
   }
 
-  // Später: Backend-Integration
-  fetchMenusFromBackend(): Observable<Menu[]> {
-    // return this.http.get<Menu[]>('/api/menus');
-    return of(this.menus); // aktuell Mock
+  exportMeal(dateStr: string, meal: string, weekTag: string): Observable<number> {
+    return this.http
+      .post<{ data: unknown[]; count: number }>(`${environment.apiUrl}/shopping-items/export-week/`, {
+        meals: [`${dateStr}:${meal}`],
+        weekTag,
+      })
+      .pipe(map((res) => res.count ?? res.data?.length ?? 0));
+  }
+
+  recalculatePersons(weekStart: string, days: number = 7): Observable<Menu[]> {
+    return this.http
+      .post<{ data: Menu[] }>(`${environment.apiUrl}/menus/recalculate-persons/`, { weekStart, days })
+      .pipe(map((res) => res.data));
   }
 }

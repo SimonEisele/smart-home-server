@@ -1,12 +1,13 @@
 import { Component, ElementRef, HostListener, OnInit, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { CompactType, DisplayGrid, Gridster, GridsterConfig, GridsterItem, GridsterItemConfig, GridType } from 'angular-gridster2';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DashboardItem } from '../models/dashboard.models';
 import { WidgetHost } from '../../widgets/widget-host/widget-host';
 import { Card } from '../card/card';
 import { WIDGET_REGISTRY, WidgetDefinition } from '../../widgets/widgets.registry';
 import { AddWidget } from '../../popovers/add-widget-popver/add-widget-popover';
-import { DashboardService } from '../service/dashboard.service';
+import { DashboardService, DashboardLayout } from '../service/dashboard.service';
 import { AuthService } from '../../core/auth/service/auth.service';
 import { User } from '../../core/auth/model/auth.model';
 
@@ -17,7 +18,7 @@ const ARROW_WIDTH = 20;
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [ CommonModule, GridsterItem, Gridster, WidgetHost, Card, AddWidget ],
+  imports: [ CommonModule, FormsModule, GridsterItem, Gridster, WidgetHost, Card, AddWidget ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -42,9 +43,16 @@ export class Dashboard implements OnInit {
   maxRows = 24;
   navbarHeight = 80;
 
+  // Layout manager
+  showLayoutPanel = false;
+  layouts: DashboardLayout[] = [];
+  newLayoutName = '';
+  layoutSaving = false;
+  layoutApplying = false;
+
   private saveTimeout?: any;
 
-  constructor(private dashboardService: DashboardService, private cdr: ChangeDetectorRef, public auth: AuthService) {
+  constructor(public dashboardService: DashboardService, private cdr: ChangeDetectorRef, public auth: AuthService) {
     this.dashboardService.editMode$.subscribe(mode => {
       this.editMode = mode;
       this.updateGridsterOptions();
@@ -93,7 +101,7 @@ export class Dashboard implements OnInit {
   private updateGridsterOptions() {
     this.options = {
       ...this.options,
-      draggable: { 
+      draggable: {
         enabled: this.editMode,
         stop: (item: GridsterItemConfig) => this.onItemChange(item)
       },
@@ -225,6 +233,8 @@ export class Dashboard implements OnInit {
     dashboardItem.rows = item.rows!;
 
     this.saveItem(dashboardItem);
+    this.recalcFixedCellSize();
+    this.options['api'].optionsChanged();
   }
 
   private applyLoadedItems(items: DashboardItem[]) {
@@ -233,34 +243,153 @@ export class Dashboard implements OnInit {
       item.minItemRows = item.minItemRows || 1;
       item.maxItemCols = item.maxItemCols || this.maxColumns;
       item.maxItemRows = item.maxItemRows || this.maxRows;
+      // Always pull icon + title from registry so they never need to be persisted
+      const def = WIDGET_REGISTRY.find(w => w.type === item.widget_type);
+      if (def) {
+        item.icon  = item.icon  || def.icon;
+        item.title = item.title || def.title;
+      }
     });
     this.dashboard = items;
     this.dashboardLoaded = true;
     setTimeout(() => {
       this.cdr.detectChanges();
+      this.recalcFixedCellSize();
       this.options['api'].optionsChanged();
       this.options['api'].resize();
     });
   }
 
+  private recalcFixedCellSize() {
+    if (!this.dashboard.length) return;
+
+    const maxExtentCols = Math.max(...this.dashboard.map(d => d.x + d.cols));
+    const maxExtentRows = Math.max(...this.dashboard.map(d => d.y + d.rows));
+
+    const effectiveCols = Math.max(this.columns, maxExtentCols);
+    const effectiveRows = Math.max(this.rows, maxExtentRows);
+
+    // Create a NEW options reference so Angular + gridster detect the change
+    this.options = {
+      ...this.options,
+      fixedColWidth: window.innerWidth / effectiveCols,
+      fixedRowHeight: (window.innerHeight - this.navbarHeight) / effectiveRows,
+      minCols: effectiveCols,
+      minRows: effectiveRows,
+    };
+  }
+
   private getInitialLayout(): DashboardItem[] {
     return [
-      { id: '', widget_type: 'datetime', x: 0, y: 0, cols: 3, minItemCols: 3, rows: 4, minItemRows: 4, config: {}, title: 'Datum und Uhrzeit' },
-      { id: '', widget_type: 'menuplan', x: 3, y: 0, cols: 9, minItemCols: 2, rows: 4, minItemRows: 4, config: {}, title: 'Menüplan' },
-      { id: '', widget_type: 'weather', x: 0, y: 4, cols: 4, minItemCols: 2, rows: 8, minItemRows: 8, config: {}, title: 'Wetter' },
-      { id: '', widget_type: 'todos', x: 4, y: 4, cols: 3, minItemCols: 2, rows: 8, minItemRows: 4, config: {}, title: "ToDo's" }
+      { id: '', widget_type: 'datetime',  x: 0, y: 0, cols: 3, minItemCols: 3, rows: 4, minItemRows: 4, config: {}, title: 'Datum und Uhrzeit', icon: 'datetime.svg' },
+      { id: '', widget_type: 'menuplan',  x: 3, y: 0, cols: 9, minItemCols: 2, rows: 4, minItemRows: 4, config: {}, title: 'Menüplan',           icon: 'menuplan.svg' },
+      { id: '', widget_type: 'weather',   x: 0, y: 4, cols: 4, minItemCols: 2, rows: 8, minItemRows: 8, config: {}, title: 'Wetter',             icon: 'weather.svg'  },
+      { id: '', widget_type: 'todos',     x: 4, y: 4, cols: 3, minItemCols: 2, rows: 8, minItemRows: 4, config: {}, title: "ToDo's",             icon: 'todo.svg'     },
     ];
+  }
+
+  // ── Layout manager ────────────────────────────────────────────────────────
+  openLayoutPanel(): void {
+    this.showLayoutPanel = true;
+    this.newLayoutName = '';
+    if (this.auth.user) {
+      this.dashboardService.getLayouts().subscribe(layouts => {
+        this.layouts = layouts; this.cdr.detectChanges();
+      });
+    } else {
+      this.layouts = this.getLocalLayouts();
+    }
+    this.cdr.detectChanges();
+  }
+
+  closeLayoutPanel(): void { this.showLayoutPanel = false; }
+
+  saveCurrentLayout(): void {
+    const name = this.newLayoutName.trim();
+    if (!name || this.layoutSaving) return;
+    this.layoutSaving = true;
+    if (this.auth.user) {
+      this.dashboardService.saveLayout(name).subscribe(layout => {
+        this.layouts = [...this.layouts, layout];
+        this.newLayoutName = '';
+        this.layoutSaving = false;
+        this.cdr.detectChanges();
+      });
+    } else {
+      const snapshot = this.dashboard.map(({ id, widget_type, x, y, cols, rows, minItemCols, minItemRows, maxItemCols, maxItemRows, title, icon, config }) =>
+        ({ id, widget_type, x, y, cols, rows, minItemCols, minItemRows, maxItemCols, maxItemRows, title, icon, config }));
+      const newLayout: DashboardLayout = {
+        id: this.generateId(), name, itemCount: snapshot.length, createdAt: new Date().toISOString()
+      };
+      const local = this.getLocalLayouts();
+      local.push({ ...newLayout, items: snapshot } as any);
+      localStorage.setItem('dashboard_layouts', JSON.stringify(local));
+      this.layouts = [...this.layouts, newLayout];
+      this.newLayoutName = '';
+      this.layoutSaving = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  applyLayout(layout: DashboardLayout): void {
+    if (this.layoutApplying) return;
+    if (!confirm(`Layout „${layout.name}" laden? Das aktuelle Dashboard wird ersetzt.`)) return;
+    this.layoutApplying = true;
+    if (this.auth.user) {
+      this.dashboardService.applyLayout(layout.id).subscribe(items => {
+        this.applyLoadedItems(items);
+        this.layoutApplying = false;
+        this.showLayoutPanel = false;
+        this.cdr.detectChanges();
+      });
+    } else {
+      const all: any[] = JSON.parse(localStorage.getItem('dashboard_layouts') || '[]');
+      const found = all.find(l => l.id === layout.id);
+      if (found?.items) {
+        const ids = found.items.map((i: any) => ({ ...i, id: this.generateId() }));
+        localStorage.setItem('dashboard', JSON.stringify(ids));
+        this.applyLoadedItems(ids);
+      }
+      this.layoutApplying = false;
+      this.showLayoutPanel = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  deleteLayout(layout: DashboardLayout, e: Event): void {
+    e.stopPropagation();
+    if (!confirm(`Layout „${layout.name}" löschen?`)) return;
+    if (this.auth.user) {
+      this.dashboardService.deleteLayout(layout.id).subscribe(() => {
+        this.layouts = this.layouts.filter(l => l.id !== layout.id); this.cdr.detectChanges();
+      });
+    } else {
+      const all: any[] = JSON.parse(localStorage.getItem('dashboard_layouts') || '[]');
+      localStorage.setItem('dashboard_layouts', JSON.stringify(all.filter(l => l.id !== layout.id)));
+      this.layouts = this.layouts.filter(l => l.id !== layout.id);
+      this.cdr.detectChanges();
+    }
+  }
+
+  private getLocalLayouts(): DashboardLayout[] {
+    try {
+      const raw: any[] = JSON.parse(localStorage.getItem('dashboard_layouts') || '[]');
+      return raw.map(l => ({ id: l.id, name: l.name, itemCount: (l.items || []).length, createdAt: l.createdAt }));
+    } catch { return []; }
+  }
+
+  formatDate(iso: string): string {
+    return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
 
   private generateId(): string {
     return '_' + Math.random().toString(36).substr(2, 9);
   }
 
-  @HostListener('document:keydown.escape')
+  @HostListener('window:resize')
   onResize() {
-    this.options.fixedColWidth = window.innerWidth / this.columns;
-    this.options.fixedRowHeight =
-      (window.innerHeight - this.navbarHeight) / this.rows;
+    this.recalcFixedCellSize();
+    this.options['api'].optionsChanged();
     this.options['api'].resize();
   }
 }

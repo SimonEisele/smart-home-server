@@ -1,0 +1,77 @@
+<div class="pictures-container">
+    <h1 class="pictures-title">{{ 'pictures.title' | translate }}</h1>
+    <p class="pictures-subtitle">{{ 'pictures.subtitle' | translate }}</p>
+
+    <ng-container *ngIf="loading$ | async; else picturesContent">
+        <div class="pictures-grid">
+            <div class="picture-card skeleton-card" *ngFor="let _ of [1,2,3,4,5,6]">
+                <div class="picture-thumb skeleton-block"></div>
+                <div class="picture-info">
+                    <div class="skeleton-line"></div>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+    <ng-template #picturesContent>
+        <div class="pictures-grid">
+            <ng-container *ngIf="pictures.length; else noPictures">
+            <div class="picture-card" *ngFor="let p of pictures" (click)="openFullscreen(p)">
+                <div class="picture-thumb"
+                     (click)="onThumbClick(p)"
+                     (touchstart)="onThumbTouchStart($event)"
+                     (touchmove)="onThumbTouchMove($event)"
+                     (touchend)="onThumbTouchEnd(p, $event)">
+                    <img [src]="p.image" [alt]="p.video_title" draggable="false" />
+                </div>
+                <div class="picture-info">
+                    <div class="meta">
+                        <span class="chip" *ngIf="p.video_place">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                        </svg>{{ p.video_place }}
+                        </span>
+                    </div>
+                    <a class="map-link-btn" [routerLink]="['/', currentLanguage]" [queryParams]="{ lat: p.video_latitude, lon: p.video_longitude, zoom: 13 }" (click)="$event.stopPropagation()">{{ 'nav.map' | translate }}</a>
+                </div>
+            </div>
+            </ng-container>
+            <ng-template #noPictures>
+                <p class="no-pictures">{{ 'pictures.empty' | translate }}</p>
+            </ng-template>
+        </div>
+    </ng-template>
+
+    <div
+        class="fullscreen-backdrop"
+        *ngIf="fullscreenPicture as pic"
+        (click)="closeFullscreen()"
+        (touchstart)="onFullscreenTouchStart($event)"
+        (touchend)="onFullscreenTouchEnd($event)">
+        <button
+            class="fullscreen-nav fullscreen-nav-left animate"
+            *ngIf="canPrevFullscreen()"
+            (click)="$event.stopPropagation(); showPrevFullscreen()"
+            [attr.aria-label]="'pictures.previous' | translate">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+        <button
+            class="fullscreen-nav fullscreen-nav-right animate"
+            *ngIf="canNextFullscreen()"
+            (click)="$event.stopPropagation(); showNextFullscreen()"
+            [attr.aria-label]="'pictures.next' | translate">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </button>
+        <img
+            class="fullscreen-image"
+            [src]="pic.image"
+            [alt]="pic.video_title"
+            (click)="$event.stopPropagation()"
+            (touchstart)="onFullscreenTouchStart($event); $event.stopPropagation()"
+            (touchend)="onFullscreenTouchEnd($event); $event.stopPropagation()" />
+    </div>
+</div>

@@ -1,0 +1,29 @@
+<div class="cal-widget">
+  @if (groupedEvents.length === 0) {
+    <div class="empty-hint">Keine Termine in den nächsten 14 Tagen</div>
+  }
+  @for (group of groupedEvents; track group.dateStr) {
+    <div class="day-group">
+      <div class="day-label" [class.today-label]="group.label === 'Heute'">{{ group.label }}</div>
+      @for (ev of group.events; track ev.id) {
+        <div [class]="evClass(ev)" [class.ev-now]="isNow(ev)" [style.borderLeftColor]="ev.color || null">
+          <div class="ev-time-col">
+            <span class="ev-start">{{ timeStr(ev.start) }}</span>
+            @if (ev.end) {
+              <span class="ev-end">{{ timeStr(ev.end) }}</span>
+            }
+          </div>
+          <div class="ev-body">
+            <span class="ev-title">{{ ev.title }}</span>
+            @if (ev.location) {
+              <span class="ev-loc">📍 {{ ev.location }}</span>
+            }
+          </div>
+          @if (isNow(ev)) {
+            <span class="now-badge">JETZT</span>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

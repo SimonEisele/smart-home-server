@@ -1,55 +1,241 @@
-<div class="menuplan-header">
-	<h2>Wochenmenü</h2>
-	<div class="week-nav">
-		<button class="btn btn-outline-light" (click)="prevWeek()">← Vorherige Woche</button>
-		<span class="week-range">
-			{{ days[0]?.date | date:'dd.MM.yyyy' }} – {{ days[6]?.date | date:'dd.MM.yyyy' }}
-		</span>
-		<button class="btn btn-outline-light" (click)="nextWeek()">Nächste Woche →</button>
-	</div>
-	<a class="btn btn-primary" routerLink="/recipes">Neues Gericht erstellen</a>
-	<p class="hint">Wähle pro Tag das Gericht und die Personenanzahl für Mittag- und Abendessen.</p>
-	<hr>
-</div>
+<div class="menuplan-page app-page">
 
-<div class="menu-grid">
-	<div class="menu-day" *ngFor="let d of days">
-		<div class="day-head">
-			<div class="date">{{ d.date | date:'EEEE' }}<br><small>{{ d.date | date:'dd.MM.yyyy' }}</small></div>
-		</div>
+  <!-- ── Page header ───────────────────────────────────────────── -->
+  <div class="page-header">
+    <div class="header-left">
+      <h2 class="page-title">Menüplan</h2>
+    </div>
+    <div class="week-nav">
+      <button class="nav-arrow" (click)="prevWeek()" title="Vorherige Woche">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <span class="week-range">{{ weekRange }}</span>
+      <button class="nav-arrow" (click)="nextWeek()" title="Nächste Woche">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+    <div class="header-actions">
+      <button class="btn-export" (click)="openExportModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        Einkaufsliste
+      </button>
+    </div>
+  </div>
 
-		<div class="meal-card">
-			<div class="meal-title">Mittag</div>
-			<div class="meal-controls">
-				<label>
-					Personen
-					<input type="number" min="1" class="form-control" [ngModel]="getMenu(d.dateStr)?.lunchPersons || 2" (ngModelChange)="updateLunchPersons(d.dateStr, $event)" />
-				</label>
-				<label class="flex-1">
-					Gericht
-					<select class="form-select" [ngModel]="getMenu(d.dateStr)?.lunch?.id || ''" (ngModelChange)="updateLunch(d.dateStr, $event)">
-						<option value="">– auswählen –</option>
-						<option *ngFor="let r of recipes" [value]="r.id">{{ r.name }}</option>
-					</select>
-				</label>
-			</div>
-		</div>
+  <!-- No more exportMessage – moved into modal -->
 
-		<div class="meal-card">
-			<div class="meal-title">Abend</div>
-			<div class="meal-controls">
-				<label>
-					Personen
-					<input type="number" min="1" class="form-control" [ngModel]="getMenu(d.dateStr)?.dinnerPersons || 2" (ngModelChange)="updateDinnerPersons(d.dateStr, $event)" />
-				</label>
-				<label class="flex-1">
-					Gericht
-					<select class="form-select" [ngModel]="getMenu(d.dateStr)?.dinner?.id || ''" (ngModelChange)="updateDinner(d.dateStr, $event)">
-						<option value="">– auswählen –</option>
-						<option *ngFor="let r of recipes" [value]="r.id">{{ r.name }}</option>
-					</select>
-				</label>
-			</div>
-		</div>
-	</div>
-</div>
+  <!-- ── 7-day grid ────────────────────────────────────────────── -->
+  <div class="week-grid">
+    <div class="day-col" *ngFor="let d of days" [class.today]="d.isToday">
+
+      <!-- Day header -->
+      <div class="day-head">
+        <span class="day-name">{{ DAY_NAMES[d.date.getDay()] }}</span>
+        <span class="day-date">{{ d.date.getDate() }}.{{ d.date.getMonth() + 1 }}.</span>
+        <span class="today-dot" *ngIf="d.isToday"></span>
+      </div>
+
+      <!-- Meal slots -->
+      <div class="meal-slot"
+           *ngFor="let meal of MEALS"
+           [class.filled]="getMealRecipe(d.dateStr, meal)"
+           [class.is-leftovers]="getMealLeftoversRef(d.dateStr, meal)"
+           [class.no-persons]="getMealRecipe(d.dateStr, meal) && getMealEffectivePersons(d.dateStr, meal) === 0"
+           (click)="openPicker(d.dateStr, meal)">
+
+        <span class="meal-label">{{ MEAL_LABELS[meal] }}</span>
+
+        <!-- Recipe assigned -->
+        <ng-container *ngIf="getMealRecipe(d.dateStr, meal) as recipe">
+          <span class="meal-name">{{ recipe.name }}</span>
+          <span class="meal-meta" *ngIf="recipe.durationMinutes">{{ recipe.durationMinutes }} min</span>
+          <span class="meal-persons" *ngIf="getMealPersons(d.dateStr, meal) > 0 || getMealLeftoverPersons(d.dateStr, meal) > 0">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="width:11px;height:11px"><path d="M13 14v-1.5a2.5 2.5 0 0 0-2.5-2.5h-5A2.5 2.5 0 0 0 3 12.5V14"/><circle cx="8" cy="5" r="2.5"/></svg>
+            {{ getMealPersons(d.dateStr, meal) }}
+            <span class="meal-leftover-badge" *ngIf="getMealLeftoverPersons(d.dateStr, meal) > 0">
+              +{{ getMealLeftoverPersons(d.dateStr, meal) }}
+            </span>
+          </span>
+          <button class="meal-clear" type="button" (click)="clearMeal(d.dateStr, meal, $event)" title="Entfernen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </ng-container>
+
+        <!-- Leftovers -->
+        <ng-container *ngIf="getMealLeftoversRef(d.dateStr, meal) as ref">
+          <span class="meal-leftovers-text">{{ formatLeftoversRef(ref) }}</span>
+          <button class="meal-clear leftovers-clear" type="button" (click)="clearMeal(d.dateStr, meal, $event)" title="Entfernen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </ng-container>
+
+        <!-- Empty hint -->
+        <span class="meal-add-hint" *ngIf="!getMealRecipe(d.dateStr, meal) && !getMealLeftoversRef(d.dateStr, meal)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </span>
+
+      </div><!-- /meal-slot -->
+
+      <!-- Extras per day -->
+      <div class="extras-section">
+        <span class="extra-chip" *ngFor="let r of getExtras(d.dateStr)">
+          <span class="extra-cat-dot" [attr.data-cat]="r.category"></span>
+          <span class="extra-name">{{ r.name }}</span>
+          <button type="button" class="extra-remove" (click)="removeExtra(d.dateStr, r.id, $event)" title="Entfernen">×</button>
+        </span>
+        <button type="button" class="extra-add-btn" (click)="openPicker(d.dateStr, 'extra')" title="Extra hinzufügen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+
+    </div><!-- /day-col -->
+  </div><!-- /week-grid -->
+
+
+  <!-- ── Picker modal ──────────────────────────────────────────── -->
+  <div class="picker-backdrop" *ngIf="activePicker" (click)="onPickerBackdropClick($event)">
+    <div class="picker-panel">
+
+      <!-- Header -->
+      <div class="picker-head">
+        <div class="picker-head-info">
+          <span class="picker-meal-name">{{ MEAL_LABELS[activePicker.meal] }}</span>
+          <span class="picker-day-label">{{ pickerDayLabel }}</span>
+        </div>
+        <button class="picker-close" type="button" (click)="closePicker()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Tabs (hidden for extras mode) -->
+      <div class="picker-tabs" *ngIf="activePicker.meal !== 'extra'">
+        <button type="button" [class.active]="pickerTab === 'recipe'" (click)="pickerTab = 'recipe'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Rezept
+        </button>
+        <button type="button" [class.active]="pickerTab === 'leftovers'" (click)="pickerTab = 'leftovers'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Reste
+        </button>
+      </div>
+
+      <!-- Recipe tab -->
+      <div class="picker-body" *ngIf="pickerTab === 'recipe'">
+        <div class="picker-search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="picker-search" [(ngModel)]="pickerSearch" placeholder="Rezept suchen…" />
+        </div>
+        <div class="recipe-list">
+          <button class="recipe-item" type="button" *ngFor="let r of filteredRecipes" (click)="selectRecipe(r)">
+            <div class="ri-name">{{ r.name }}</div>
+            <div class="ri-desc" *ngIf="r.description">{{ r.description }}</div>
+            <div class="ri-badges">
+              <span class="ri-badge ri-badge-cat" *ngIf="activePicker!.meal === 'extra' && r.category">
+                {{ RECIPE_CATEGORY_LABELS[r.category] }}
+              </span>
+              <span class="ri-badge" *ngIf="r.durationMinutes">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2.5 2.5"/></svg>
+                {{ r.durationMinutes }} min
+              </span>
+              <span class="ri-badge" *ngIf="r.baseServings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                {{ r.baseServings }} {{ r.servingType === 'Stücke' ? 'Stk.' : 'Port.' }}
+              </span>
+            </div>
+          </button>
+          <p class="picker-empty" *ngIf="filteredRecipes.length === 0">Keine Rezepte gefunden.</p>
+        </div>
+      </div>
+
+      <!-- Leftovers tab -->
+      <div class="picker-body" *ngIf="pickerTab === 'leftovers'">
+        <div class="leftover-list">
+          <button class="leftover-item" type="button" *ngFor="let opt of leftoversOptions" (click)="selectLeftovers(opt.ref)">
+            <svg class="lo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <div class="lo-info">
+              <span class="lo-label">{{ opt.label }}</span>
+              <span class="lo-recipe">{{ opt.recipeName }}</span>
+            </div>
+          </button>
+          <p class="picker-empty" *ngIf="leftoversOptions.length === 0">
+            Keine Mahlzeiten mit Rezepten in den letzten 7 Tagen gefunden.
+          </p>
+        </div>
+      </div>
+
+    </div><!-- /picker-panel -->
+  </div><!-- /picker-backdrop -->
+
+  <!-- ── Export modal ──────────────────────────────────────────── -->
+  <div class="picker-backdrop" *ngIf="showExportModal" (click)="onExportBackdropClick($event)">
+    <div class="picker-panel export-panel-wide">
+      <div class="picker-head">
+        <div class="picker-head-info">
+          <span class="picker-meal-name">Einkaufsliste exportieren</span>
+        </div>
+        <button class="picker-close" type="button" (click)="closeExportModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Week navigation -->
+      <div class="export-week-nav">
+        <button class="nav-arrow" type="button" (click)="prevExportWeek()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span class="week-range">{{ exportWeekRange }}</span>
+        <button class="nav-arrow" type="button" (click)="nextExportWeek()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <div class="export-loading-txt" *ngIf="exportLoading">Lade Menüplan…</div>
+
+      <!-- Meal columns (one per day) -->
+      <div class="export-scroll" *ngIf="!exportLoading">
+        <div class="export-cols">
+          <div class="export-day-col" *ngFor="let day of exportDays">
+            <div class="export-day-head">
+              <span class="ex-day-name">{{ DAY_NAMES[day.date.getDay()] }}</span>
+              <span class="ex-day-date">{{ day.date.getDate() }}.{{ day.date.getMonth() + 1 }}.</span>
+            </div>
+            <div class="export-meal-cell"
+                 *ngFor="let meal of MEALS"
+                 [class.ex-has-recipe]="!!exportMealRecipe(day.dateStr, meal)"
+                 [class.ex-selected]="isExportSelected(day.dateStr, meal)"
+                 [class.ex-no-recipe]="!exportMealRecipe(day.dateStr, meal)"
+                 [class.ex-zero-persons]="!!exportMealRecipe(day.dateStr, meal) && exportMealEffectivePersons(day.dateStr, meal) === 0"
+                 (click)="exportMealRecipe(day.dateStr, meal) && exportMealEffectivePersons(day.dateStr, meal) > 0 ? toggleExportMeal(day.dateStr, meal) : null">
+              <div class="ex-check" [class.ex-checked]="isExportSelected(day.dateStr, meal)">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" *ngIf="isExportSelected(day.dateStr, meal)"><polyline points="2,7 5,10 12,3"></polyline></svg>
+              </div>
+              <div class="ex-meal-text">
+                <span class="ex-meal-type">{{ MEAL_LABELS[meal] }}</span>
+                <span class="ex-meal-name" *ngIf="exportMealRecipe(day.dateStr, meal)">{{ exportMealRecipe(day.dateStr, meal)!.name }}</span>
+                <span class="ex-meal-empty" *ngIf="!exportMealRecipe(day.dateStr, meal)">–</span>
+                <span class="ex-persons" *ngIf="exportMealRecipe(day.dateStr, meal)">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="width:11px;height:11px"><path d="M13 14v-1.5a2.5 2.5 0 0 0-2.5-2.5h-5A2.5 2.5 0 0 0 3 12.5V14"/><circle cx="8" cy="5" r="2.5"/></svg>
+                  {{ exportMealPersons(day.dateStr, meal) }}
+                  <span class="ex-leftover-badge" *ngIf="exportMealLeftoverPersons(day.dateStr, meal) > 0">
+                    +{{ exportMealLeftoverPersons(day.dateStr, meal) }}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-done-txt" *ngIf="exportDone">{{ exportDone }}</div>
+
+      <div class="export-footer">
+        <span class="ex-count">{{ exportSelected.size }} Mahlzeiten gewählt</span>
+        <button class="btn-picker-cancel" type="button" (click)="closeExportModal()">Abbrechen</button>
+        <button class="btn-picker-action" type="button" [disabled]="!exportSelected.size" (click)="doExport()">
+          Exportieren
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /menuplan-page -->

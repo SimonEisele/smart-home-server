@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { Todo } from '../model/todos.model';
 import { TodosService } from '../service/todos.service';
 import { CommonModule } from '@angular/common';
@@ -18,8 +18,8 @@ export class TodosWidget implements OnInit, AfterViewInit {
   visibleTodos: Todo[] = [];
 
   readonly MARGIN = 12;
-  
-  constructor(private todosService: TodosService) {}
+
+  constructor(private todosService: TodosService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.todosService.getUserTodos().subscribe(todos => {
@@ -30,6 +30,7 @@ export class TodosWidget implements OnInit, AfterViewInit {
           new Date(b.dueDate ?? '').getTime()
         );
       setTimeout(() => this.updateVisibleTodos());
+      this.cdr.detectChanges();
     });
   }
 
@@ -41,7 +42,7 @@ export class TodosWidget implements OnInit, AfterViewInit {
     observer.observe(this.container.nativeElement);
     setTimeout(() => this.updateVisibleTodos());
   }
-  
+
   updateVisibleTodos() {
     const height = this.container.nativeElement.clientHeight;
 
@@ -55,6 +56,23 @@ export class TodosWidget implements OnInit, AfterViewInit {
     );
 
     this.visibleTodos = this.openTodos.slice(0, Math.max(maxTodos, 1));
+    this.cdr.detectChanges();
+  }
+
+  completeTodo(todo: Todo, event: Event): void {
+    event.stopPropagation();
+    // Optimistic: remove from list immediately
+    this.openTodos = this.openTodos.filter(t => t.id !== todo.id);
+    this.updateVisibleTodos();
+    this.todosService.updateTodo(todo.id, { done: true }).subscribe({
+      error: () => {
+        // Revert on failure
+        this.openTodos = [todo, ...this.openTodos].sort(
+          (a, b) => new Date(a.dueDate ?? '').getTime() - new Date(b.dueDate ?? '').getTime()
+        );
+        this.updateVisibleTodos();
+      }
+    });
   }
 
   isOverdue(todo: Todo): boolean {

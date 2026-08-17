@@ -1,0 +1,127 @@
+@if (slot) {
+<div class="cook-overlay" (click)="onBackdropClick($event)">
+  <div class="cook-panel">
+    <button class="cook-close" (click)="close()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+
+    <div class="cook-panel-header">
+      <div class="cook-panel-badge">{{ MEAL_LABELS[slot.meal] }}</div>
+      <h2 class="cook-panel-title">{{ slot.recipe.name }}</h2>
+      <div class="cook-panel-meta">
+        <span class="cook-meta-pill" *ngIf="slot.recipe.durationMinutes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2.5 2.5"/></svg>
+          {{ slot.recipe.durationMinutes }} min
+        </span>
+        <span class="cook-meta-pill cook-meta-persons">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <button class="persons-adj" (click)="adjustPersons(-1)" [disabled]="localPersons <= 1">−</button>
+          <span class="persons-val">{{ localPersons }}</span>
+          <button class="persons-adj" (click)="adjustPersons(1)">+</button>
+          Person{{ localPersons !== 1 ? 'en' : '' }}
+        </span>
+        <span class="cook-meta-pill cook-meta-units">
+          <button class="persons-adj" (click)="adjustUnitsPerPerson(-0.5)" [disabled]="localUnitsPerPerson <= 0.5">−</button>
+          <span class="persons-val">{{ localUnitsPerPerson }}</span>
+          <button class="persons-adj" (click)="adjustUnitsPerPerson(0.5)">+</button>
+          {{ slot.recipe.servingType === 'St\u00fccke' ? 'Stk.' : 'Port.' }} / Person
+        </span>
+      </div>
+    </div>
+
+    <!-- Tab switcher -->
+    <div class="cook-tabs">
+      <button class="cook-tab" [class.cook-tab-active]="activeTab === 'full'" (click)="setTab('full')">Komplett</button>
+      <button class="cook-tab" [class.cook-tab-active]="activeTab === 'steps'" (click)="setTab('steps')"
+        [disabled]="!slot.recipe.steps.length">Schritte</button>
+    </div>
+
+    <div class="cook-panel-body">
+
+      <!-- ── KOMPLETT view ── -->
+      @if (activeTab === 'full') {
+
+        <!-- Ingredients -->
+        <div class="cook-section">
+          <h3 class="cook-section-title">Zutaten</h3>
+          <div class="ingredient-list">
+            <div class="ingredient-row" *ngFor="let ing of scaledIngredients(slot.recipe, localPersons, localUnitsPerPerson)">
+              <span class="ing-qty">{{ ing.qty }} {{ ing.unit }}</span>
+              <span class="ing-name">{{ ing.name }}</span>
+            </div>
+            <p class="cook-empty" *ngIf="!slot.recipe.ingredients.length">Keine Zutaten eingetragen.</p>
+          </div>
+        </div>
+
+        <!-- Side notes -->
+        <div class="cook-section" *ngIf="slot.recipe.sideNotes?.length">
+          <h3 class="cook-section-title">Hinweise</h3>
+          <div class="side-notes">
+            <div class="side-note-row" *ngFor="let note of slot.recipe.sideNotes">
+              <span class="note-label">{{ note.label }}</span>
+              <span class="note-val">{{ note.value }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Steps -->
+        <div class="cook-section" *ngIf="slot.recipe.steps.length">
+          <h3 class="cook-section-title">Zubereitung</h3>
+          <div class="step-list">
+            <div class="step-row" *ngFor="let step of slot.recipe.steps; let i = index">
+              <div class="step-num">{{ i + 1 }}</div>
+              <div class="step-body">
+                <p class="step-desc">{{ step.description }}</p>
+                <div class="step-ings" *ngIf="step.ingredients.length">
+                  <span class="step-ing" *ngFor="let si of step.ingredients">
+                    {{ si.name }}{{ si.quantityPerPerson != null
+                      ? ' (' + (si.quantityPerPerson * localPersons * localUnitsPerPerson / (slot.recipe.baseServings || 4)).toFixed(1).replace(/\.0$/, '') + ' ' + (si.unit || '') + ')'
+                      : '' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      }
+
+      <!-- ── SCHRITTE view ── -->
+      @if (activeTab === 'steps' && slot.recipe.steps.length) {
+        <div class="steps-nav">
+          <button class="step-nav-btn" (click)="prevStep()" [disabled]="currentStep === 0">‹</button>
+          <span class="step-nav-label">Schritt {{ currentStep + 1 }} / {{ slot.recipe.steps.length }}</span>
+          <button class="step-nav-btn" (click)="nextStep(slot.recipe.steps.length)" [disabled]="currentStep === slot.recipe.steps.length - 1">›</button>
+        </div>
+
+        <div class="step-card">
+          <div class="step-card-num">{{ currentStep + 1 }}</div>
+          <p class="step-card-desc">{{ slot.recipe.steps[currentStep].description }}</p>
+          @if (slot.recipe.steps[currentStep].ingredients.length) {
+            <div class="step-card-ings">
+              <span class="step-card-ing-label">Zutaten:</span>
+              @for (si of slot.recipe.steps[currentStep].ingredients; track si.name) {
+                <span class="step-ing">
+                  {{ si.name }}{{ si.quantityPerPerson != null
+                      ? ' (' + (si.quantityPerPerson * localPersons * localUnitsPerPerson / (slot.recipe.baseServings || 4)).toFixed(1).replace(/\.0$/, '') + ' ' + (si.unit || '') + ')'
+                      : '' }}
+                </span>
+              }
+            </div>
+          }
+        </div>
+      }
+
+    </div><!-- /body -->
+
+    <div class="cook-panel-footer">
+      <span class="cook-added-msg" *ngIf="addedMessage">{{ addedMessage }}</span>
+      <button class="cook-list-btn" [disabled]="addingToShoppingList" (click)="addToShoppingList(slot)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        {{ addingToShoppingList ? 'Füge hinzu…' : 'Zur Einkaufsliste' }}
+      </button>
+    </div>
+
+  </div>
+</div>
+}

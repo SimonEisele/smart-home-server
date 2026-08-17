@@ -1,0 +1,133 @@
+<div class="cook-backdrop" *ngIf="recipe" (click)="onBackdropClick($event)">
+  <div class="cook-panel">
+
+    <!-- Header -->
+    <div class="cook-head">
+      <div class="head-info">
+        <button *ngIf="sections.length && !showPicker" type="button" class="back-sect-btn"
+                (click)="backToPicker()" title="Abschnitte wählen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <svg class="cook-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6z"/>
+          <line x1="6" y1="17" x2="18" y2="17"/>
+        </svg>
+        <div class="title-stack">
+          <span class="recipe-title">{{ recipe.name }}</span>
+          <span class="section-subtitle" *ngIf="currentSectionTitle">{{ currentSectionTitle }}</span>
+        </div>
+      </div>
+      <div class="head-controls">
+        <div class="portions-ctrl" *ngIf="!showPicker">
+          <button type="button" class="ctrl-btn" (click)="adjustPortions(-1)" [disabled]="portions <= 1">−</button>
+          <span class="portions-val">{{ portions }}</span>
+          <span class="portions-label">{{ servingLabel }}</span>
+          <button type="button" class="ctrl-btn" (click)="adjustPortions(1)">+</button>
+        </div>
+        <button type="button" class="close-btn" (click)="close()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="cook-body">
+
+      <!-- Main column -->
+      <div class="cook-main">
+
+        <!-- Mode: Section picker -->
+        <div class="section-picker" *ngIf="showPicker">
+          <p class="picker-hint">Welchen Teil möchtest du beginnen?</p>
+          <div class="picker-grid">
+            <button type="button" class="picker-card" *ngFor="let sec of sections" (click)="selectSection(sec.id)">
+              <span class="picker-card-title">{{ sec.title }}</span>
+              <span class="picker-card-meta">{{ stepsForSection(sec.id).length }} Schritte</span>
+            </button>
+            <button type="button" class="picker-card picker-card-all" (click)="selectSection(null)">
+              <span class="picker-card-title">Alle Schritte</span>
+              <span class="picker-card-meta">{{ steps.length }} Schritte insgesamt</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mode: Cooking steps -->
+        <ng-container *ngIf="!showPicker">
+
+          <!-- Progress -->
+          <div class="cook-progress" *ngIf="steps.length > 0">
+            <div class="progress-track">
+              <div class="progress-fill" [style.width.%]="progress"></div>
+            </div>
+            <span class="step-counter">Schritt {{ currentStep + 1 }} / {{ steps.length }}</span>
+          </div>
+
+          <!-- Step content -->
+          <div class="cook-content" *ngIf="step">
+            <div class="step-badge">{{ currentStep + 1 }}</div>
+            <p class="step-desc">{{ step.description }}</p>
+            <div class="step-ings" *ngIf="stepIngredients.length > 0">
+              <div class="step-ing-card" *ngFor="let ing of stepIngredients">
+                <svg class="ing-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M9 3H5a2 2 0 0 0-2 2v4"/><path d="M15 3h4a2 2 0 0 1 2 2v4"/>
+                  <path d="M3 15v4a2 2 0 0 0 2 2h4"/><path d="M15 21h4a2 2 0 0 0 2-2v-4"/>
+                </svg>
+                <div class="ing-details">
+                  <span class="ing-name">{{ ing.name }}</span>
+                  <span class="ing-qty" *ngIf="ing.qty !== null">{{ ing.qty }} {{ ing.unit }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fallback: no steps -->
+          <div class="cook-fallback" *ngIf="steps.length === 0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            <p class="fallback-label" *ngIf="!recipe.instructions">Noch keine Schritte vorhanden.</p>
+            <p class="fallback-instructions" *ngIf="recipe.instructions">{{ recipe.instructions }}</p>
+          </div>
+
+          <!-- Navigation -->
+          <div class="cook-nav" *ngIf="steps.length > 0">
+            <button type="button" class="nav-btn" (click)="prev()" [disabled]="currentStep === 0"
+                    title="Vorheriger Schritt (←)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M15 18l-6-6 6-6"/>
+              </svg>
+            </button>
+            <div class="step-dots">
+              <span class="dot" *ngFor="let s of steps; let i = index"
+                    [class.active]="i === currentStep"
+                    (click)="goToStep(i)"></span>
+            </div>
+            <button type="button" class="nav-btn nav-next" (click)="next()" [disabled]="currentStep === steps.length - 1"
+                    title="Nächster Schritt (→)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </button>
+          </div>
+
+        </ng-container>
+      </div><!-- /cook-main -->
+
+      <!-- Side notes column — always visible while cooking -->
+      <div class="cook-sidenotes" *ngIf="sideNotes.length > 0 && !showPicker">
+        <p class="sidenotes-heading">Infos</p>
+        <div class="sidenote-item" *ngFor="let note of sideNotes">
+          <span class="sidenote-label">{{ note.label }}</span>
+          <span class="sidenote-value">{{ note.value }}</span>
+        </div>
+      </div>
+
+    </div><!-- /cook-body -->
+
+  </div>
+</div>

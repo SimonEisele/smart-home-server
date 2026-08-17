@@ -1,0 +1,80 @@
+<div class="landing-wrap">
+  <div class="landing-card">
+
+    <!-- Logo / Brand -->
+    <div class="landing-brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9.75L12 3l9 6.75V21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.75z"/>
+        <path d="M9 22V12h6v10"/>
+      </svg>
+      <h1 class="brand-name">Smart Home</h1>
+    </div>
+
+    <!-- Email step -->
+    <div *ngIf="step === 'email'" class="login-form">
+      <p class="login-hint">Melde dich mit deiner E-Mail-Adresse an.</p>
+
+      <div class="field-group" [class.has-error]="emailError">
+        <label class="field-label">E-Mail-Adresse</label>
+        <input #emailInput
+               class="glass-input"
+               type="email"
+               autocomplete="email"
+               [(ngModel)]="email"
+               (keydown.enter)="checkEmail()"
+               placeholder="name@beispiel.ch" />
+        <span class="field-error" *ngIf="emailError">E-Mail-Adresse nicht gefunden.</span>
+      </div>
+
+      <button class="btn-primary" (click)="checkEmail()" [disabled]="loading || !email.trim()">
+        {{ loading ? 'Prüfe…' : 'Weiter' }}
+      </button>
+    </div>
+
+    <!-- Password step -->
+    <div *ngIf="step === 'password'" class="login-form">
+      <button class="back-btn" type="button" (click)="backToEmail()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+        {{ email }}
+      </button>
+
+      <div class="field-group" [class.has-error]="passwordError">
+        <label class="field-label">Passwort</label>
+        <div class="pw-row">
+          <input #passwordInput
+                 class="glass-input"
+                 [type]="showPassword ? 'text' : 'password'"
+                 autocomplete="current-password"
+                 [(ngModel)]="password"
+                 (keydown.enter)="login()"
+                 placeholder="Passwort" />
+          <button class="btn-icon-sm" type="button" (click)="showPassword = !showPassword"
+                  [title]="showPassword ? 'Verbergen' : 'Anzeigen'">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <ng-container *ngIf="!showPassword">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </ng-container>
+              <ng-container *ngIf="showPassword">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </ng-container>
+            </svg>
+          </button>
+        </div>
+        <span class="field-error" *ngIf="passwordError">Falsches Passwort.</span>
+      </div>
+
+      <label class="remember-row">
+        <input type="checkbox" [(ngModel)]="rememberMe" />
+        <span>Angemeldet bleiben</span>
+      </label>
+
+      <button class="btn-primary" (click)="login()" [disabled]="loading || !password.trim()">
+        {{ loading ? 'Anmelden…' : 'Anmelden' }}
+      </button>
+    </div>
+
+  </div>
+</div>

@@ -1,1 +1,288 @@
-<p>shoppinglist works!</p>
+<ng-template #itemRow let-item="item">
+  <div class="item-row" [class.row-editing]="editId === item.id">
+    <button class="check-btn" [class.done]="item.checked" (click)="toggleChecked(item)" title="{{ item.checked ? 'Abhaken rückgängig' : 'Abgehakt' }}">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <ng-container *ngIf="item.checked">
+          <polyline points="4,10 8,14 16,6"></polyline>
+        </ng-container>
+        <ng-container *ngIf="!item.checked">
+          <circle cx="10" cy="10" r="8" stroke-width="1.5"></circle>
+        </ng-container>
+      </svg>
+    </button>
+
+    <div class="item-thumb" *ngIf="item.imageUrl && editId !== item.id">
+      <img [src]="item.imageUrl" [alt]="item.name" (error)="item.imageUrl = ''" />
+    </div>
+
+    <ng-container *ngIf="editId !== item.id">
+      <div class="item-body" [class.struck]="item.checked">
+        <span class="item-name">{{ item.name }}</span>
+        <span class="item-qty" *ngIf="item.quantity">{{ item.quantity }} {{ item.unit }}</span>
+        <span class="item-source" *ngIf="item.suggestion">{{ item.suggestion }}</span>
+      </div>
+      <div class="item-actions">
+        <button class="btn-icon-sm" (click)="startEdit(item)" title="Bearbeiten">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M14.3 3.7a1.4 1.4 0 0 1 2 2L5.7 16.3l-3 .7.7-3Z"/></svg>
+        </button>
+        <button class="btn-icon-sm btn-del" (click)="remove(item)" title="Entfernen">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h12M8 5V3h4v2M7 5l.5 10M13 5l-.5 10"/></svg>
+        </button>
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="editId === item.id">
+      <div class="item-edit-row">
+        <span class="item-name-static">{{ item.name }}</span>
+        <input type="number" min="0" step="0.1" [(ngModel)]="editQty" placeholder="Menge" class="edit-qty" />
+        <input type="text" [(ngModel)]="editUnit" placeholder="Einheit" class="edit-unit" />
+        <input type="url" [(ngModel)]="editImage" placeholder="Bild-URL" class="edit-img" />
+        <button class="btn-save-edit" (click)="saveEdit()">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="4,10 8,14 16,6"></polyline></svg>
+        </button>
+        <button class="btn-cancel-edit" (click)="cancelEdit()">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></svg>
+        </button>
+      </div>
+    </ng-container>
+  </div>
+</ng-template>
+
+<div class="shopping-page app-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <h2 class="page-title">Einkaufsliste</h2>
+      <span class="count-pill" *ngIf="uncheckedCount > 0">{{ uncheckedCount }}</span>
+    </div>
+    <div class="header-right">
+      <button class="btn-action" [class.btn-active]="showAddForm" (click)="openAdd()">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="4" x2="10" y2="16"/><line x1="4" y1="10" x2="16" y2="10"/></svg>
+        Artikel
+      </button>
+      <button class="btn-action" (click)="openRecipePicker()">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 2h8a2 2 0 0 1 2 2v14l-6-3-6 3V4a2 2 0 0 1 2-2z"/></svg>
+        Rezept
+      </button>
+      <button class="btn-action btn-action-menuplan" (click)="openExportModal()">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="4" width="16" height="14" rx="2"/><line x1="2" y1="8" x2="18" y2="8"/><line x1="6" y1="2" x2="6" y2="6"/><line x1="14" y1="2" x2="14" y2="6"/></svg>
+        Menüplan
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn" [class.active]="activeTab === 'all'" (click)="activeTab = 'all'">Alle</button>
+    <button class="tab-btn" [class.active]="activeTab === 'manual'" (click)="activeTab = 'manual'">Manuell</button>
+    <button class="tab-btn" [class.active]="activeTab === 'menuplan'" (click)="activeTab = 'menuplan'">Menüplan</button>
+  </div>
+
+  <!-- Add form panel -->
+  <div class="add-form-panel" *ngIf="showAddForm">
+    <div class="add-form-grid">
+      <div class="add-field-name">
+        <input type="text" [(ngModel)]="addName" (ngModelChange)="onAddNameInput()" placeholder="Artikelname" list="ing-catalog" class="form-input" autofocus />
+        <datalist id="ing-catalog">
+          <option *ngFor="let i of ingredients" [value]="i.name"></option>
+        </datalist>
+        <div class="suggestions-drop" *ngIf="addSuggestions.length">
+          <button class="sugg-item" *ngFor="let s of addSuggestions" (click)="applySuggestion(s)">
+            <span class="sugg-name">{{ s.name }}</span>
+            <span class="sugg-meta" *ngIf="s.category">{{ s.category }}</span>
+          </button>
+        </div>
+      </div>
+      <input type="number" min="0" step="0.1" [(ngModel)]="addQty" placeholder="Menge" class="form-input" />
+      <input type="text" [(ngModel)]="addUnit" placeholder="Einheit" class="form-input" />
+      <input type="text" [(ngModel)]="addCategory" placeholder="Kategorie" class="form-input" list="cat-list" />
+      <datalist id="cat-list">
+        <option value="Gemüse"></option><option value="Obst"></option>
+        <option value="Fleisch & Fisch"></option><option value="Milchprodukte"></option>
+        <option value="Getreide & Backwaren"></option><option value="Hülsenfrüchte"></option>
+        <option value="Gewürze & Kräuter"></option><option value="Öle & Fette"></option>
+        <option value="Saucen & Konserven"></option><option value="Sonstiges"></option>
+      </datalist>
+      <input type="url" [(ngModel)]="addImageUrl" placeholder="Bild-URL (optional)" class="form-input add-img-url" />
+    </div>
+    <div class="add-form-actions">
+      <button class="btn-primary" (click)="saveAdd()" [disabled]="!addName.trim()">Hinzufügen</button>
+      <button class="btn-ghost" (click)="cancelAdd()">Abbrechen</button>
+    </div>
+  </div>
+
+  <!-- ── Alle Tab ── -->
+  <ng-container *ngIf="activeTab === 'all'">
+    <ng-container *ngFor="let g of allGroups">
+      <div class="cat-head">{{ g.category }}</div>
+      <ng-container *ngFor="let item of g.items">
+        <ng-container *ngTemplateOutlet="itemRow; context:{item: item}"></ng-container>
+      </ng-container>
+    </ng-container>
+    <p class="empty-hint" *ngIf="!allGroups.length && !checkedItems.length">
+      Die Einkaufsliste ist leer — füge Artikel, Rezepte oder Menüplan-Zutaten hinzu.
+    </p>
+  </ng-container>
+
+  <!-- ── Manuell Tab ── -->
+  <ng-container *ngIf="activeTab === 'manual'">
+    <ng-container *ngFor="let g of manualGroups">
+      <div class="cat-head">{{ g.category }}</div>
+      <ng-container *ngFor="let item of g.items">
+        <ng-container *ngTemplateOutlet="itemRow; context:{item: item}"></ng-container>
+      </ng-container>
+    </ng-container>
+    <p class="empty-hint" *ngIf="!manualGroups.length">
+      Keine manuell hinzugefügten Artikel.
+    </p>
+  </ng-container>
+
+  <!-- ── Menüplan Tab ── -->
+  <ng-container *ngIf="activeTab === 'menuplan'">
+    <ng-container *ngFor="let wg of menuplanGroups">
+      <div class="week-head">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="4" width="16" height="14" rx="2"/><line x1="2" y1="8" x2="18" y2="8"/></svg>
+        {{ wg.weekLabel }}
+      </div>
+      <ng-container *ngFor="let g of wg.groups">
+        <div class="cat-head cat-sub">{{ g.category }}</div>
+        <ng-container *ngFor="let item of g.items">
+          <ng-container *ngTemplateOutlet="itemRow; context:{item: item}"></ng-container>
+        </ng-container>
+      </ng-container>
+    </ng-container>
+    <p class="empty-hint" *ngIf="!menuplanGroups.length">
+      Noch keine Menüplan-Zutaten exportiert. Nutze „Menüplan" oben.
+    </p>
+  </ng-container>
+
+  <!-- ── Checked items ── -->
+  <details class="checked-section" *ngIf="checkedItems.length">
+    <summary>
+      <span class="checked-label">Abgehakt ({{ checkedItems.length }})</span>
+      <button class="btn-clear" (click)="clearChecked(); $event.preventDefault(); $event.stopPropagation()">Alle löschen</button>
+    </summary>
+    <ng-container *ngFor="let item of checkedItems">
+      <ng-container *ngTemplateOutlet="itemRow; context:{item: item}"></ng-container>
+    </ng-container>
+  </details>
+
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Recipe Picker Modal
+════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showRecipePicker" (click)="closeRecipePicker()">
+  <div class="modal-panel recipe-panel" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Rezept hinzufügen</h3>
+      <button class="btn-close" (click)="closeRecipePicker()">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <input type="search" [(ngModel)]="recipeSearch" placeholder="Rezept suchen…" class="form-input search-input" />
+
+      <div class="recipe-list">
+        <button class="recipe-pick-row" *ngFor="let r of filteredPickerRecipes"
+                [class.selected]="pickerRecipe?.id === r.id"
+                (click)="selectRecipe(r)">
+          <span class="rp-name">{{ r.name }}</span>
+        </button>
+        <p class="empty-hint" *ngIf="!filteredPickerRecipes.length">Keine Rezepte gefunden.</p>
+      </div>
+
+      <div class="persons-row" *ngIf="pickerRecipe">
+        <label class="persons-label">Portionen für:</label>
+        <button class="qty-btn" (click)="pickerPersons = pickerPersons > 1 ? pickerPersons - 1 : 1">−</button>
+        <input type="number" min="1" max="99" [(ngModel)]="pickerPersons" class="persons-input" />
+        <button class="qty-btn" (click)="pickerPersons = pickerPersons + 1">+</button>
+        <span class="persons-hint">Personen</span>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-ghost" (click)="closeRecipePicker()">Abbrechen</button>
+      <button class="btn-primary" [disabled]="!pickerRecipe" (click)="addRecipeToList()">
+        Zur Liste hinzufügen
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     Menuplan Export Modal
+════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showExportModal" (click)="closeExportModal()">
+  <div class="modal-panel export-panel" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Aus Menüplan exportieren</h3>
+      <button class="btn-close" (click)="closeExportModal()">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Week navigation -->
+      <div class="week-nav">
+        <button class="week-nav-btn" (click)="prevExportWeek()">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="13,5 7,10 13,15"/></svg>
+        </button>
+        <span class="week-range">{{ exportWeekRange }}</span>
+        <button class="week-nav-btn" (click)="nextExportWeek()">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="7,5 13,10 7,15"/></svg>
+        </button>
+      </div>
+
+      <!-- Loading -->
+      <div class="export-loading" *ngIf="exportLoading">Lade Menüplan…</div>
+
+      <!-- Meal grid -->
+      <div class="export-grid" *ngIf="!exportLoading">
+        <div class="export-day-col" *ngFor="let day of exportDays">
+          <div class="export-day-head">
+            <span class="day-name">{{ DAY_NAMES[day.date.getDay()] }}</span>
+            <span class="day-date">{{ day.date.getDate() }}.{{ day.date.getMonth() + 1 }}.</span>
+          </div>
+          <div class="export-meal-cell"
+               *ngFor="let meal of MEALS"
+               [class.has-recipe]="!!mealRecipe(day.dateStr, meal)"
+               [class.selected]="isMealSelected(day.dateStr, meal)"
+               [class.no-recipe]="!mealRecipe(day.dateStr, meal)"
+               [class.zero-persons]="!!mealRecipe(day.dateStr, meal) && mealEffectivePersons(day.dateStr, meal) === 0"
+               (click)="mealRecipe(day.dateStr, meal) && mealEffectivePersons(day.dateStr, meal) > 0 ? toggleMeal(day.dateStr, meal) : null">
+            <div class="meal-check" [class.checked]="isMealSelected(day.dateStr, meal)">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" *ngIf="isMealSelected(day.dateStr, meal)">
+                <polyline points="2,7 5,10 12,3"></polyline>
+              </svg>
+            </div>
+            <div class="meal-text">
+              <span class="meal-type">{{ MEAL_LABELS[meal] }}</span>
+              <span class="meal-name" *ngIf="mealRecipe(day.dateStr, meal)">{{ mealRecipe(day.dateStr, meal)!.name }}</span>
+              <span class="meal-empty" *ngIf="!mealRecipe(day.dateStr, meal)">–</span>
+              <span class="meal-persons" *ngIf="mealRecipe(day.dateStr, meal)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="width:11px;height:11px"><path d="M13 14v-1.5a2.5 2.5 0 0 0-2.5-2.5h-5A2.5 2.5 0 0 0 3 12.5V14"/><circle cx="8" cy="5" r="2.5"/></svg>
+                {{ mealPersons(day.dateStr, meal) }}
+                <span class="leftover-badge" *ngIf="mealLeftoverPersons(day.dateStr, meal) > 0">
+                  +{{ mealLeftoverPersons(day.dateStr, meal) }}
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-done" *ngIf="exportDone">{{ exportDone }}</div>
+    </div>
+
+    <div class="modal-footer">
+      <span class="selection-count">{{ exportSelected.size }} Mahlzeiten gewählt</span>
+      <button class="btn-ghost" (click)="closeExportModal()">Abbrechen</button>
+      <button class="btn-primary" [disabled]="!exportSelected.size" (click)="doExport()">
+        Exportieren
+      </button>
+    </div>
+  </div>
+</div>

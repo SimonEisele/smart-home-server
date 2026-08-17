@@ -1,0 +1,65 @@
+.video-popup {
+  max-width: 320px;
+  width: 100%;
+  text-align: left;
+  box-sizing: border-box;
+  color: var(--text);
+}
+
+.header h4 {
+  margin: 0 0 6px 0;
+  padding-right: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.5;
+  background: rgba(111, 231, 255, 0.08);
+  color: var(--text);
+  border: 1px solid rgba(111, 231, 255, 0.18);
+}
+
+.thumb {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.thumb img {
+  width: 100%;
+  display: block;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.thumb img:hover {
+  transform: scale(1.02);
+}
+
+.duration {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  background: rgba(4, 8, 16, 0.75);
+  color: var(--text);
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+/* Popup-internal arrows removed per request */

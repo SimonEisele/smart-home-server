@@ -1,15 +1,62 @@
-<div *ngIf="dashboardLoaded" class=dashboard-container>
+<div *ngIf="dashboardLoaded" class="dashboard-container">
+
+  <!-- Edit mode banner -->
+  <div *ngIf="editMode" class="edit-banner">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+    <span>Bearbeitungsmodus — Widgets verschieben &amp; verkleinern</span>
+    <button class="btn-layouts" (click)="openLayoutPanel()">📋 Layouts</button>
+    <button class="btn-edit-done" (click)="dashboardService.setEditMode(false)">Fertig</button>
+  </div>
+
+  <!-- Layout manager panel -->
+  <ng-container *ngIf="showLayoutPanel">
+    <div class="layout-overlay" (click)="closeLayoutPanel()"></div>
+    <div class="layout-panel">
+      <div class="layout-panel-header">
+        <span>Layouts verwalten</span>
+        <button class="layout-close-btn" (click)="closeLayoutPanel()">✕</button>
+      </div>
+      <div class="layout-save-row">
+        <input class="layout-name-input" type="text" placeholder="Name für aktuelles Layout…"
+               [(ngModel)]="newLayoutName" (keydown.enter)="saveCurrentLayout()" />
+        <button class="layout-save-btn" [disabled]="!newLayoutName.trim() || layoutSaving"
+                (click)="saveCurrentLayout()">Speichern</button>
+      </div>
+      <ng-container *ngIf="layouts.length === 0">
+        <p class="layout-empty">Noch keine Layouts gespeichert.</p>
+      </ng-container>
+      <ul class="layout-list" *ngIf="layouts.length > 0">
+        <li class="layout-item" *ngFor="let layout of layouts">
+          <div class="layout-info">
+            <span class="layout-name">{{ layout.name }}</span>
+            <span class="layout-meta">{{ layout.itemCount }} Widgets · {{ formatDate(layout.createdAt) }}</span>
+          </div>
+          <div class="layout-actions">
+            <button class="btn-layout-load" (click)="applyLayout(layout)" [disabled]="layoutApplying">Laden</button>
+            <button class="btn-layout-del" (click)="deleteLayout(layout, $event)">🗑</button>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </ng-container>
+
   <gridster [options]="options">
     <gridster-item *ngFor="let item of dashboard" [item]="item">
-      <card style="height:100%; width:100%;" [title]="item.title || ''" [editMode]="editMode" [link]="!editMode ? item.widget_type : undefined" [icon]="item.icon || ''"(remove)="removeWidget(item.id)">
+      <card style="height:100%; width:100%;" [title]="item.title || ''" [editMode]="editMode" [link]="item.widget_type" [icon]="item.icon || ''" (remove)="removeWidget(item.id)">
         <widget-host [widget]="item"></widget-host>
       </card>
     </gridster-item>
   </gridster>
 
-  <div #addWidgetButton *ngIf="editMode" class="add-widget-button" (click)="toggleAddWidgetPopover()">
-    <img src="icons/plus.svg">
-  </div>
+  <button *ngIf="editMode" #addWidgetButton class="add-widget-fab" (click)="toggleAddWidgetPopover()" title="Widget hinzufügen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+  </button>
+
 </div>
 
 <add-widget-popover *ngIf="showAddWidgetPopover" class="add-widget-popover" [style.bottom.px]="addWidgetPopoverBottom" [style.left.px]="addWidgetPopoverLeft" [widgets]="availableWidgets" [arrowLeft]="addWidgetPopoverArrowLeft" (select)="addWidget($event)" (close)="showAddWidgetPopover = false"></add-widget-popover>

@@ -1,15 +1,15 @@
 import { AfterViewInit, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
-import { NavigationEnd, Router } from '@angular/router';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs/operators';
-import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LoginPopover } from '../../popovers/login-popover/login-popover';
 import { AuthService } from '../auth/service/auth.service';
 import { Observable } from 'rxjs';
-import { User } from '../auth/model/auth.model';
+import { User, Household } from '../auth/model/auth.model';
 import { DashboardService } from '../../dashboard/service/dashboard.service';
 import { AccountPopover } from '../../popovers/account-popover/account-popover';
+import { HouseholdService } from '../../shared/services/household.service';
 
 declare const bootstrap: any;
 const LOGIN_POPOVER_WIDTH = 400;
@@ -31,6 +31,7 @@ export class Navbar implements AfterViewInit {
   @ViewChild('navbarCollapse', { read: ElementRef }) navbarCollapse!: ElementRef;
 
   showLogin: boolean = false;
+  showWgDropdown = false;
   loginPopoverTop = 0;
   loginPopoverLeft = 0;
   loginPopoverArrowLeft = 0;
@@ -42,10 +43,14 @@ export class Navbar implements AfterViewInit {
 
   user$: Observable<User | null>;
   editMode$: Observable<boolean>;
+  households$: Observable<Household[]>;
+  activeHousehold$: Observable<Household | null>;
 
-  constructor(public dashboardService: DashboardService, public auth: AuthService, private router: Router) {
+  constructor(public dashboardService: DashboardService, public auth: AuthService, private router: Router, public householdService: HouseholdService) {
     this.user$ = this.auth.user$;
     this.editMode$ = this.dashboardService.editMode$;
+    this.households$ = this.householdService.households$;
+    this.activeHousehold$ = this.householdService.activeHousehold$;
 
     // Close menu on route changes (robust on mobile)
     this.router.events.pipe(filter(evt => evt instanceof NavigationEnd)).subscribe(() => {
@@ -103,14 +108,39 @@ export class Navbar implements AfterViewInit {
 
   onLoginSuccess() {
     this.showLogin = false;
+    this.router.navigate(['/home']);
+  }
+
+  switchHousehold(id: string) {
+    this.householdService.switchHousehold(id).subscribe();
+  }
+
+  navigateToAccount() {
+    this.router.navigate(['/account']);
+    this.showAccount = false;
+  }
+
+  toggleWgDropdown() {
+    this.showWgDropdown = !this.showWgDropdown;
   }
 
   // Fullscreen
-  openFullscreen() {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) elem.requestFullscreen();
-    else if ((elem as any).webkitRequestFullscreen) (elem as any).webkitRequestFullscreen();
-    else if ((elem as any).msRequestFullscreen) (elem as any).msRequestFullscreen();
+  isFullscreen = false;
+
+  toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) elem.requestFullscreen();
+      else if ((elem as any).webkitRequestFullscreen) (elem as any).webkitRequestFullscreen();
+      else if ((elem as any).msRequestFullscreen) (elem as any).msRequestFullscreen();
+    }
+  }
+
+  @HostListener('document:fullscreenchange')
+  onFullscreenChange() {
+    this.isFullscreen = !!document.fullscreenElement;
   }
 
   // Key Listener
@@ -118,6 +148,7 @@ export class Navbar implements AfterViewInit {
   onEscape() {
     this.dashboardService.setEditMode(false);
     this.showLogin = false;
+    this.showWgDropdown = false;
   }
 
   // Close mobile menu when an item is clicked

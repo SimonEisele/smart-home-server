@@ -1,8 +1,112 @@
 .todos-widget {
   height: 100%;
-  display: block;
-  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #edf4ff;
 }
+
+.todo-widget-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.todo-widget-list li {
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(174, 193, 222, 0.12);
+  transition: border-color 0.15s;
+}
+
+.todo-widget-list li:hover {
+  border-color: rgba(111, 231, 255, 0.25);
+}
+
+.todo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.complete-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: rgba(111, 231, 255, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.18s, transform 0.15s;
+}
+.complete-btn svg { width: 22px; height: 22px; }
+.complete-btn:hover {
+  color: #6fe7ff;
+  transform: scale(1.15);
+}
+
+.todo-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.todo-title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #edf4ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todo-date {
+  font-size: 0.70rem;
+  color: #a9b8cd;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.todo-widget-list li.overdue .todo-title { color: #ff8080; }
+.todo-widget-list li.overdue .todo-date  { color: #ff8080; }
+.todo-widget-list li.due-today .todo-title { color: #ffbe50; }
+
+.progress-bar-row {
+  margin-top: 6px;
+}
+
+.progress-track {
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #6fe7ff, #24c8f4);
+}
+
+.all-done {
+  text-align: center;
+  font-size: 0.88rem;
+  color: #a9b8cd;
+  padding: 16px 0;
+}
+
 
 .todo-widget-list {
   list-style: none;

@@ -1,181 +1,553 @@
-/* =========================
-   PAGE WRAPPER
-========================= */
-
+/* ── Page ─────────────────────────────────────────────── */
 .todo-page {
-    padding: 40px;
-    min-height: calc(100vh - 80px);
-    color: white;
+  padding: 24px 32px 60px;
+  min-height: calc(100vh - 80px);
+  color: #edf4ff;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-/* =========================
-   HEADER
-========================= */
+@media (max-width: 768px) {
+  .todo-page {
+    padding: 16px 16px 60px;
+  }
+}
 
+/* ── Header ───────────────────────────────────────────── */
 .todo-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .todo-header h2 {
-    font-weight: 600;
-    margin: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+  color: #edf4ff;
 }
 
-/* =========================
-   CARD STYLE (wie Dashboard)
-========================= */
+.header-stats { display: flex; gap: 8px; }
 
+.stat-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.stat-pill.open {
+  background: rgba(111, 231, 255, 0.12);
+  color: #6fe7ff;
+  border: 1px solid rgba(111, 231, 255, 0.25);
+}
+.stat-pill.wg {
+  background: rgba(111,231,255,.08);
+  color: #6fe7ff;
+  border: 1px solid rgba(111,231,255,.2);
+}
+.stat-pill.overdue {
+  background: rgba(255, 100, 100, 0.15);
+  color: #ff8080;
+  border: 1px solid rgba(255, 100, 100, 0.3);
+}
+
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(111, 231, 255, 0.35);
+  background: rgba(111, 231, 255, 0.10);
+  color: #6fe7ff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.btn-add svg { width: 18px; height: 18px; }
+.btn-add:hover {
+  background: rgba(111, 231, 255, 0.18);
+  box-shadow: 0 0 14px rgba(111, 231, 255, 0.18);
+}
+
+/* ── Filter Bar ───────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+
+.chip {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(174, 193, 222, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+  color: #a9b8cd;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.chip:hover { color: #edf4ff; border-color: rgba(174, 193, 222, 0.4); }
+.chip.active {
+  background: rgba(111, 231, 255, 0.14);
+  border-color: rgba(111, 231, 255, 0.4);
+  color: #6fe7ff;
+}
+.chip-danger.active {
+  background: rgba(255, 100, 100, 0.12);
+  border-color: rgba(255, 100, 100, 0.35);
+  color: #ff8080;
+}
+
+.filter-sep {
+  width: 1px;
+  background: rgba(174,193,222,.2);
+  align-self: stretch;
+  margin: 0 2px;
+}
+
+.chip-wg, .chip-private {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.chip-wg svg, .chip-private svg { width: 12px; height: 12px; }
+
+.chip-wg.active {
+  background: rgba(111,231,255,.14);
+  border-color: rgba(111,231,255,.4);
+  color: #6fe7ff;
+}
+.chip-private.active {
+  background: rgba(174,193,222,.12);
+  border-color: rgba(174,193,222,.35);
+  color: #c8d8f0;
+}
+
+/* ── Section Labels ───────────────────────────────────── */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6fe7ff;
+  margin-bottom: 14px;
+}
+.done-label { color: #a9b8cd; margin-top: 36px; }
+.section-count {
+  background: rgba(111, 231, 255, 0.12);
+  color: #6fe7ff;
+  border-radius: 20px;
+  padding: 1px 8px;
+  font-size: 0.75rem;
+}
+.done-label .section-count {
+  background: rgba(169, 184, 205, 0.12);
+  color: #a9b8cd;
+}
+
+/* ── Todo Grid ────────────────────────────────────────── */
+.todo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+  margin-bottom: 8px;
+}
+.todo-grid.dimmed { opacity: 0.65; }
+
+/* ── Todo Card ────────────────────────────────────────── */
 .todo-card {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgb(112,112,112);
-    border-radius: 20px;
-    padding: 25px;
-
-    backdrop-filter: blur(5px);
-
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-
-    transition: 0.2s ease;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+  border: 1px solid rgba(174, 193, 222, 0.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 16px 18px;
+  backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-
-/* Optional leichter Hover wie Dashboard */
 .todo-card:hover {
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  border-color: rgba(111, 231, 255, 0.35);
+  box-shadow: 0 6px 28px rgba(0,0,0,0.28), 0 0 0 1px rgba(111,231,255,0.12);
+  transform: translateY(-2px);
+}
+.todo-card.overdue {
+  border-color: rgba(255, 100, 100, 0.35);
+  background: linear-gradient(135deg, rgba(255,80,80,0.08), rgba(255,255,255,0.03));
+}
+.todo-card.due-soon {
+  border-color: rgba(255, 190, 80, 0.35);
+}
+.done-card { cursor: pointer; }
+
+/* card top row */
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-/* =========================
-   BUTTON (passend zu Nav + Add Button)
-========================= */
+/* circle check button */
+.check-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: rgba(111, 231, 255, 0.5);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, transform 0.15s;
+  margin-top: 1px;
+}
+.check-btn svg { width: 26px; height: 26px; }
+.check-btn:hover { color: #6fe7ff; transform: scale(1.1); }
+.check-btn.done { color: #6fe7ff; }
+.check-btn.done svg circle { fill: rgba(111,231,255,0.15); }
 
-.todo-btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-
-    padding: 8px 16px;
-
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.3);
-
-    background: rgba(255,255,255,0.08);
-    color: white;
-
-    font-weight: 500;
-    cursor: pointer;
-
-    transition: 0.2s ease;
+.card-title-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.todo-btn-primary:hover {
-    background: rgba(54,120,243,0.25);
-    border-color: rgb(54,120,243);
-    transform: translateY(-2px);
+.card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #edf4ff;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.done-title {
+  text-decoration: line-through;
+  color: #a9b8cd;
+}
+.card-desc {
+  font-size: 0.78rem;
+  color: #a9b8cd;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
 }
 
-/* =========================
-   MODAL BACKDROP
-========================= */
+/* priority badge */
+.priority-badge {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 2px;
+}
+.priority-high { background: rgba(255,80,80,0.18); color: #ff8080; }
+.priority-medium { background: rgba(255,190,80,0.15); color: #ffbe50; }
+.priority-low { background: rgba(111,231,255,0.12); color: #6fe7ff; }
 
+/* meta tags row */
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.meta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.73rem;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.07);
+  color: #a9b8cd;
+}
+.meta-tag svg { width: 12px; height: 12px; }
+.overdue-tag { background: rgba(255,80,80,0.15); color: #ff8080; }
+.soon-tag { background: rgba(255,190,80,0.15); color: #ffbe50; }
+.wg-badge {
+  background: rgba(111,231,255,.12);
+  border: 1px solid rgba(111,231,255,.25);
+  color: #6fe7ff;
+}
+.wg-badge svg { width: 11px; height: 11px; }
+
+.done-by {
+  background: rgba(134,239,172,.1);
+  border: 1px solid rgba(134,239,172,.2);
+  color: rgba(134,239,172,.8);
+}
+
+/* progress bar */
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.progress-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #6fe7ff, #24c8f4);
+  transition: width 0.3s;
+}
+.progress-label { font-size: 0.72rem; color: #6fe7ff; white-space: nowrap; }
+
+/* empty hint */
+.empty-hint {
+  color: #a9b8cd;
+  font-size: 0.9rem;
+  padding: 12px 0;
+  margin: 0;
+}
+.empty-hint.full { text-align: center; padding: 60px 0; }
+
+/* ── Modal Backdrop ───────────────────────────────────── */
 .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 3000;
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 12, 25, 0.65);
+  backdrop-filter: blur(8px);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
-/* =========================
-   MODAL WRAPPER
-========================= */
-
-.modal {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 3100;
+/* ── Modal Panel ──────────────────────────────────────── */
+.modal-panel {
+  width: 100%;
+  max-width: 560px;
+  background: linear-gradient(160deg, rgba(28, 44, 76, 0.98), rgba(15, 30, 55, 0.98));
+  border: 1px solid rgba(174, 193, 222, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 22px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(111,231,255,0.06);
+  overflow: hidden;
+  animation: modal-in 0.22s ease;
 }
 
-/* =========================
-   MODAL CONTENT – gleiche Card
-========================= */
-
-.modal-content {
-    width: 100%;
-    max-width: 520px;
-
-    background: rgba(0, 0, 0, 0.45);
-    border: 1px solid rgb(112,112,112);
-    border-radius: 20px;
-
-    backdrop-filter: blur(5px);
-
-    color: white;
-
-    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Header/Footer Divider wie deine Cards */
-.modal-header,
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid rgba(174, 193, 222, 0.14);
+}
+.modal-header h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #edf4ff;
+  margin: 0;
+}
+.modal-close {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255,255,255,0.07);
+  color: #a9b8cd;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.modal-close svg { width: 18px; height: 18px; }
+.modal-close:hover { background: rgba(255,255,255,0.14); color: #edf4ff; }
+
+.modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+.modal-body::-webkit-scrollbar { width: 4px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+.modal-body::-webkit-scrollbar-thumb { background: rgba(111,231,255,0.2); border-radius: 4px; }
+
+/* ── Form Fields ─────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #a9b8cd;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.field input, .field select, .field textarea {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(174, 193, 222, 0.2);
+  border-radius: 10px;
+  color: #edf4ff;
+  padding: 10px 13px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  width: 100%;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: rgba(111, 231, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(111, 231, 255, 0.08);
+}
+.field input.invalid { border-color: rgba(255,80,80,0.6); }
+.field textarea { resize: vertical; min-height: 72px; }
+.field select option { background: #1c2e50; }
+.field-error { font-size: 0.75rem; color: #ff8080; }
+
+.field-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.field-row .field { flex: 1; min-width: 130px; }
+.field-row .field.small { flex: 0 0 90px; min-width: 80px; }
+
+/* range input */
+.range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255,255,255,0.1) !important;
+  border: none !important;
+  height: 4px !important;
+  border-radius: 4px;
+  padding: 0 !important;
+  cursor: pointer;
+}
+.range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #6fe7ff;
+  cursor: pointer;
+}
+
+/* toggle */
+.toggle-row { display: flex; align-items: center; }
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #a9b8cd;
+  user-select: none;
+}
+
+.toggle-text { display: flex; flex-direction: column; gap: 2px; }
+.toggle-title { font-size: .9rem; color: #e6f0ff; font-weight: 500; }
+.toggle-sub { font-size: .78rem; color: rgba(174,193,222,.55); }
+.toggle {
+  width: 44px; height: 24px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(174,193,222,0.2);
+  position: relative;
+  transition: background 0.2s, border-color 0.2s;
+}
+.toggle.on { background: rgba(111,231,255,0.25); border-color: rgba(111,231,255,0.5); }
+.toggle-knob {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #a9b8cd;
+  transition: transform 0.2s, background 0.2s;
+}
+.toggle.on .toggle-knob { transform: translateX(20px); background: #6fe7ff; }
+
+/* ── Modal Footer ────────────────────────────────────── */
 .modal-footer {
-    border-bottom: 1px solid rgba(255,255,255,0.15);
-    border-top: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px 20px;
+  border-top: 1px solid rgba(174, 193, 222, 0.14);
 }
+.footer-right { display: flex; gap: 10px; align-items: center; }
 
-/* =========================
-   INPUTS – passend zu Card
-========================= */
-
-.modal .form-control {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.25);
-    color: white;
-    border-radius: 12px;
+.btn-ghost {
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(174,193,222,0.22);
+  background: transparent;
+  color: #a9b8cd;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  display: inline-flex; align-items: center; gap: 7px;
 }
+.btn-ghost:hover { background: rgba(255,255,255,0.08); color: #edf4ff; }
 
-.modal .form-control:focus {
-    border-color: rgb(54,120,243);
-    box-shadow: 0 0 10px rgba(54,120,243,0.4);
-    background: rgba(255,255,255,0.12);
+.btn-delete {
+  color: #ff8080;
+  border-color: rgba(255,80,80,0.25);
 }
-
-.modal .form-label {
-    color: rgba(255,255,255,0.85);
-}
-
-/* =========================
-   BUTTONS IM MODAL
-========================= */
-
-.btn-outline-light {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: white;
-    border-radius: 12px;
-}
-
-.btn-outline-light:hover {
-    background: rgba(255,255,255,0.15);
-}
+.btn-delete:hover { background: rgba(255,80,80,0.12); color: #ff8080; }
+.btn-delete svg { width: 16px; height: 16px; }
 
 .btn-primary {
-    background: rgb(54,120,243);
-    border: none;
-    border-radius: 12px;
+  padding: 9px 22px;
+  border-radius: 10px;
+  border: 1px solid rgba(111,231,255,0.4);
+  background: rgba(111,231,255,0.14);
+  color: #6fe7ff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background 0.18s, box-shadow 0.18s;
 }
-
-.btn-primary:hover {
-    background: rgb(221,96,200);
+.btn-primary svg { width: 16px; height: 16px; }
+.btn-primary:hover:not(:disabled) {
+  background: rgba(111,231,255,0.22);
+  box-shadow: 0 0 16px rgba(111,231,255,0.18);
 }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary.btn-disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* =========================
-   ICON SIZE
-========================= */
-
-.btn-icon {
-    width: 18px;
-    height: 18px;
-}

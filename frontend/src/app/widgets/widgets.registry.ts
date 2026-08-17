@@ -1,8 +1,9 @@
 import { DateTimeWidget } from "../features/datetime/widget/datetime";
 import { MenuplanWidget } from "../features/menuplan/widget/menuplan.widget";
-import { NotesWidget } from "../features/notes/widget/notes.widget";
 import { TodosWidget } from "../features/todos/widget/todos.widget";
 import { WeatherWidget } from "../features/weather/widget/weather.widget";
+import { CalendarWidget } from "../features/calendar/widget/calendar.widget";
+import { ShoppinglistWidget } from "../features/shoppinglist/widget/shoppinglist.widget";
 
 export interface WidgetDefinition {
   type: string;
@@ -23,16 +24,6 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: "ToDo's",
     icon: 'todo.svg',
     component: TodosWidget,
-    defaultCols: 3,
-    defaultRows: 8,
-    minCols: 2,
-    minRows: 4,
-  },
-  {
-    type: 'notes',
-    title: "Notizen",
-    icon: 'notes.svg',
-    component: NotesWidget,
     defaultCols: 3,
     defaultRows: 8,
     minCols: 2,
@@ -67,5 +58,25 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     defaultRows: 4,
     minCols: 2,
     minRows: 4,
-  }
+  },
+  {
+    type: 'calendar',
+    title: 'Kalender',
+    icon: 'calendar.svg',
+    component: CalendarWidget,
+    defaultCols: 4,
+    defaultRows: 8,
+    minCols: 2,
+    minRows: 4,
+  },
+  {
+    type: 'shoppinglist',
+    title: 'Einkaufsliste',
+    icon: 'todo.svg',
+    component: ShoppinglistWidget,
+    defaultCols: 3,
+    defaultRows: 8,
+    minCols: 2,
+    minRows: 4,
+  },
 ];

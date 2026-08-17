@@ -3,6 +3,7 @@ import { BehaviorSubject, catchError, map, Observable, of, switchMap, tap, throw
 import { AuthResponse, EmailCheckResponse, LoginDTO, User } from "../model/auth.model";
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { environment } from '../../../../environments/environment';
+import { HouseholdService } from '../../../shared/services/household.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -14,10 +15,12 @@ export class AuthService {
   private tokenExpiryTimer: any;
 
   // Constructor
-  constructor(private http: HttpClient) {
-    const storedUser = localStorage.getItem('user');
+  constructor(private http: HttpClient, private householdService: HouseholdService) {
+    const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
     if(storedUser) {
-      this.userSubject.next(JSON.parse(storedUser));
+      const user = JSON.parse(storedUser);
+      this.userSubject.next(user);
+      this.householdService.initFromUser(user);
     }
   }
 
@@ -87,6 +90,7 @@ export class AuthService {
         }),
         tap(user => {
           this.userSubject.next(user);
+          this.householdService.initFromUser(user);
           if(credentials.rememberMe) {
             localStorage.setItem('user', JSON.stringify(user));
           } else {
@@ -103,7 +107,27 @@ export class AuthService {
       map(res => res.data),
       tap(user => {
         this.userSubject.next(user);
+        this.householdService.initFromUser(user);
         localStorage.setItem('user', JSON.stringify(user));
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  // Update own profile (name, phone) and/or password
+  updateProfile(data: {
+    first_name?: string;
+    last_name?: string;
+    phone_number?: string;
+    current_password?: string;
+    new_password?: string;
+  }): Observable<User> {
+    return this.http.patch<{ data: User }>(`${environment.apiUrl}/users/`, data).pipe(
+      map(res => res.data),
+      tap(user => {
+        this.userSubject.next(user);
+        if (localStorage.getItem('user')) localStorage.setItem('user', JSON.stringify(user));
+        if (sessionStorage.getItem('user')) sessionStorage.setItem('user', JSON.stringify(user));
       }),
       catchError(this.handleError)
     );
@@ -118,6 +142,7 @@ export class AuthService {
     sessionStorage.removeItem('refresh');
     sessionStorage.removeItem('user');
     this.userSubject.next(null);
+    this.householdService.clear();
 
     if(this.tokenExpiryTimer) {
       clearTimeout(this.tokenExpiryTimer);

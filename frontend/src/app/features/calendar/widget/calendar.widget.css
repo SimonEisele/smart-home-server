@@ -1,0 +1,128 @@
+.cal-widget {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: #e2e8f0;
+  padding-right: 2px;
+}
+
+.empty-hint {
+  color: rgba(255,255,255,.3);
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* ── Day group ── */
+.day-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.day-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: rgba(255,255,255,.35);
+  padding: 0 2px 2px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.today-label {
+  color: #6fe7ff;
+}
+
+/* ── Event item ── */
+.ev-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  border-left: 3px solid transparent;
+  transition: background .12s;
+}
+
+.ev-household {
+  background: rgba(79,209,197,.12);
+  border-left-color: #4fd1c5;
+}
+
+.ev-private {
+  background: rgba(159,122,234,.12);
+  border-left-color: #9f7aea;
+}
+
+.ev-todo {
+  border-left-color: #f6ad55 !important;
+}
+
+.ev-now {
+  background: rgba(111,231,255,.1);
+  box-shadow: 0 0 0 1px rgba(111,231,255,.25);
+}
+
+/* ── Time column ── */
+.ev-time-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  min-width: 38px;
+}
+
+.ev-start {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.ev-end {
+  font-size: 0.66rem;
+  color: rgba(255,255,255,.35);
+  white-space: nowrap;
+}
+
+/* ── Event body ── */
+.ev-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ev-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ev-loc {
+  font-size: 0.66rem;
+  color: rgba(255,255,255,.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Now badge ── */
+.now-badge {
+  flex-shrink: 0;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  color: #6fe7ff;
+  background: rgba(111,231,255,.15);
+  border: 1px solid rgba(111,231,255,.3);
+  border-radius: 4px;
+  padding: 1px 4px;
+  align-self: center;
+}

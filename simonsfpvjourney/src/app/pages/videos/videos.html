@@ -1,0 +1,222 @@
+<div class="video-container">
+  <h1 class="video-title">{{ 'videos.title' | translate }}</h1>
+
+  <div class="video-filter modern-filter">
+
+  <!-- Header -->
+  <div class="filter-header">
+    <h2>{{ 'videos.filterTitle' | translate }}</h2>
+    <button class="btn-reset" type="button" (click)="resetFilter()">{{ 'common.reset' | translate }}</button>
+  </div>
+
+  <!-- Search -->
+  <div class="filter-search">
+    <div class="search-container">
+      <input type="text"
+              [placeholder]="'videos.searchPlaceholder' | translate"
+             [(ngModel)]="searchText"
+              (input)="onSearchInput()"
+              (blur)="showSuggestions = false" />
+
+      <div class="search-suggestions"
+           *ngIf="showSuggestions && getSuggestions().length">
+           <div class="suggestion"
+             *ngFor="let s of getSuggestions()"
+             (mousedown)="selectSuggestion(s); $event.preventDefault()">
+          <span class="label">{{ s.label }}</span>
+          <span class="type">{{ s.typeKey | translate }} · {{ s.count }} {{ s.count === 1 ? ('videos.videoCountOne' | translate) : ('videos.videoCountOther' | translate) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Filter Grid -->
+  <div class="filter-grid">
+
+    <!-- Category -->
+    <div>
+      <label>{{ 'filters.category' | translate }}</label>
+      <app-custom-select
+        [options]="categoryOptions"
+        [value]="filter.category ?? ''"
+        (valueChange)="filter.category = $event || ''; applyFilter()">
+      </app-custom-select>
+    </div>
+
+    <!-- Tags -->
+    <div>
+      <label>{{ 'filters.addTag' | translate }}</label>
+      <div class="tag-add-layout">
+        <app-custom-select
+          [options]="tagAddOptions"
+          [value]="selectedTagToAdd"
+          (valueChange)="selectedTagToAdd = $event">
+        </app-custom-select>
+        <button type="button" (click)="addTag()">{{ 'common.add' | translate }}</button>
+      </div>
+      <div class="tag-mode-toggle">
+        <span>{{ 'filters.match' | translate }}:</span>
+        <button type="button"
+                [class.active]="(filter.tags_mode ?? 'or') === 'or'"
+          (click)="filter.tags_mode = 'or'; applyFilter()">{{ 'filters.matchAny' | translate }}</button>
+        <button type="button"
+                [class.active]="(filter.tags_mode ?? 'or') === 'and'"
+          (click)="filter.tags_mode = 'and'; applyFilter()">{{ 'filters.matchAll' | translate }}</button>
+      </div>
+    </div>
+
+    <!-- Season -->
+    <div *ngIf="showAdvancedFilters">
+      <label>{{ 'filters.season.title' | translate }}</label>
+      <app-custom-select
+        [options]="seasonSelectOptions"
+        [value]="filter.season ?? ''"
+        (valueChange)="filter.season = $event || ''; applyFilter()">
+      </app-custom-select>
+    </div>
+
+    <!-- Weather -->
+    <div *ngIf="showAdvancedFilters">
+      <label>{{ 'filters.weather.title' | translate }}</label>
+      <app-custom-select
+        [options]="weatherSelectOptions"
+        [value]="filter.weather ?? ''"
+        (valueChange)="filter.weather = $event || ''; applyFilter()">
+      </app-custom-select>
+    </div>
+
+    <!-- Country -->
+    <div *ngIf="showAdvancedFilters">
+      <label>{{ 'filters.country' | translate }}</label>
+      <app-custom-select
+        [options]="countryOptions"
+        [value]="filter.country ?? ''"
+        (valueChange)="filter.country = $event || undefined; applyFilter()">
+      </app-custom-select>
+    </div>
+
+    <!-- Drone -->
+    <div *ngIf="showAdvancedFilters">
+      <label>{{ 'filters.drone' | translate }}</label>
+      <app-custom-select
+        [options]="droneOptions"
+        [value]="filter.drone ?? ''"
+        (valueChange)="filter.drone = $event || ''; applyFilter()">
+      </app-custom-select>
+    </div>
+
+    <!-- Time of day -->
+    <div *ngIf="showAdvancedFilters">
+      <label>{{ 'filters.time.title' | translate }}</label>
+      <app-custom-select
+        [options]="timeSelectOptions"
+        [value]="filter.time_of_day ?? ''"
+        (valueChange)="filter.time_of_day = $event || ''; applyFilter()">
+      </app-custom-select>
+    </div>
+
+    <!-- Recording Date -->
+    <div *ngIf="showAdvancedFilters">
+      <label>{{ 'filters.recordingDate' | translate }}</label>
+      <div class="range-row">
+        <input type="date"
+               [(ngModel)]="filter.date_recorded__gte"
+               (change)="applyFilter()" />
+        <input type="date"
+               [(ngModel)]="filter.date_recorded__lte"
+               (change)="applyFilter()" />
+      </div>
+    </div>
+
+    <!-- Altitude -->
+    <div *ngIf="showAdvancedFilters">
+      <label>{{ 'filters.altitude' | translate }}</label>
+      <div class="range-row">
+        <input type="number"
+               [placeholder]="'common.min' | translate"
+               [(ngModel)]="filter.altitude__gte"
+               (input)="applyFilter()" />
+        <input type="number"
+               [placeholder]="'common.max' | translate"
+               [(ngModel)]="filter.altitude__lte"
+               (input)="applyFilter()" />
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sort -->
+  <div class="sort-bar">
+    <label>{{ 'filters.sortBy' | translate }}</label>
+    <app-custom-select
+      [options]="sortByOptions"
+      [value]="filter.order_by"
+      (valueChange)="setOrderBy($event)">
+    </app-custom-select>
+
+    <app-custom-select
+      [options]="orderDirOptions"
+      [value]="filter.order_dir ?? 'desc'"
+      (valueChange)="setOrderDir($event)">
+    </app-custom-select>
+
+    <button class="toggle-advanced"
+            type="button"
+            (click)="toggleAdvanced()">
+      {{ showAdvancedFilters ? ('filters.fewer' | translate) : ('filters.more' | translate) }}
+    </button>
+  </div>
+
+  <!-- Selected Tags -->
+  <div class="tag-chips" *ngIf="filter.tags?.length">
+    <div class="tag-chip" *ngFor="let tagId of filter.tags">
+      <span>{{ getTagName(tagId) }}</span>
+      <button type="button"
+              class="chip-remove"
+              (click)="removeTag(tagId)">×</button>
+    </div>
+  </div>
+
+</div>
+
+  <ng-container *ngIf="loading$ | async; else videoList">
+    <div class="video-list">
+      <div class="video-card skeleton-card" *ngFor="let _ of [1,2,3,4,5,6]">
+        <div class="video-thumb skeleton-block"></div>
+        <div class="video-info">
+          <div class="skeleton-line"></div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+  <ng-template #videoList>
+    <div class="video-list">
+      <div *ngFor="let video of videos$ | async" class="video-card" (click)="onClick(video)">
+        <div class="video-thumb">
+          <img [src]="video.thumbnail" alt="{{ video.title }}"/>
+          <span class="video-duration" *ngIf="video.duration">{{ video.duration | number:'1.0-0' }}s</span>
+        </div>
+        <div class="video-info">
+          <h3>{{ video.title }}</h3>
+          <div class="video-meta" *ngIf="video.category">
+            <span class="chip category" *ngIf="video.category">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.59 13.41 11 3H4v7l9.59 9.59a2 2 0 0 0 2.82 0l4.18-4.18a2 2 0 0 0 0-2.82z"></path>
+                <line x1="7" y1="7" x2="7.01" y2="7"></line>
+              </svg>
+              {{ video.category.name }}
+            </span>
+          </div>
+        </div>
+        <a class="map-link-btn" [routerLink]="['/', currentLanguage]" [queryParams]="{ lat: video.latitude, lon: video.longitude, zoom: 13 }" (click)="$event.stopPropagation()">{{ 'nav.map' | translate }}</a>
+      </div>
+    </div>
+  </ng-template>
+  <app-videomodal *ngIf="selectedVideo$ | async as selectedVideo"
+                  [video]="selectedVideo"
+                  [canPrev]="canPrev(selectedVideo)"
+                  [canNext]="canNext(selectedVideo)"
+                  (prev)="goPrev(selectedVideo)"
+                  (next)="goNext(selectedVideo)"
+                  (closed)="onModalClosed()"></app-videomodal>
+</div>

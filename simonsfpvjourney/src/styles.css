@@ -1,0 +1,296 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap");
+
+:root {
+  --bg: #07111f;
+  --bg-alt: #0b1727;
+  --surface: rgba(11, 19, 34, 0.82);
+  --surface-strong: #101c31;
+  --surface-soft: rgba(19, 31, 52, 0.72);
+  --border: rgba(174, 193, 222, 0.16);
+  --border-strong: rgba(174, 193, 222, 0.26);
+  --text: #edf4ff;
+  --muted: #a9b8cd;
+  --muted-strong: #c6d2e3;
+  --accent: #6fe7ff;
+  --accent-strong: #24c8f4;
+  --accent-alt: #8a97ff;
+  --danger: #ff7f7f;
+  --success: #6df09b;
+  --shadow-lg: 0 28px 80px rgba(4, 8, 16, 0.48);
+  --shadow-md: 0 16px 36px rgba(4, 8, 16, 0.28);
+  --radius-xl: 28px;
+  --radius-lg: 20px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --page-max: 1240px;
+  --nav-height: 76px;
+}
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(111, 231, 255, 0.16), transparent 30%),
+    radial-gradient(circle at top right, rgba(138, 151, 255, 0.12), transparent 26%),
+    linear-gradient(180deg, #09111d 0%, #07111f 40%, #050b14 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.48), transparent 80%);
+  opacity: 0.5;
+  z-index: -1;
+}
+
+h1,
+h2,
+h3,
+h4,
+.navbar-brand,
+.fpv-title,
+.fpv-footer h3,
+.video-title,
+.pictures-title,
+.gear-title,
+.legal-page h1,
+.legal-page h2,
+.fb-title,
+.modal-title {
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(111, 231, 255, 0.28);
+  color: var(--text);
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(111, 231, 255, 0.25), 0 0 0 6px rgba(36, 200, 244, 0.12);
+}
+
+input,
+select,
+textarea {
+  color: var(--text);
+  background: rgba(11, 19, 34, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(169, 184, 205, 0.75);
+}
+
+option {
+  background: #0d1727;
+}
+
+.page-shell {
+  width: min(var(--page-max), calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 2.5rem;
+}
+
+.page-title {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.05;
+  text-align: center;
+}
+
+.page-subtitle {
+  margin: 0.75rem auto 0;
+  max-width: 64ch;
+  text-align: center;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.surface-panel {
+  background: linear-gradient(180deg, rgba(16, 28, 49, 0.92), rgba(8, 15, 26, 0.88));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(18px);
+}
+
+.surface-panel--soft {
+  background: linear-gradient(180deg, rgba(19, 31, 52, 0.88), rgba(11, 19, 34, 0.78));
+}
+
+.surface-panel--tight {
+  border-radius: var(--radius-lg);
+}
+
+.section-block {
+  margin-top: 1.5rem;
+}
+
+.section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.section-heading h2,
+.section-heading h3 {
+  margin: 0;
+}
+
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.chip,
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.72rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted-strong);
+}
+
+.button-primary,
+.btn-reset,
+.toggle-advanced,
+.tag-add-row button,
+.fb-submit,
+.map-link-btn,
+.feedback-fab,
+.map-feedback-fab {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #05131d;
+  border: 1px solid rgba(111, 231, 255, 0.55);
+  box-shadow: 0 12px 24px rgba(36, 200, 244, 0.18);
+}
+
+.button-secondary,
+.nav-btn,
+.fullscreen-nav,
+.map-nav-arrow,
+.navbar-toggler {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--text);
+  backdrop-filter: blur(16px);
+}
+
+.modal-backdrop {
+  background: rgba(4, 8, 16, 0.72);
+  backdrop-filter: blur(14px);
+}
+
+.modal-content {
+  border: 1px solid rgba(174, 193, 222, 0.16);
+  box-shadow: var(--shadow-lg);
+}
+
+.leaflet-video-popup .leaflet-popup-content-wrapper,
+.leaflet-popup-content-wrapper {
+  background: rgba(11, 19, 34, 0.94);
+  color: var(--text);
+  border: 1px solid rgba(174, 193, 222, 0.16);
+  border-radius: 18px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(12px);
+}
+
+.leaflet-popup-content {
+  margin: 0;
+}
+
+.leaflet-popup-tip {
+  background: rgba(11, 19, 34, 0.94);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(174, 193, 222, 0.32);
+  border-radius: 999px;
+}
+
+/* Leaflet video popup */
+.leaflet-video-popup .leaflet-popup-content-wrapper {
+  padding: 0.25rem;
+}
+
+.leaflet-video-popup .leaflet-popup-content {
+  margin: 0;
+}

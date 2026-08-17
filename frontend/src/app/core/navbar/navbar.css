@@ -8,11 +8,7 @@
     top: 0;
     z-index: 2000;
 
-    background: linear-gradient(
-        135deg,
-        rgba(54,120,243,0.25),
-        rgba(221,96,200,0.25)
-    );
+    background: linear-gradient(135deg, rgba(14, 27, 47, 0.88), rgba(9, 20, 36, 0.86));
 
     backdrop-filter: blur(18px) saturate(160%);
     -webkit-backdrop-filter: blur(18px) saturate(160%);
@@ -37,7 +33,7 @@
 }
 
 .navbar-brand:hover {
-    color: rgb(54,120,243) !important;
+    color: var(--color-accent) !important;
 }
 
 /* ===============================
@@ -71,8 +67,8 @@
 
     background: linear-gradient(
         90deg,
-        rgb(54,120,243),
-        rgb(221,96,200)
+        var(--color-accent),
+        var(--color-accent-strong)
     );
 
     transition: width 0.3s ease;
@@ -108,15 +104,15 @@
 .nav-icon-btn:hover {
     background: linear-gradient(
         135deg,
-        rgba(54,120,243,0.3),
-        rgba(221,96,200,0.3)
+        rgba(111, 231, 255, 0.24),
+        rgba(36, 200, 244, 0.24)
     );
 
     border-color: rgba(255,255,255,0.4);
 
     box-shadow:
-        0 0 15px rgba(54,120,243,0.6),
-        0 0 25px rgba(221,96,200,0.4);
+        0 0 15px rgba(111, 231, 255, 0.42),
+        0 0 25px rgba(36, 200, 244, 0.28);
 
     transform: translateY(-2px);
 }
@@ -141,12 +137,12 @@
 .account-btn:hover {
     background: linear-gradient(
         135deg,
-        rgba(54,120,243,0.4),
-        rgba(221,96,200,0.4)
+        rgba(111, 231, 255, 0.28),
+        rgba(36, 200, 244, 0.28)
     );
 
     box-shadow:
-        0 0 20px rgba(221,96,200,0.5);
+        0 0 20px rgba(36, 200, 244, 0.35);
 
     transform: scale(1.08);
 }
@@ -164,12 +160,185 @@
 }
 
 .navbar-toggler:hover {
-    background: rgba(54,120,243,0.2);
-    border-color: rgb(54,120,243);
+    background: rgba(111, 231, 255, 0.16);
+    border-color: var(--color-accent);
 }
 
 .navbar-toggler-icon {
     filter: invert(1);
+}
+
+.login-popover-container,
+.account-popover-container {
+    position: fixed;
+    z-index: 5000;
+}
+
+/* ===============================
+   WG SWITCHER
+================================= */
+
+/* WG SWITCHER */
+
+.wg-switcher {
+    position: relative;
+    display: inline-block;
+}
+
+.wg-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    background: rgba(111, 231, 255, 0.12);
+    border: 1px solid rgba(111, 231, 255, 0.28);
+    border-radius: 20px;
+    color: var(--color-accent);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: default;
+    transition: all 0.2s;
+}
+
+.wg-btn.multi {
+    cursor: pointer;
+}
+
+.wg-btn.multi:hover {
+    background: rgba(111, 231, 255, 0.22);
+    border-color: rgba(111, 231, 255, 0.5);
+}
+
+.wg-chevron {
+    width: 14px;
+    height: 14px;
+    opacity: 0.7;
+}
+
+.wg-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 200px;
+    background: linear-gradient(135deg, rgba(14, 27, 47, 0.97), rgba(9, 18, 32, 0.97));
+    border: 1px solid rgba(174, 193, 222, 0.22);
+    border-radius: 14px;
+    padding: 6px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    backdrop-filter: blur(20px);
+    z-index: 6000;
+    animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.wg-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: rgba(255,255,255,0.85);
+    border-radius: 8px;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-align: left;
+}
+
+.wg-option:hover {
+    background: rgba(111, 231, 255, 0.12);
+    color: white;
+}
+
+.wg-option.active {
+    background: rgba(111, 231, 255, 0.18);
+    color: var(--color-accent);
+}
+
+.wg-role {
+    font-size: 0.72rem;
+    opacity: 0.55;
+    text-transform: capitalize;
+}
+
+.wg-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.1);
+    margin: 4px 0;
+}
+
+.wg-manage {
+    color: var(--color-accent) !important;
+    font-size: 0.82rem;
+}
+
+.nav-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* ── Right-side grouping ── */
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+}
+
+/* Thin vertical separator */
+.nav-sep {
+    width: 1px;
+    height: 28px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 1px;
+    flex-shrink: 0;
+}
+
+/* User block: info + avatar button */
+.nav-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.nav-user-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    white-space: nowrap;
+    line-height: 1;
+}
+
+/* Login button */
+.nav-login-btn {
+    background: linear-gradient(135deg, rgba(111,231,255,.2), rgba(79,209,197,.15));
+    border: 1px solid rgba(111,231,255,.4);
+    color: #6fe7ff;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+}
+.nav-login-btn:hover {
+    background: rgba(111,231,255,.3);
+    box-shadow: 0 0 12px rgba(111,231,255,.3);
 }
 
 /* ===============================
@@ -188,8 +357,8 @@
 
         background: linear-gradient(
             135deg,
-            rgba(54,120,243,0.85),
-            rgba(221,96,200,0.85)
+            rgba(9, 20, 36, 0.96),
+            rgba(15, 29, 49, 0.96)
         );
 
         backdrop-filter: blur(20px);

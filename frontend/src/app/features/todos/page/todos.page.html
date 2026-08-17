@@ -1,129 +1,252 @@
-<div class="todo-page">
+<div class="todo-page app-page">
 
+  <!-- Header -->
   <div class="todo-header">
-    <h2>Todos</h2>
-
-    <button class="todo-btn-primary" (click)="openModal()">
-      <svg class="btn-icon" viewBox="0 0 24 24">
-        <path d="M12 5v14M5 12h14"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"/>
+    <div class="header-left">
+      <h2>Todos</h2>
+      <div class="header-stats">
+        <span class="stat-pill open">{{ openCount }} offen</span>
+        <span class="stat-pill wg" *ngIf="globalCount > 0">{{ globalCount }} WG</span>
+        <span class="stat-pill overdue" *ngIf="overdueCount > 0">{{ overdueCount }} überfällig</span>
+      </div>
+    </div>
+    <button class="btn-add" (click)="openAdd()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M12 5v14M5 12h14"/>
       </svg>
       Neues Todo
     </button>
   </div>
 
-	<div class="todo-card">
-		<todos-list [todos]="todos" (edit)="openEditModal($event)"></todos-list>
-	</div>
+  <!-- Filter Chips -->
+  <div class="filter-bar">
+    <button class="chip" [class.active]="filter === 'all'" (click)="filter = 'all'">Alle</button>
+    <button class="chip" [class.active]="filter === 'open'" (click)="filter = 'open'">Offen</button>
+    <button class="chip" [class.active]="filter === 'done'" (click)="filter = 'done'">Erledigt</button>
+    <button class="chip chip-danger" [class.active]="filter === 'overdue'" (click)="filter = 'overdue'">Überfällig</button>
+    <span class="filter-sep"></span>
+    <button class="chip chip-wg" [class.active]="filter === 'global'" (click)="filter = 'global'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      WG
+    </button>
+    <button class="chip chip-private" [class.active]="filter === 'private'" (click)="filter = 'private'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Meine
+    </button>
+  </div>
+
+  <!-- Open todos -->
+  <ng-container *ngIf="openTodos.length > 0 || filter !== 'done'">
+    <div class="section-label" *ngIf="filter === 'all' || filter === 'open' || filter === 'overdue'">
+      <span>Offen</span>
+      <span class="section-count">{{ openTodos.length }}</span>
+    </div>
+    <div class="todo-grid" *ngIf="openTodos.length > 0">
+      <div class="todo-card" *ngFor="let todo of openTodos"
+           [class.overdue]="isOverdue(todo)"
+           [class.due-soon]="isDueSoon(todo)"
+           (click)="openEdit(todo)">
+        <div class="card-top">
+          <button class="check-btn" (click)="toggleDone(todo, $event)" [attr.aria-label]="'Erledigt markieren'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+            </svg>
+          </button>
+          <div class="card-title-block">
+            <span class="card-title">{{ todo.title }}</span>
+            <span class="card-desc" *ngIf="todo.description">{{ todo.description }}</span>
+          </div>
+          <span class="priority-badge priority-{{ todo.priority ?? 'medium' }}">{{ priorityLabel(todo.priority) }}</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-tag date overdue-tag" *ngIf="isOverdue(todo)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2.5 2.5"/></svg>
+            Überfällig · {{ formatDate(todo.dueDate) }}
+          </span>
+          <span class="meta-tag date soon-tag" *ngIf="isDueSoon(todo)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2.5 2.5"/></svg>
+            Fällig · {{ formatDate(todo.dueDate) }}
+          </span>
+          <span class="meta-tag date" *ngIf="todo.dueDate && !isOverdue(todo) && !isDueSoon(todo)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            {{ formatDate(todo.dueDate) }}
+          </span>
+          <span class="meta-tag recur" *ngIf="recurrenceLabel(todo)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            {{ recurrenceLabel(todo) }}
+          </span>
+          <span class="meta-tag wg-badge" *ngIf="todo.globalTodo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            WG
+          </span>
+        </div>
+      </div>
+    </div>
+    <p class="empty-hint" *ngIf="openTodos.length === 0 && (filter === 'open' || filter === 'overdue')">Keine Todos gefunden.</p>
+  </ng-container>
+
+  <!-- Done todos -->
+  <ng-container *ngIf="doneTodos.length > 0">
+    <div class="section-label done-label">
+      <span>Erledigt</span>
+      <span class="section-count">{{ doneTodos.length }}</span>
+    </div>
+    <div class="todo-grid dimmed">
+      <div class="todo-card done-card" *ngFor="let todo of doneTodos" (click)="openEdit(todo)">
+        <div class="card-top">
+          <button class="check-btn done" (click)="toggleDone(todo, $event)" aria-label="Als unerledigt markieren">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M8 12l3 3 5-5"/>
+            </svg>
+          </button>
+          <div class="card-title-block">
+            <span class="card-title done-title">{{ todo.title }}</span>
+            <span class="card-desc" *ngIf="todo.description">{{ todo.description }}</span>
+          </div>
+        </div>
+        <div class="card-meta" *ngIf="todo.doneByName">
+          <span class="meta-tag done-by">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            {{ todo.doneByName }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <p class="empty-hint full" *ngIf="todos.length === 0">Noch keine Todos. Leg los!</p>
 
 </div>
 
-<!-- Add Todo Modal -->
-<div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()"></div>
-<div class="modal d-block" tabindex="-1" *ngIf="showModal">
-	<div class="modal-dialog">
-		<div class="modal-content bg-dark text-white border-light">
-			<div class="modal-header border-secondary">
-				<h5 class="modal-title">Neues Todo</h5>
-				<button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="closeModal()"></button>
-			</div>
-			<div class="modal-body">
-				<div class="mb-3">
-					<label class="form-label">Titel</label>
-					<input #titleInput type="text" class="form-control" [class.is-invalid]="!!errors.title" [(ngModel)]="newTodo.title" (keydown.enter)="onEnter()" placeholder="Aufgabe" />
-					<div class="invalid-feedback" *ngIf="errors.title">{{ errors.title }}</div>
-				</div>
-				<div class="mb-3">
-					<label class="form-label">Startdatum</label>
-					<input type="date" class="form-control" [class.is-invalid]="!!errors.startDate" [(ngModel)]="newTodo.startDate" (keydown.enter)="onEnter()" />
-					<div class="invalid-feedback" *ngIf="errors.startDate">{{ errors.startDate }}</div>
-				</div>
-				<div class="mb-3">
-					<label class="form-label">Fällig am</label>
-					<input type="date" class="form-control" [class.is-invalid]="!!errors.dueDate" [(ngModel)]="newTodo.dueDate" (keydown.enter)="onEnter()" />
-					<div class="invalid-feedback" *ngIf="errors.dueDate">{{ errors.dueDate }}</div>
-				</div>
-				<div class="mb-3">
-					<label class="form-label">Dauer (Minuten)</label>
-					<input type="number" class="form-control" [class.is-invalid]="!!errors.duration" [(ngModel)]="newTodo.durationMinutes" (keydown.enter)="onEnter()" min="0" />
-					<div class="invalid-feedback" *ngIf="errors.duration">{{ errors.duration }}</div>
-				</div>
-			</div>
-			<div class="modal-footer border-secondary">
-				<button type="button" class="btn btn-outline-light d-flex align-items-center gap-2" (click)="closeModal()">
-					<svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-						<path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-					</svg>
-					Abbrechen
-				</button>
-				<button type="button" class="btn btn-primary d-flex align-items-center gap-2" (click)="saveTodo()" [disabled]="!newTodo.title">
-					<svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-						<path d="M17 3H7a2 2 0 0 0-2 2v14l7-3 7 3V5a2 2 0 0 0-2-2z" fill="currentColor"/>
-					</svg>
-					Speichern
-				</button>
-			</div>
-		</div>
-	</div>
-</div>
+<!-- Modal Backdrop + Panel -->
+<div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
+  <div class="modal-panel">
 
-<!-- Edit Todo Modal -->
-<div class="modal-backdrop" *ngIf="showEditModal" (click)="closeEditModal()"></div>
-<div class="modal d-block" tabindex="-1" *ngIf="showEditModal">
-	<div class="modal-dialog">
-		<div class="modal-content bg-dark text-white border-light">
-			<div class="modal-header border-secondary">
-				<h5 class="modal-title">Todo bearbeiten</h5>
-				<button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="closeEditModal()"></button>
-			</div>
-			<div class="modal-body">
-				<div class="mb-3">
-					<label class="form-label">Titel</label>
-					<input type="text" class="form-control" [class.is-invalid]="!!errors.title" [(ngModel)]="editTodo.title" />
-					<div class="invalid-feedback" *ngIf="errors.title">{{ errors.title }}</div>
-				</div>
-				<div class="mb-3">
-					<label class="form-label">Startdatum</label>
-					<input type="date" class="form-control" [class.is-invalid]="!!errors.startDate" [(ngModel)]="editTodo.startDate" />
-					<div class="invalid-feedback" *ngIf="errors.startDate">{{ errors.startDate }}</div>
-				</div>
-				<div class="mb-3">
-					<label class="form-label">Fällig am</label>
-					<input type="date" class="form-control" [class.is-invalid]="!!errors.dueDate" [(ngModel)]="editTodo.dueDate" />
-					<div class="invalid-feedback" *ngIf="errors.dueDate">{{ errors.dueDate }}</div>
-				</div>
-				<div class="mb-3">
-					<label class="form-label">Dauer (Minuten)</label>
-					<input type="number" class="form-control" [class.is-invalid]="!!errors.duration" [(ngModel)]="editTodo.durationMinutes" min="0" />
-					<div class="invalid-feedback" *ngIf="errors.duration">{{ errors.duration }}</div>
-				</div>
-				<div class="mb-3">
-					<label class="form-label">Fortschritt (%)</label>
-					<input type="range" class="form-range" [(ngModel)]="editTodo.progress" min="0" max="100" />
-					<small class="text-muted">{{ editTodo.progress ?? 0 }}%</small>
-				</div>
-				<div class="form-check mb-1">
-					<input class="form-check-input" type="checkbox" [(ngModel)]="editTodo.done" id="editDoneCheck">
-					<label class="form-check-label" for="editDoneCheck">Erledigt</label>
-				</div>
-			</div>
-			<div class="modal-footer border-secondary">
-				<button type="button" class="btn btn-outline-light d-flex align-items-center gap-2" (click)="closeEditModal()">
-					<svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-						<path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-					</svg>
-					Abbrechen
-				</button>
-				<button type="button" class="btn btn-primary d-flex align-items-center gap-2" (click)="saveEdit()" [disabled]="!editTodo.title">
-					<svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-						<path d="M17 3H7a2 2 0 0 0-2 2v14l7-3 7 3V5a2 2 0 0 0-2-2z" fill="currentColor"/>
-					</svg>
-					Speichern
-				</button>
-			</div>
-		</div>
-	</div>
+    <div class="modal-header">
+      <h3>{{ modalMode === 'add' ? 'Neues Todo' : 'Todo bearbeiten' }}</h3>
+      <button class="modal-close" (click)="closeModal()" aria-label="Schließen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Title -->
+      <div class="field">
+        <label>Titel *</label>
+        <input type="text" [(ngModel)]="form.title" [class.invalid]="errors.title"
+               placeholder="Was soll erledigt werden?" />
+        <span class="field-error" *ngIf="errors.title">{{ errors.title }}</span>
+      </div>
+
+      <!-- Description -->
+      <div class="field">
+        <label>Beschreibung</label>
+        <textarea [(ngModel)]="form.description" rows="3" placeholder="Details, Notizen..."></textarea>
+      </div>
+
+      <!-- Priority + Recurrence row -->
+      <div class="field-row">
+        <div class="field">
+          <label>Priorität</label>
+          <select [(ngModel)]="form.priority">
+            <option value="low">Niedrig</option>
+            <option value="medium">Mittel</option>
+            <option value="high">Hoch</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Wiederholung</label>
+          <select [(ngModel)]="form.recurrence">
+            <option value="">Keine</option>
+            <option value="daily">Täglich</option>
+            <option value="weekly">Wöchentlich</option>
+            <option value="monthly">Monatlich</option>
+          </select>
+        </div>
+        <div class="field small" *ngIf="form.recurrence">
+          <label>Intervall</label>
+          <input type="number" min="1" [(ngModel)]="form.recurrenceInterval" />
+        </div>
+      </div>
+
+      <!-- Dates -->
+      <div class="field-row">
+        <div class="field">
+          <label>Startdatum</label>
+          <input type="date" [(ngModel)]="form.startDate" [class.invalid]="errors.startDate" />
+          <span class="field-error" *ngIf="errors.startDate">{{ errors.startDate }}</span>
+        </div>
+        <div class="field">
+          <label>Fällig am</label>
+          <input type="date" [(ngModel)]="form.dueDate" [class.invalid]="errors.dueDate" />
+          <span class="field-error" *ngIf="errors.dueDate">{{ errors.dueDate }}</span>
+        </div>
+      </div>
+
+      <!-- Duration -->
+      <div class="field-row">
+        <div class="field">
+          <label>Dauer (h)</label>
+          <input type="number" min="0" max="72" [(ngModel)]="durH" />
+        </div>
+        <div class="field">
+          <label>Dauer (min)</label>
+          <input type="number" min="0" max="59" step="5" [(ngModel)]="durM" />
+        </div>
+      </div>
+
+      <!-- Progress (edit only) -->
+      <div class="field" *ngIf="modalMode === 'edit'">
+        <label>Fortschritt — <strong>{{ form.progress ?? 0 }}%</strong></label>
+        <input type="range" class="range-input" [(ngModel)]="form.progress" min="0" max="100" />
+      </div>
+
+      <!-- WG toggle -->
+      <div class="toggle-row">
+        <label class="toggle-label" (click)="form.globalTodo = !form.globalTodo">
+          <div class="toggle" [class.on]="form.globalTodo">
+            <div class="toggle-knob"></div>
+          </div>
+          <div class="toggle-text">
+            <span class="toggle-title">Für alle in der WG</span>
+            <span class="toggle-sub">{{ form.globalTodo ? 'Alle WG-Mitglieder sehen dieses Todo' : 'Nur du siehst dieses Todo' }}</span>
+          </div>
+        </label>
+      </div>
+
+      <!-- Done (edit only) -->
+      <div class="toggle-row" *ngIf="modalMode === 'edit'">
+        <label class="toggle-label" (click)="form.done = !form.done">
+          <div class="toggle" [class.on]="form.done">
+            <div class="toggle-knob"></div>
+          </div>
+          <span>Erledigt</span>
+        </label>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-ghost btn-delete" *ngIf="modalMode === 'edit'" (click)="deleteTodo()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+        </svg>
+        Löschen
+      </button>
+      <div class="footer-right">
+        <button class="btn-ghost" (click)="closeModal()">Abbrechen</button>
+        <button type="button" class="btn-primary" [class.btn-disabled]="!form.title?.trim()" (click)="save()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+          Speichern
+        </button>
+      </div>
+    </div>
+
+  </div>
 </div>

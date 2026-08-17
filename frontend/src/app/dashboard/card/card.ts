@@ -23,4 +23,12 @@ export class Card {
       this.router.navigate([this.link]);
     }
   }
+
+  onCardClick(event: MouseEvent): void {
+    if (this.editMode || !this.link) return;
+    const target = event.target as HTMLElement;
+    // Don't navigate when clicking interactive elements inside the widget
+    if (target.closest('button, input, select, textarea, a, [role="button"], label')) return;
+    this.router.navigate([this.link]);
+  }
 }

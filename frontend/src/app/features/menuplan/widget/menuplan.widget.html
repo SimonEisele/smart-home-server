@@ -1,17 +1,44 @@
 <div #container class="menu-widget">
-  <ng-container class="menu-widget">
-    <div class="week">
-      <div *ngFor="let menu of visibleMenus" class="day">
-        <div class="day-date">{{ menu.date | date:'EEEE, dd.MM' }}</div>
-        <div class="meal lunch">
-          <span class="meal-label">Mittag</span><br>
-          <span class="meal-name">{{ menu.lunch?.name || '-' }}</span>
-        </div>
-        <div class="meal dinner">
-          <span class="meal-label">Abend</span><br>
-          <span class="meal-name">{{ menu.dinner?.name || '-' }}</span>
-        </div>
+  <!-- Next recipe cook button -->
+  <ng-container *ngIf="nextCookSlot as slot">
+    <div class="cook-banner">
+      <div class="cook-banner-info">
+        <span class="cook-meal-lbl">{{ MEAL_LABELS[slot.meal] }}</span>
+        <span class="cook-recipe-name">{{ slot.recipe.name }}</span>
+        <span class="cook-persons">{{ slot.persons }} Person{{ slot.persons !== 1 ? 'en' : '' }}</span>
       </div>
+      <button class="cook-start-btn" (click)="startCooking(slot)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Kochen
+      </button>
     </div>
   </ng-container>
+
+  <div class="week">
+    <div class="day-card" *ngFor="let m of visibleMenus" [class.today]="m.date === todayStr">
+      <div class="day-head">
+        <span class="day-name">{{ dayName(m.date) }}</span>
+        <span class="day-date">{{ dayDate(m.date) }}</span>
+        <span class="today-dot" *ngIf="m.date === todayStr"></span>
+      </div>
+      <div class="meal-row">
+        <span class="meal-lbl">Mo</span>
+        <span class="meal-val" [class.leftovers]="m.breakfastLeftoversRef && !m.breakfastRecipe">
+          {{ m.breakfastRecipe?.name ?? (m.breakfastLeftoversRef ? formatRef(m.breakfastLeftoversRef) : '–') }}
+        </span>
+      </div>
+      <div class="meal-row">
+        <span class="meal-lbl">Mi</span>
+        <span class="meal-val" [class.leftovers]="m.lunchLeftoversRef && !m.lunchRecipe">
+          {{ m.lunchRecipe?.name ?? (m.lunchLeftoversRef ? formatRef(m.lunchLeftoversRef) : '–') }}
+        </span>
+      </div>
+      <div class="meal-row">
+        <span class="meal-lbl">Ab</span>
+        <span class="meal-val" [class.leftovers]="m.dinnerLeftoversRef && !m.dinnerRecipe">
+          {{ m.dinnerRecipe?.name ?? (m.dinnerLeftoversRef ? formatRef(m.dinnerLeftoversRef) : '–') }}
+        </span>
+      </div>
+    </div>
+  </div>
 </div>

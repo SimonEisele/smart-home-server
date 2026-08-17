@@ -7,14 +7,16 @@
       <strong>{{ user.first_name }} {{ user.last_name }}</strong><br>
       <small>{{ user.email }}</small>
     </div>
+    <div class="wg-info" *ngIf="activeHousehold$ | async as hh">
+      <small class="wg-label">WG: <strong>{{ hh.name }}</strong></small>
+    </div>
   </div>
 
   <hr>
 
   <!-- Actions -->
   <div class="account-actions">
-    <button class="btn btn-secondary" (click)="closePopover()">Profil</button>
-    <button class="btn btn-secondary" (click)="closePopover()">Einstellungen</button>
+    <a routerLink="/account" class="btn btn-secondary" (click)="closePopover()">WG &amp; Konto</a>
   </div>
 
   <hr>

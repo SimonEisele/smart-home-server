@@ -1,0 +1,257 @@
+{
+  "nav": {
+    "home": "Home",
+    "homeAria": "Accueil Simons FPV Journey",
+    "map": "Carte",
+    "videos": "Vidéos",
+    "pictures": "Photos",
+    "drones": "Builds",
+    "language": "Langue"
+  },
+  "footer": {
+    "tagline": "Cinematic FPV landscapes & aerial storytelling",
+    "privacy": "Politique de confidentialité"
+  },
+  "consent": {
+    "message": "Des analyses anonymes sont utilisées pour mieux comprendre comment ce site et son contenu sont utilisés. En savoir plus dans la",
+    "privacyLink": "politique de confidentialité",
+    "decline": "Refuser",
+    "accept": "Accepter"
+  },
+  "common": {
+    "reset": "Reset",
+    "add": "Ajouter",
+    "min": "Min",
+    "max": "Max",
+    "close": "Fermer",
+    "previous": "Précédent",
+    "next": "Suivant"
+  },
+  "filters": {
+    "allWithCount": "Tous ({{count}})",
+    "selectTag": "Selectionner un tag...",
+    "category": "Catégorie",
+    "addTag": "Ajouter",
+    "match": "Correspondance",
+    "matchAny": "N'importe",
+    "matchAll": "Tous",
+    "season": {
+      "title": "Saison",
+      "spring": "Printemps",
+      "summer": "Été",
+      "autumn": "Automne",
+      "winter": "Hiver"
+    },
+    "weather": {
+      "title": "Météo",
+      "sunny": "Ensoleillé",
+      "cloudy": "Nuageux",
+      "rainy": "Pluvieux",
+      "snowy": "Neigeux",
+      "foggy": "Brumeux"
+    },
+    "country": "Pays",
+    "drone": "Drone",
+    "time": {
+      "title": "Moment de la journee",
+      "morning": "Matin",
+      "afternoon": "Apres-midi",
+      "evening": "Soiree",
+      "night": "Nuit",
+      "sunrise": "Lever du soleil",
+      "goldenHour": "Heure doree",
+      "sunset": "Coucher du soleil"
+    },
+    "recordingDate": "Date d'enregistrement",
+    "altitude": "Altitude (m)",
+    "sortBy": "Trier par",
+    "sort": {
+      "none": "Aucun",
+      "date": "Date",
+      "altitude": "Altitude",
+      "likes": "Likes",
+      "views": "Vues"
+    },
+    "order": {
+      "desc": "Descendant",
+      "asc": "Ascendant"
+    },
+    "more": "Plus de filtres",
+    "fewer": "Moins de filtres"
+  },
+  "videos": {
+    "title": "Vidéos",
+    "filterTitle": "Filtrer les vidéos",
+    "searchPlaceholder": "Rechercher des vidéos, tags, lieux...",
+    "videoCountOne": "vidéo",
+    "videoCountOther": "vidéos"
+  },
+  "suggestion": {
+    "type": {
+      "video": "Vidéo",
+      "category": "Catégorie",
+      "tag": "Tag"
+    }
+  },
+  "pictures": {
+    "title": "Photos",
+    "subtitle": "Quelques photos prises sur les spots de vol",
+    "empty": "Aucune photo trouvée pour les filtres de vidéosactuels.",
+    "previous": "Photo précédente",
+    "next": "Photo suivant"
+  },
+  "gear": {
+    "title": "Builds",
+    "subtitle": "Mes builds FPV et composants",
+    "openDetails": "Ouvrir les details du drone",
+    "showImage": "Afficher l'image {{index}}",
+    "active": "Actif",
+    "retired": "Retiré",
+    "frame": "Chassis",
+    "motors": "Moteurs",
+    "esc": "ESC",
+    "fc": "FC",
+    "camera": "Camera",
+    "vtx": "VTX"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "range": "Derniers {{days}} jours",
+    "timeRange": "Periode",
+    "sections": {
+      "overview": "Vue d'ensemble",
+      "trends": "Tendances",
+      "devices": "Appareils",
+      "topVideos": "Top vidéos",
+      "topSpots": "Top spots",
+      "gallery": "Galerie",
+      "topDrones": "Top drones",
+      "popupDuration": "Durée popup"
+    },
+    "cards": {
+      "videoPlays": "Lectures vidéo",
+      "galleryOpens": "Ouvertures galerie",
+      "mapClicks": "Clics carte",
+      "uniqueSessions": "Sessions uniques",
+      "avgEvents": "Moy. evenements / session",
+      "avgSession": "Durée moy. de session"
+    },
+    "today": "Aujourd'hui",
+    "viewsTrend": "Tendance des vues",
+    "emptyViews": "Aucune lecture vidéo pour le moment. Lancez une vidéo pour voir les données.",
+    "devices": "Appareils",
+    "emptyDevices": "Aucune donnée d'appareil pour le moment.",
+    "topVideos": "Top vidéos",
+    "emptyTopVideos": "Aucune lecture vidéo pour le moment. Lancez une vidéo pour voir un classement.",
+    "topSpots": "Top spots",
+    "unknownPlace": "Inconnu",
+    "emptyMap": "Aucun clic carte pour le moment. Ouvrez des marqueurs sur la carte.",
+    "galleryHighlights": "Temps forts de la galerie",
+    "emptyGallery": "Aucune ouverture de galerie pour le moment. Ouvrez une image dans la galerie.",
+    "topDrones": "Top drones",
+    "unknownDrone": "Drone inconnu",
+    "emptyDrones": "Aucune vue de drone pour le moment. Ouvrez un modal drone pour collecter des données.",
+    "popupDuration": "Durée popup",
+    "emptyPopupVideos": "Pas encore de données de durée popup pour les vidéos.",
+    "topPopupDurations": "Top durées popup",
+    "emptyPopup": "Pas encore de données de durée popup.",
+    "popupFilter": "Filtre durée popup",
+    "type": "Type",
+    "all": "Tous",
+    "emptyPopupSearch": "Aucune donnée de durée popup correspondante.",
+    "dronePopupDuration": "Durée popup drone",
+    "emptyPopupDrones": "Pas encore de données de durée popup pour les drones.",
+    "picturePopupDuration": "Durée popup photo",
+    "emptyPopupPictures": "Pas encore de données de durée popup pour les photos.",
+    "sessions": "sessions",
+    "secondsSuffix": "s",
+    "errorAuth": "Veuillez vous connecter via l'admin pour voir le tableau de bord.",
+    "errorGeneric": "Le tableau de bord n'a pas pu etre charge. Veuillez reessayer plus tard."
+  },
+  "popup": {
+    "kind": {
+      "video": "Vidéo",
+      "drone": "Drone",
+      "picture": "Photo"
+    }
+  },
+  "video": {
+    "views": "Vues",
+    "likes": "Likes",
+    "duration": "Durée",
+    "altitude": "Altitude",
+    "category": "Catégorie",
+    "drone": "Drone",
+    "country": "Pays",
+    "state": "Region",
+    "place": "Lieu",
+    "season": "Saison",
+    "timeOfDay": "Moment de la journee",
+    "weather": "Meteo",
+    "recorded": "Enregistre"
+  },
+  "units": {
+    "seconds": "s",
+    "meters": "m"
+  },
+  "feedback": {
+    "title": "Retour",
+    "subtitle": "Dites-moi ce que vous aimez ou ce qui peut etre ameliore.",
+    "category": "Catégorie",
+    "categorySelect": "Selectionner...",
+    "categoryBug": "Bug",
+    "categoryIdea": "Idee",
+    "categoryImprovement": "Amelioration",
+    "categoryOther": "Autre",
+    "message": "Message",
+    "messagePlaceholder": "Votre retour...",
+    "name": "Nom",
+    "optional": "Optionnel",
+    "contact": "Contact",
+    "contactPlaceholder": "Email, telephone, Instagram (optionnel)",
+    "sending": "Envoi...",
+    "send": "Envoyer le retour",
+    "success": "Merci ! Votre retour a ete envoye.",
+    "errorRequired": "Veuillez saisir votre message.",
+    "errorSubmit": "Echec de l'envoi du retour. Veuillez reessayer plus tard."
+  },
+  "privacy": {
+    "title": "Politique de confidentialité",
+    "controllerLabel": "Responsable",
+    "controllerValue": "Simon Eisele, contact@simonsfpvjourney.ch",
+    "personalDataTitle": "Données personnelles",
+    "personalDataBody": "Les données personnelles ne sont collectées que si elles sont fournies volontairement, par exemple par email.",
+    "cookiesTitle": "Cookies et services tiers",
+    "cookiesBody": "Seuls les cookies essentiels sont utilises pour garantir le fonctionnement du site. Les contenus integrés de plateformes tierces comme YouTube peuvent traiter des données techniques supplementaires.",
+    "analyticsTitle": "Analyses anonymes",
+    "analyticsBody1": "Des analyses anonymes aident a comprendre comment ce site et ses contenus sont utilisés.",
+    "analyticsBody2": "Cela peut inclure des evenements tels que la lecture de vidéos, les interactions dans la galerie ou l'utilisation de la carte. Les données analytiques ne sont stockées qu'après avoir donné leur consentement et ne servent pas a identifier les visiteurs.",
+    "rightsTitle": "Vos droits",
+    "rightsBody": "Vous pouvez demander a tout moment l'acces aux données personnelles stockées ou leur suppression."
+  },
+  "impressum": {
+    "eyebrow": "Mentions légales",
+    "title": "Mentions légales",
+    "nameLabel": "Nom",
+    "nameValue": "Simon Eisele",
+    "addressLabel": "Adresse",
+    "addressValue": "Mettenbuehlstrasse 10, 3631 Hoefen b. Thun, Suisse",
+    "emailLabel": "Email",
+    "emailValue": "contact@simonsfpvjourney.ch",
+    "liabilityTitle": "Responsabilité et droit d'auteur",
+    "liabilityBody": "Les contenus de ce site sont protégés par le droit d'auteur. Aucune responsabilité n'est assumée pour les liens externes."
+  },
+  "map": {
+    "previousPopup": "Popup précédente",
+    "nextPopup": "Popup suivant"
+  },
+  "notFound": {
+    "title": "Error 404",
+    "copy": "Cette page est introuvable.",
+    "backHome": "Retour à la carte",
+    "viewVideos": "Voir les vidéos",
+    "metaLabel": "Chemin demandé :",
+    "metaExample": "dashboard",
+    "metaSuffix": "introuvable"
+  }
+}

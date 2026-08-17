@@ -1,0 +1,23 @@
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  position: relative;
+}
+
+app-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+app-footer {
+  margin-top: auto;
+}
+
+.content {
+  flex: 1;
+  margin-top: var(--nav-height);
+}

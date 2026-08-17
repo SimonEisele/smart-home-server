@@ -1,32 +1,29 @@
 <div #container class="todos-widget">
   <ng-container *ngIf="openTodos.length > 0; else allDone">
     <ul class="todo-widget-list">
-      <li *ngFor="let todo of visibleTodos" [class.overdue]="isOverdue(todo)" [class.dueToday]="isDueToday(todo)">
+      <li *ngFor="let todo of visibleTodos"
+          [class.overdue]="isOverdue(todo)"
+          [class.due-today]="isDueToday(todo)">
 
         <div class="todo-row">
-          <span class="todo-title">{{ todo.title }}</span>
-          <span class="todo-progress">{{ todo.progress }}%</span>
-        </div>
-
-        <div class="progress">
-          <div
-            class="progress-bar"
-            role="progressbar"
-            [style.width.%]="todo.progress"
-            aria-valuemin="0"
-            aria-valuemax="100">
+          <button class="complete-btn" (click)="completeTodo(todo, $event)" title="Erledigt">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+            </svg>
+          </button>
+          <div class="todo-info">
+            <span class="todo-title">{{ todo.title }}</span>
+            <span class="todo-date" *ngIf="todo.dueDate">
+              {{ isOverdue(todo) ? '⚠ ' : '' }}{{ todo.dueDate | date:'dd.MM.yy' }}
+            </span>
           </div>
         </div>
 
-        <small class="todo-date">
-          {{ isOverdue(todo) ? 'überfällig:' : 'fällig:' }} 
-          {{ todo.dueDate | date:'dd.MM.yyyy' }}
-        </small>
       </li>
     </ul>
   </ng-container>
 
   <ng-template #allDone>
-    <div class="all-done">✅ Alle Todos erledigt</div>
+    <div class="all-done">Alle Todos erledigt 🎉</div>
   </ng-template>
 </div>

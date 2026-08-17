@@ -1,1 +1,384 @@
-<p>account-manager works!</p>
+<div class="app-page account-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <a routerLink="/home" class="back-link">
+      <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Zurück
+    </a>
+    <h1>Konto &amp; WG-Verwaltung</h1>
+  </div>
+
+  <!-- Top grid: Profile + Active WG -->
+  <div class="top-grid">
+
+    <!-- Profile Card -->
+    <div class="glass-card profile-card" *ngIf="user$ | async as user">
+      <div class="card-label">Profil</div>
+
+      <!-- Display row -->
+      <div class="profile-row">
+        <div class="avatar-lg">{{ getUserInitials(user) }}</div>
+        <div class="profile-text">
+          <div class="profile-name">{{ user.first_name }} {{ user.last_name }}</div>
+          <span class="profile-email">{{ user.email }}</span>
+          <span class="profile-phone" *ngIf="user.phone_number">{{ user.phone_number }}</span>
+        </div>
+        <button class="btn-icon-sm profile-edit-btn" *ngIf="!editingProfile"
+                (click)="startEditProfile(user)" title="Profil bearbeiten">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Profile success (shown outside edit mode) -->
+      <div class="form-success" *ngIf="profileSuccess && !editingProfile">{{ profileSuccess }}</div>
+      <div class="form-success" *ngIf="passwordSuccess">{{ passwordSuccess }}</div>
+
+      <!-- Edit form -->
+      <div class="profile-edit-form" *ngIf="editingProfile">
+        <div class="profile-fields">
+          <div class="field-row">
+            <div class="field-col">
+              <label class="field-label">Vorname *</label>
+              <input class="glass-input" [(ngModel)]="profileEdit.first_name" placeholder="Vorname" />
+            </div>
+            <div class="field-col">
+              <label class="field-label">Nachname</label>
+              <input class="glass-input" [(ngModel)]="profileEdit.last_name" placeholder="Nachname" />
+            </div>
+          </div>
+          <div>
+            <label class="field-label">Telefonnummer</label>
+            <input class="glass-input" [(ngModel)]="profileEdit.phone_number" placeholder="+41 79 123 45 67" />
+          </div>
+        </div>
+        <div class="form-error" *ngIf="profileError">{{ profileError }}</div>
+        <div class="form-actions">
+          <button class="btn-accent" (click)="saveProfile()" [disabled]="profileSaving">
+            {{ profileSaving ? 'Speichere…' : 'Speichern' }}
+          </button>
+          <button class="btn-ghost" (click)="cancelEditProfile()">Abbrechen</button>
+        </div>
+      </div>
+
+      <!-- Password change section -->
+      <div class="pw-section">
+        <button class="pw-section-toggle" (click)="togglePasswordSection()">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Passwort ändern
+          <svg class="chevron-icon" [class.rotated]="showPasswordSection" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+        <div class="pw-change-fields" *ngIf="showPasswordSection">
+          <div class="pw-input-row">
+            <div>
+              <label class="field-label">Aktuelles Passwort</label>
+              <div class="password-input-row">
+                <input class="glass-input" [type]="showCurrentPw ? 'text' : 'password'"
+                       [(ngModel)]="passwordEdit.current" placeholder="Aktuelles Passwort" />
+                <button class="btn-icon-sm" type="button" (click)="showCurrentPw = !showCurrentPw">
+                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <ng-container *ngIf="!showCurrentPw"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></ng-container>
+                    <ng-container *ngIf="showCurrentPw"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></ng-container>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="field-label">Neues Passwort</label>
+              <div class="password-input-row">
+                <input class="glass-input" [type]="showNewPw ? 'text' : 'password'"
+                       [(ngModel)]="passwordEdit.new_pw" placeholder="Min. 8 Zeichen" />
+                <button class="btn-icon-sm" type="button" (click)="showNewPw = !showNewPw">
+                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <ng-container *ngIf="!showNewPw"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></ng-container>
+                    <ng-container *ngIf="showNewPw"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></ng-container>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="field-label">Passwort bestätigen</label>
+              <div class="password-input-row">
+                <input class="glass-input" [type]="showConfirmPw ? 'text' : 'password'"
+                       [(ngModel)]="passwordEdit.confirm" placeholder="Wiederholen"
+                       (keydown.enter)="savePassword()" />
+                <button class="btn-icon-sm" type="button" (click)="showConfirmPw = !showConfirmPw">
+                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <ng-container *ngIf="!showConfirmPw"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></ng-container>
+                    <ng-container *ngIf="showConfirmPw"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></ng-container>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="form-error" *ngIf="passwordError">{{ passwordError }}</div>
+          <div class="form-actions">
+            <button class="btn-accent" (click)="savePassword()" [disabled]="passwordSaving">
+              {{ passwordSaving ? 'Speichere…' : 'Speichern' }}
+            </button>
+            <button class="btn-ghost" (click)="togglePasswordSection()">Abbrechen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active WG Card -->
+    <div class="glass-card wg-active-card" *ngIf="activeHousehold$ | async as hh">
+      <div class="card-title-row">
+        <div class="card-label" style="margin:0">Aktive WG</div>
+        <div class="role-chip" [class]="hh.role">{{ getRoleLabel(hh.role) }}</div>
+      </div>
+
+      <div *ngIf="!editingName" class="wg-name-row">
+        <span class="wg-name-text">{{ hh.name }}</span>
+        <button *ngIf="hh.role === 'owner' || hh.role === 'admin'"
+                class="btn-icon-sm" (click)="startEditName(hh)" title="Name ändern">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+      </div>
+      <div *ngIf="editingName" class="edit-row">
+        <input class="glass-input" [(ngModel)]="editName" (keydown.enter)="saveEditName(hh)" placeholder="WG-Name" />
+        <button class="btn-sm-accent" (click)="saveEditName(hh)">✓</button>
+        <button class="btn-sm-ghost" (click)="editingName = false">✕</button>
+      </div>
+
+      <div class="wg-stats">
+        <div class="stat-item">
+          <span class="stat-num">{{ hh.member_count }}</span>
+          <span class="stat-label">Mitglieder</span>
+        </div>
+      </div>
+
+      <div class="invite-section">
+        <span class="invite-label-txt">Einladungscode</span>
+        <div class="invite-row">
+          <code class="invite-code">{{ hh.invite_code }}</code>
+          <button class="btn-copy" (click)="copyInviteCode(hh.invite_code)" title="Kopieren">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Members + WG-Account section -->
+  <div class="glass-card" *ngIf="activeHousehold$ | async as hh">
+
+    <div class="tab-header">
+      <button class="tab-btn" [class.active]="tab === 'members'" (click)="tab = 'members'">
+        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Mitglieder ({{ members.length }})
+      </button>
+      <button *ngIf="hh.role === 'owner' || hh.role === 'admin'"
+              class="tab-btn" [class.active]="tab === 'accounts'" (click)="tab = 'accounts'">
+        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+        WG-Konto
+        <span class="tab-count" *ngIf="wgAccountMembers.length > 0">{{ wgAccountMembers.length }}</span>
+      </button>
+    </div>
+
+    <!-- Members tab -->
+    <div *ngIf="tab === 'members'">
+      <div *ngIf="loadingMembers" class="loading-text">Lade Mitglieder…</div>
+      <div class="members-list" *ngIf="!loadingMembers">
+        <div class="member-item" *ngFor="let m of members">
+          <div class="member-avatar" [class.is-wg-acct]="m.user_is_household_account">
+            {{ getMemberInitials(m) }}
+          </div>
+          <div class="member-meta">
+            <span class="member-name">
+              {{ m.user_first_name }} {{ m.user_last_name }}
+              <span class="wg-acct-tag" *ngIf="m.user_is_household_account">WG-Konto</span>
+            </span>
+            <span class="member-email">{{ m.user_email }}</span>
+          </div>
+          <div class="member-right">
+            <span *ngIf="hh.role === 'member'" class="role-chip" [class]="m.role">{{ getRoleLabel(m.role) }}</span>
+            <ng-container *ngIf="hh.role === 'owner' || hh.role === 'admin'">
+              <select class="role-sel" [value]="m.role"
+                      (change)="updateMemberRole(m.user_id, $any($event.target).value)"
+                      [disabled]="m.role === 'owner'">
+                <option value="owner" *ngIf="m.role === 'owner'">Eigentümer</option>
+                <option value="admin">Admin</option>
+                <option value="member">Mitglied</option>
+              </select>
+              <button *ngIf="m.role !== 'owner'" class="btn-remove"
+                      (click)="removeMember(m.user_id)" title="Entfernen">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WG-Account tab -->
+    <div *ngIf="tab === 'accounts'" class="accounts-tab">
+      <p class="accounts-info-txt">
+        Ein WG-Konto ermöglicht einen gemeinsamen Login für ein geteiltes Gerät (Tablet, Smart-TV) — ohne persönliche Nutzerdaten.
+      </p>
+
+      <div class="members-list" *ngIf="wgAccountMembers.length > 0">
+        <div class="member-item-wrap" *ngFor="let m of wgAccountMembers">
+          <div class="member-item">
+            <div class="member-avatar is-wg-acct">{{ getMemberInitials(m) }}</div>
+            <div class="member-meta">
+              <span class="member-name">{{ m.user_first_name }}</span>
+              <span class="member-email">{{ m.user_email }}</span>
+            </div>
+            <div class="member-right">
+              <button class="btn-icon-sm" (click)="startChangePassword(m.user_id)"
+                      *ngIf="editingPasswordFor !== m.user_id"
+                      title="Passwort ändern">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </button>
+              <button class="btn-remove" (click)="deleteHouseholdAccount(m.user_id, hh)" title="Konto löschen"
+                      *ngIf="editingPasswordFor !== m.user_id">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+          <!-- Inline password-change form -->
+          <div class="inline-form pw-change-form" *ngIf="editingPasswordFor === m.user_id">
+            <div class="form-title">Passwort ändern – {{ m.user_first_name }}</div>
+            <div class="password-input-row">
+              <input class="glass-input" [type]="showNewPassword ? 'text' : 'password'"
+                     [(ngModel)]="newPasswordVal" placeholder="Neues Passwort (min. 6 Zeichen) *" />
+              <button class="btn-icon-sm" type="button" (click)="showNewPassword = !showNewPassword"
+                      [title]="showNewPassword ? 'Verbergen' : 'Anzeigen'">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <ng-container *ngIf="!showNewPassword">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                  </ng-container>
+                  <ng-container *ngIf="showNewPassword">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </ng-container>
+                </svg>
+              </button>
+            </div>
+            <div class="form-error" *ngIf="changePasswordError">{{ changePasswordError }}</div>
+            <div class="form-success" *ngIf="changePasswordSuccess">{{ changePasswordSuccess }}</div>
+            <div class="form-actions">
+              <button class="btn-accent" (click)="confirmChangePassword(m.user_id, hh)"
+                      [disabled]="changePasswordLoading || !newPasswordVal.trim()">
+                {{ changePasswordLoading ? 'Speichere…' : 'Speichern' }}
+              </button>
+              <button class="btn-ghost" (click)="cancelChangePassword()">Abbrechen</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="empty-hint" *ngIf="wgAccountMembers.length === 0 && !showCreateAccountForm">
+        Noch kein WG-Konto angelegt.
+      </p>
+
+      <button class="btn-accent create-acct-btn" *ngIf="!showCreateAccountForm"
+              (click)="showCreateAccountForm = true">
+        + WG-Konto anlegen
+      </button>
+
+      <div class="inline-form" *ngIf="showCreateAccountForm">
+        <div class="form-title">Neues WG-Konto</div>
+        <input class="glass-input" [(ngModel)]="newAccount.name" placeholder="Name (z.B. Wohnzimmer-Tablet) *" />
+        <div class="password-input-row">
+          <input class="glass-input" [type]="showPassword ? 'text' : 'password'"
+                 [(ngModel)]="newAccount.password" placeholder="Passwort (min. 6 Zeichen) *" />
+          <button class="btn-icon-sm" type="button" (click)="showPassword = !showPassword"
+                  [title]="showPassword ? 'Verbergen' : 'Anzeigen'">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <ng-container *ngIf="!showPassword">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </ng-container>
+              <ng-container *ngIf="showPassword">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </ng-container>
+            </svg>
+          </button>
+        </div>
+        <div class="form-error" *ngIf="createAccountError">{{ createAccountError }}</div>
+        <div class="form-success" *ngIf="createAccountSuccess">{{ createAccountSuccess }}</div>
+        <div class="form-actions">
+          <button class="btn-accent" (click)="createHouseholdAccount(hh)"
+                  [disabled]="creatingAccount || !newAccount.name.trim() || !newAccount.password.trim()">
+            {{ creatingAccount ? 'Erstelle…' : 'Erstellen' }}
+          </button>
+          <button class="btn-ghost" (click)="showCreateAccountForm = false; createAccountError = ''; createAccountSuccess = ''">
+            Abbrechen
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- All WGs -->
+  <div class="glass-card wgs-card" *ngIf="(households$ | async) as households">
+    <div class="card-label">Meine Wohngemeinschaften ({{ households.length }})</div>
+    <div class="wg-list">
+      <div class="wg-list-item" *ngFor="let h of households"
+           [class.is-active]="(activeHousehold$ | async)?.id === h.id">
+        <div class="wg-list-left">
+          <div class="wg-list-avatar">{{ h.name[0].toUpperCase() }}</div>
+          <div class="wg-list-info">
+            <span class="wg-list-name">{{ h.name }}</span>
+            <span class="role-chip" [class]="h.role">{{ getRoleLabel(h.role) }}</span>
+          </div>
+        </div>
+        <div class="wg-list-right">
+          <span class="active-check" *ngIf="(activeHousehold$ | async)?.id === h.id">✓ Aktiv</span>
+          <button class="btn-sm-ghost" *ngIf="(activeHousehold$ | async)?.id !== h.id"
+                  (click)="switchTo(h.id)">Wechseln</button>
+          <button class="btn-sm-danger" *ngIf="h.role !== 'owner'"
+                  (click)="leaveHousehold(h)" [disabled]="leavingHousehold"
+                  title="WG verlassen">Verlassen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="wg-actions-row">
+      <button class="btn-accent" (click)="showCreateForm = !showCreateForm; showJoinForm = false">
+        + Neue WG
+      </button>
+      <button class="btn-ghost" (click)="showJoinForm = !showJoinForm; showCreateForm = false">
+        WG beitreten
+      </button>
+    </div>
+    <div class="form-error" *ngIf="leaveError">{{ leaveError }}</div>
+
+    <div class="inline-form" *ngIf="showCreateForm">
+      <div class="form-title">Neue Wohngemeinschaft</div>
+      <input class="glass-input" [(ngModel)]="newWgName" placeholder="Name der WG *" (keydown.enter)="createWg()" />
+      <input class="glass-input" [(ngModel)]="newWgDesc" placeholder="Beschreibung (optional)" />
+      <div class="form-error" *ngIf="createError">{{ createError }}</div>
+      <div class="form-actions">
+        <button class="btn-accent" (click)="createWg()" [disabled]="creating || !newWgName.trim()">
+          {{ creating ? 'Erstelle…' : 'Erstellen' }}
+        </button>
+        <button class="btn-ghost" (click)="showCreateForm = false">Abbrechen</button>
+      </div>
+    </div>
+
+    <div class="inline-form" *ngIf="showJoinForm">
+      <div class="form-title">WG beitreten</div>
+      <input class="glass-input" [(ngModel)]="inviteCode" placeholder="Einladungscode" (keydown.enter)="joinWg()" />
+      <div class="form-error" *ngIf="joinError">{{ joinError }}</div>
+      <div class="form-actions">
+        <button class="btn-accent" (click)="joinWg()" [disabled]="joining || !inviteCode.trim()">
+          {{ joining ? 'Beitreten…' : 'Beitreten' }}
+        </button>
+        <button class="btn-ghost" (click)="showJoinForm = false">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+</div>

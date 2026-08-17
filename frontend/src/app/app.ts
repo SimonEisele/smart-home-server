@@ -2,11 +2,12 @@ import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Navbar } from './core/navbar/navbar';
 import { AuthService } from './core/auth/service/auth.service';
+import { RecipeCookOverlay } from './shared/recipe-cook-overlay/recipe-cook-overlay';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [Navbar, RouterOutlet ],
+  imports: [Navbar, RouterOutlet, RecipeCookOverlay],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

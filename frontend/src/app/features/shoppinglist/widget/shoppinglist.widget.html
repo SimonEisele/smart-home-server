@@ -1,0 +1,58 @@
+<div class="sl-widget">
+
+  <!-- Quick-add row -->
+  <div class="add-row">
+    <input class="add-input"
+           [(ngModel)]="newItemName"
+           (keydown)="onKeydown($event)"
+           placeholder="Hinzufügen…"
+           [disabled]="adding" />
+    <button class="add-btn" (click)="addItem()" [disabled]="!newItemName.trim() || adding">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Unchecked items -->
+  @if (unchecked.length === 0 && checked.length === 0) {
+    <div class="empty-hint">Liste ist leer</div>
+  }
+
+  <ul class="sl-list">
+    @for (item of unchecked; track item.id) {
+      <li class="sl-item" (click)="toggle(item)">
+        <button class="check-btn" aria-label="Abhaken">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+          </svg>
+        </button>
+        <span class="item-name">{{ item.name }}</span>
+        @if (quantityLabel(item)) {
+          <span class="item-qty">{{ quantityLabel(item) }}</span>
+        }
+      </li>
+    }
+  </ul>
+
+  <!-- Checked items (collapsed appearance) -->
+  @if (checked.length > 0) {
+    <div class="checked-section">
+      <div class="checked-label">{{ checked.length }} erledigt</div>
+      <ul class="sl-list sl-list-done">
+        @for (item of checked; track item.id) {
+          <li class="sl-item sl-item-done" (click)="toggle(item)">
+            <button class="check-btn check-btn-done" aria-label="Rückgängig">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 12l3 3 5-5"/>
+              </svg>
+            </button>
+            <span class="item-name item-done-name">{{ item.name }}</span>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+</div>

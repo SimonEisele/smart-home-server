@@ -1,0 +1,34 @@
+<div class="gear-container">
+    <h1 class="gear-title">{{ 'gear.title' | translate }}</h1>
+    <p class="gear-subtitle">{{ 'gear.subtitle' | translate }}</p>
+
+    <ng-container *ngIf="drones$ | async as drones; else gearLoading">
+        <div class="gear-grid">
+            <div class="gear-card" *ngFor="let drone of drones; let i = index" (click)="openModal(drones, i)">
+                <button class="gear-image" type="button" [attr.aria-label]="'gear.openDetails' | translate">
+                    <img [src]="drone.image" [alt]="drone.name" loading="lazy" />
+                    <span class="gear-size" *ngIf="drone.size_inch != null">{{ drone.size_inch }}"</span>
+                </button>
+                <h2 class="gear-name">{{ drone.name }}</h2>
+            </div>
+        </div>
+    </ng-container>
+    <ng-template #gearLoading>
+        <div class="gear-grid">
+            <div class="gear-card skeleton-card" *ngFor="let _ of [1,2,3,4]">
+                <div class="gear-image skeleton-block"></div>
+                <div class="gear-name skeleton-line"></div>
+            </div>
+        </div>
+    </ng-template>
+</div>
+
+<app-gearmodal
+  *ngIf="selectedDrone"
+  [drone]="selectedDrone"
+  [canPrev]="selectedIndex > 0"
+  [canNext]="selectedIndex < dronesCache.length - 1"
+  (closed)="closeModal()"
+  (prev)="showPrev()"
+  (next)="showNext()"
+></app-gearmodal>

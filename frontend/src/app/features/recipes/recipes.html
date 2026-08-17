@@ -1,1 +1,342 @@
-<p>recipes works!</p>
+<div class="recipes-page app-page">
+
+  <!-- Header -->
+  <div class="recipes-header">
+    <div class="header-left">
+      <h2>Rezepte</h2>
+      <span class="count-pill">{{ recipes.length }}</span>
+    </div>
+    <div class="header-right">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input class="search-input" type="text" [(ngModel)]="search" placeholder="Suchen…" />
+      </div>
+      <button class="btn-add" (click)="openAdd()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Neues Rezept
+      </button>
+    </div>
+  </div>
+
+  <!-- Cards -->
+  <div class="recipes-grid" *ngIf="filtered.length > 0">
+    <div class="recipe-card" *ngFor="let recipe of filtered; trackBy: trackByRecipe" (click)="openEdit(recipe)">
+      <div class="card-top">
+        <span class="card-name">{{ recipe.name }}</span>
+        <span class="duration-badge" *ngIf="recipe.durationMinutes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2.5 2.5"/></svg>
+          {{ formatDuration(recipe.durationMinutes) }}
+        </span>
+      </div>
+      <p class="card-desc" *ngIf="recipe.description">{{ recipe.description }}</p>
+      <div class="card-footer">
+        <span class="ingredient-count" *ngIf="recipe.ingredients.length > 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 3H5a2 2 0 0 0-2 2v4"/><path d="M15 3h4a2 2 0 0 1 2 2v4"/><path d="M3 15v4a2 2 0 0 0 2 2h4"/><path d="M15 21h4a2 2 0 0 0 2-2v-4"/></svg>
+          {{ recipe.ingredients.length }} Zutaten
+        </span>
+        <span class="step-count" *ngIf="recipe.steps.length > 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          {{ recipe.steps.length }} Schritte
+        </span>
+        <span class="serving-badge" *ngIf="recipe.baseServings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          {{ recipe.baseServings }}&nbsp;{{ recipe.servingType === 'Stücke' ? 'Stk.' : 'Port.' }}
+        </span>
+        <button class="btn-cook" (click)="startCooking(recipe, $event)" title="Rezept starten">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Kochen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <p class="empty-hint" *ngIf="recipes.length === 0">Noch keine Rezepte. Erstelle dein erstes!</p>
+  <p class="empty-hint" *ngIf="recipes.length > 0 && filtered.length === 0">Keine Treffer für „{{ search }}".</p>
+
+</div>
+
+<!-- Datalist for autocomplete -->
+<datalist id="ingredient-catalog">
+  <option *ngFor="let ing of ingredientCatalog" [value]="ing.name"></option>
+</datalist>
+
+<datalist id="step-ingredient-list">
+  <option *ngFor="let name of stepIngredientOptionsArr" [value]="name"></option>
+</datalist>
+
+<!-- Modal -->
+<div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
+  <div class="modal-panel">
+
+    <div class="modal-header">
+      <h3>{{ modalMode === 'add' ? 'Neues Rezept' : 'Rezept bearbeiten' }}</h3>
+      <button type="button" class="modal-close" (click)="closeModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <div class="field">
+        <label>Kategorie</label>
+        <div class="serving-type-toggle">
+          <button type="button" [class.active]="form.category === 'mahlzeit'"   (click)="form.category = 'mahlzeit'">Mahlzeit</button>
+          <button type="button" [class.active]="form.category === 'dessert'"    (click)="form.category = 'dessert'">Dessert</button>
+          <button type="button" [class.active]="form.category === 'backen'"     (click)="form.category = 'backen'">Backen</button>
+          <button type="button" [class.active]="form.category === 'snack'"      (click)="form.category = 'snack'">Snack</button>
+          <button type="button" [class.active]="form.category === 'beilage'"    (click)="form.category = 'beilage'">Beilage</button>
+          <button type="button" [class.active]="form.category === 'sonstiges'"  (click)="form.category = 'sonstiges'">Sonstiges</button>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field flex-3">
+          <label>Name *</label>
+          <input type="text" [(ngModel)]="form.name" placeholder="Rezeptname" />
+        </div>
+        <div class="field flex-1">
+          <label>Dauer (min)</label>
+          <input type="number" min="0" [(ngModel)]="form.durationMinutes" placeholder="30" />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field flex-1">
+          <label>Ergibt</label>
+          <input type="number" min="1" [(ngModel)]="form.baseServings" placeholder="4" />
+        </div>
+        <div class="field flex-2">
+          <label>Einheit</label>
+          <div class="serving-type-toggle">
+            <button type="button"
+                    [class.active]="form.servingType === 'Portionen'"
+                    (click)="form.servingType = 'Portionen'">Portionen</button>
+            <button type="button"
+                    [class.active]="form.servingType === 'Stücke'"
+                    (click)="form.servingType = 'Stücke'">Stücke</button>
+          </div>
+        </div>        <div class="field flex-1">
+          <label>Pro Person</label>
+          <input type="number" min="0.1" step="0.5" [(ngModel)]="form.unitsPerPerson" placeholder="1" />
+        </div>      </div>
+
+      <div class="field">
+        <label>Kurzbeschreibung</label>
+        <input type="text" [(ngModel)]="form.description" placeholder="Klassisches Gericht mit…" />
+      </div>
+
+      <div class="field">
+        <label>Zubereitung (Notizen)</label>
+        <textarea [(ngModel)]="form.instructions" rows="3" placeholder="Allgemeine Hinweise…"></textarea>
+      </div>
+
+      <!-- Sections -->
+      <div class="ingredients-section">
+        <div class="ingredients-header">
+          <span class="field-label">Abschnitte <span class="muted">(optional)</span></span>
+          <button type="button" class="btn-add-ingredient" (click)="addSection()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Abschnitt
+          </button>
+        </div>
+        <div class="section-def-row" *ngFor="let sec of form.sections">
+          <div class="field" style="flex:1">
+            <input type="text" [(ngModel)]="sec.title" placeholder="z.B. Teig vorbereiten" />
+          </div>
+          <button type="button" class="remove-btn" (click)="removeSection(sec.id)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <p class="empty-ingredients" *ngIf="form.sections.length === 0">Teile das Rezept optional in Abschnitte auf — z.B. Teig, Füllung, Glasur. Zutaten und Schritte können dann zugeordnet werden.</p>
+      </div>
+
+      <!-- Side notes -->
+      <div class="ingredients-section">
+        <div class="ingredients-header">
+          <span class="field-label">Begleitinfos <span class="muted">(optional)</span></span>
+          <button type="button" class="btn-add-ingredient" (click)="addSideNote()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Info
+          </button>
+        </div>
+        <div class="sidenote-def-row" *ngFor="let note of form.sideNotes; let i = index">
+          <div class="field flex-2">
+            <input type="text" [(ngModel)]="note.label" placeholder="Bezeichnung (z.B. Backofen)" />
+          </div>
+          <div class="field flex-1">
+            <input type="text" [(ngModel)]="note.value" placeholder="Wert (z.B. 200°C)" />
+          </div>
+          <button type="button" class="remove-btn" (click)="removeSideNote(i)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <p class="empty-ingredients" *ngIf="form.sideNotes.length === 0">Infos die jederzeit sichtbar sind während dem Kochen — z.B. Backtemperatur, Ruhezeit.</p>
+      </div>
+      <div class="ingredients-section">
+        <div class="ingredients-header">
+          <span class="field-label">Zutaten <span class="muted">(pro Portion)</span></span>
+          <button type="button" class="btn-add-ingredient" *ngIf="!form.sections.length" (click)="addIngredient()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Zutat
+          </button>
+        </div>
+
+        <ng-container *ngFor="let group of groupedIngredients; trackBy: trackBySection">
+          <div class="section-group-head" *ngIf="form.sections.length > 0">
+            <span class="section-group-title">{{ group.section?.title || 'Allgemein' }}</span>
+            <button type="button" class="btn-add-step-ing" (click)="addIngredient(group.section?.id)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Zutat
+            </button>
+          </div>
+          <div class="ingredient-row" *ngFor="let item of group.items; trackBy: trackByIngIdx">
+            <div class="field flex-3">
+              <input type="text" list="ingredient-catalog" [(ngModel)]="item.ing.name"
+                     (focus)="ingredientPrevNames[item.idx] = item.ing.name"
+                     (input)="onIngredientNameInput(item.idx)"
+                     (change)="onIngredientNameChange(item.idx)" placeholder="Zutat wählen…" />
+            </div>
+            <div class="field flex-1">
+              <input type="number" min="0" step="0.1" [(ngModel)]="item.ing.quantityPerPerson"
+                     (change)="onRecipeIngredientQtyUnitChange(item.idx)" placeholder="Menge" />
+            </div>
+            <div class="field flex-1">
+              <input type="text" [(ngModel)]="item.ing.unit"
+                     (change)="onRecipeIngredientQtyUnitChange(item.idx)" placeholder="Einheit" />
+            </div>
+            <button type="button" class="remove-btn" (click)="removeIngredient(item.idx)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <p class="empty-ingredients section-empty" *ngIf="group.items.length === 0 && form.sections.length > 0">Keine Zutaten in diesem Abschnitt.</p>
+        </ng-container>
+
+        <p class="empty-ingredients" *ngIf="form.ingredients.length === 0 && form.sections.length === 0">Noch keine Zutaten hinzugefügt.</p>
+      </div>
+
+      <!-- New ingredient prompt -->
+      <div class="new-ing-prompt" *ngIf="newIngredientPrompt">
+        <div class="new-ing-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>„{{ newIngredientPrompt.name }}" ist noch nicht im Katalog.</span>
+        </div>
+        <div class="new-ing-form-row">
+          <select [(ngModel)]="newIngredientPrompt.category" class="new-ing-select">
+            <option *ngFor="let cat of INGREDIENT_CATEGORIES" [value]="cat.value">{{ cat.label }}</option>
+          </select>
+          <input type="text" class="new-ing-unit-input" [(ngModel)]="newIngredientPrompt.defaultUnit" placeholder="Standard-Einheit (z.B. g)" />
+        </div>
+        <div class="new-ing-actions">
+          <button type="button" class="btn-confirm-ing" (click)="confirmNewIngredient()">Zum Katalog hinzufügen</button>
+          <button type="button" class="btn-skip-ing" (click)="dismissNewIngredient()">Überspringen</button>
+        </div>
+      </div>
+
+      <!-- Steps -->
+      <div class="ingredients-section">
+        <div class="ingredients-header">
+          <span class="field-label">Kochschritte</span>
+          <button type="button" class="btn-add-ingredient" *ngIf="!form.sections.length" (click)="addStep()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Schritt
+          </button>
+        </div>
+
+        <ng-container *ngFor="let group of groupedSteps; trackBy: trackBySection">
+          <div class="section-group-head" *ngIf="form.sections.length > 0">
+            <span class="section-group-title">{{ group.section?.title || 'Allgemein' }}</span>
+            <button type="button" class="btn-add-step-ing" (click)="addStep(group.section?.id)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Schritt
+            </button>
+          </div>
+
+          <div class="step-card" *ngFor="let item of group.items; trackBy: trackByStepIdx">
+            <div class="step-card-head">
+              <span class="step-num">{{ item.idx + 1 }}</span>
+              <div class="field" style="flex:1">
+                <textarea [(ngModel)]="item.step.description" rows="2" placeholder="Was ist in diesem Schritt zu tun?"></textarea>
+              </div>
+              <button type="button" class="remove-btn" (click)="removeStep(item.idx)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="step-card-ings">
+              <div class="step-ings-header">
+                <span class="step-ings-label">Zutaten dieses Schritts</span>
+                <button type="button" class="btn-add-step-ing" (click)="addStepIngredient(item.idx)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                  Neue Zutat
+                </button>
+              </div>
+              <div class="step-ings-suggestions" *ngIf="(unlinkedSuggestions[item.idx] || []).length > 0">
+                <span class="step-ings-suggest-label">Bereits im Rezept:</span>
+                <button type="button" class="step-ing-chip"
+                        *ngFor="let suggestion of (unlinkedSuggestions[item.idx] || [])"
+                        (click)="addExistingIngredientToStep(item.idx, suggestion)">
+                  {{ suggestion.name }}<span class="chip-qty" *ngIf="suggestion.quantityPerPerson"> · {{ suggestion.quantityPerPerson }} {{ suggestion.unit }}</span>
+                </button>
+              </div>
+              <div class="step-ing-row" *ngFor="let ing of item.step.ingredients; let j = index">
+                <div class="field" style="flex:3; min-width:0">
+                  <input type="text" list="step-ingredient-list" [(ngModel)]="ing.name"
+                         (change)="onStepIngredientChange(item.idx, j)" placeholder="Zutat..." />
+                </div>
+                <div class="field" style="flex:1; min-width:52px">
+                  <input type="number" min="0" step="0.1" [(ngModel)]="ing.quantityPerPerson"
+                         (change)="onStepIngredientQtyUnitChange(item.idx, j)" placeholder="Menge" />
+                </div>
+                <div class="field" style="flex:1; min-width:52px">
+                  <input type="text" [(ngModel)]="ing.unit"
+                         (change)="onStepIngredientQtyUnitChange(item.idx, j)" placeholder="Einheit" />
+                </div>
+                <button type="button" class="step-ing-btn step-ing-btn-unlink"
+                        title="Nur aus diesem Schritt entfernen"
+                        (click)="unlinkStepIngredient(item.idx, j)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 0 1 0 10h-2"/>
+                    <line x1="3" y1="3" x2="21" y2="21"/>
+                  </svg>
+                </button>
+                <button type="button" class="step-ing-btn step-ing-btn-delete"
+                        title="Aus Rezept löschen"
+                        (click)="removeStepIngredient(item.idx, j)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <p class="empty-ingredients section-empty" *ngIf="group.items.length === 0 && form.sections.length > 0">Keine Schritte in diesem Abschnitt.</p>
+        </ng-container>
+
+        <p class="empty-ingredients" *ngIf="form.steps.length === 0 && form.sections.length === 0">Noch keine Schritte. Füge Schritt für Schritt die Zubereitung hinzu.</p>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-ghost btn-delete" *ngIf="modalMode === 'edit'" (click)="delete()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+        </svg>
+        Löschen
+      </button>
+      <div class="footer-right">
+        <button type="button" class="btn-ghost" (click)="closeModal()">Abbrechen</button>
+        <button type="button" class="btn-primary" [class.btn-disabled]="!form.name?.trim()" (click)="save()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+          Speichern
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Cook mode overlay -->
+<app-cook-mode [recipe]="cookingRecipe" (closed)="cookingRecipe = null"></app-cook-mode>
