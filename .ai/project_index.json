@@ -1,0 +1,1010 @@
+{
+  "project": {
+    "name": "smarthome",
+    "root": "C:\\Github\\private\\smarthome"
+  },
+  "backend": {
+    "framework": "Django",
+    "files": [
+      {
+        "path": "backend/backend/__init__.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/backend/asgi.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/backend/settings.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/backend/urls.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/backend/wsgi.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/admin.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/apps.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0001_initial.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0002_menurating_menu_dinner_persons_menu_lunch_persons_and_more.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0003_householdmember_memberavailability.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0004_household_fk.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0005_todo_description_priority.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0006_remove_notes.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0007_ingredient_catalog.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0008_populate_ingredients.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0009_recipe_steps_ingredient_subcategory.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0010_recipe_sections.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0011_recipe_base_servings_recipe_serving_type.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0012_recipe_side_notes.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0013_menu_breakfast_leftovers_ref_menu_breakfast_recipe_and_more.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0014_shoppingitem_list_type_week_tag.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0015_calendarevent_type_fields.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0016_todo_created_by_meal_attendance.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0017_meal_attendance_breakfast.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0018_external_meal_guest.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0019_units_per_person.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0020_recipe_category_menu_extras.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0021_cleaning_tasks.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0022_todo_done_by.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/0023_menu_breakfast_persons.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/migrations/__init__.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/models.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/serializers.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/urls.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/features/views.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/manage.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/requirements.txt",
+        "type": "configuration"
+      },
+      {
+        "path": "backend/users/__init__.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/admin.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/apps.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/auth_serializers.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/migrations/0001_initial.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/migrations/0002_household.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/migrations/0003_dashboardlayout.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/migrations/0004_user_is_household_account.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/migrations/0005_todo_created_by_meal_attendance.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/migrations/__init__.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/models.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/serializers.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/tests.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/urls.py",
+        "type": "source"
+      },
+      {
+        "path": "backend/users/views.py",
+        "type": "source"
+      }
+    ]
+  },
+  "frontend": {
+    "framework": "Angular",
+    "files": [
+      {
+        "path": "frontend/.editorconfig",
+        "type": "other"
+      },
+      {
+        "path": "frontend/.gitignore",
+        "type": "configuration"
+      },
+      {
+        "path": "frontend/.vscode/extensions.json",
+        "type": "source"
+      },
+      {
+        "path": "frontend/.vscode/launch.json",
+        "type": "source"
+      },
+      {
+        "path": "frontend/.vscode/tasks.json",
+        "type": "source"
+      },
+      {
+        "path": "frontend/README.md",
+        "type": "source"
+      },
+      {
+        "path": "frontend/angular.json",
+        "type": "configuration"
+      },
+      {
+        "path": "frontend/package-lock.json",
+        "type": "configuration"
+      },
+      {
+        "path": "frontend/package.json",
+        "type": "configuration"
+      },
+      {
+        "path": "frontend/public/favicon.ico",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/calendar.svg",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/datetime.svg",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/menuplan.svg",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/not-visible.svg",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/notes.svg",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/person.svg",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/plus.png",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/plus.svg",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/todo.svg",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/visible.svg",
+        "type": "other"
+      },
+      {
+        "path": "frontend/public/icons/weather.svg",
+        "type": "other"
+      },
+      {
+        "path": "frontend/src/app/app.config.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/app.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/app.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/app.routes.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/app.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/app.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/account-manager/account-manager.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/account-manager/account-manager.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/account-manager/account-manager.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/account-manager/account-manager.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/auth/auth.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/auth/auth.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/auth/auth.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/auth/auth.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/auth/guards/auth.guard.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/auth/interceptor/auth.interceptor.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/auth/model/auth.model.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/auth/service/auth.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/footer/footer.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/footer/footer.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/footer/footer.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/footer/footer.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/landing/landing.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/landing/landing.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/landing/landing.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/navbar/navbar.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/navbar/navbar.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/navbar/navbar.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/navbar/navbar.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/register/register.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/register/register.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/register/register.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/core/register/register.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/dashboard/card/card.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/dashboard/card/card.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/dashboard/card/card.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/dashboard/card/card.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/dashboard/component/dashboard.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/dashboard/component/dashboard.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/dashboard/component/dashboard.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/dashboard/component/dashboard.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/dashboard/models/dashboard.models.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/dashboard/service/dashboard.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/calendar/calendar.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/calendar/calendar.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/calendar/calendar.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/calendar/calendar.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/calendar/model/calendar.model.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/calendar/service/calendar.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/calendar/widget/calendar.widget.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/calendar/widget/calendar.widget.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/calendar/widget/calendar.widget.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/cleaning/model/cleaning.model.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/cleaning/page/cleaning.page.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/cleaning/page/cleaning.page.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/cleaning/page/cleaning.page.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/cleaning/service/cleaning.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/datetime/pipes/datetime.pipe.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/datetime/widget/datetime.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/datetime/widget/datetime.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/datetime/widget/datetime.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/datetime/widget/datetime.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/guests/guests.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/guests/guests.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/guests/guests.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/guests/guests.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/guests/model/guests.model.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/ingredients/page/ingredients.page.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/ingredients/page/ingredients.page.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/ingredients/page/ingredients.page.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/component/menuplan.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/component/menuplan.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/component/menuplan.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/component/menuplan.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/model/menuplan.model.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/page/menuplan.page.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/page/menuplan.page.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/page/menuplan.page.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/page/menuplan.page.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/service/menuplan.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/widget/menuplan.widget.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/widget/menuplan.widget.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/widget/menuplan.widget.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/menuplan/widget/menuplan.widget.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/recipes/cook-mode/cook-mode.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/recipes/cook-mode/cook-mode.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/recipes/cook-mode/cook-mode.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/recipes/model/recipes.model.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/recipes/recipes.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/recipes/recipes.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/recipes/recipes.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/recipes/recipes.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/recipes/service/recipes.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/shoppinglist/model/shoppinglist.model.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/shoppinglist/service/shoppinglist.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/shoppinglist/shoppinglist.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/shoppinglist/shoppinglist.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/shoppinglist/shoppinglist.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/shoppinglist/shoppinglist.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/shoppinglist/widget/shoppinglist.widget.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/shoppinglist/widget/shoppinglist.widget.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/shoppinglist/widget/shoppinglist.widget.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/smarthome/model/smarthome.model.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/smarthome/smarthome.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/smarthome/smarthome.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/smarthome/smarthome.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/smarthome/smarthome.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/component/todos.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/component/todos.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/component/todos.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/component/todos.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/model/todos.model.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/page/todos.page.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/page/todos.page.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/page/todos.page.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/page/todos.page.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/service/todos.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/widget/todos.widget.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/widget/todos.widget.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/widget/todos.widget.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/todos/widget/todos.widget.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/component/weather.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/component/weather.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/component/weather.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/component/weather.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/model/weather.model.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/page/weather.page.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/page/weather.page.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/page/weather.page.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/page/weather.page.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/pipes/weather.pipe.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/service/weather.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/widget/weather.widget.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/widget/weather.widget.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/widget/weather.widget.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/features/weather/widget/weather.widget.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/account-popover/account-popover.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/account-popover/account-popover.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/account-popover/account-popover.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/account-popover/account-popover.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/add-widget-popver/add-widget-popover.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/add-widget-popver/add-widget-popover.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/add-widget-popver/add-widget-popover.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/add-widget-popver/add-widget-popover.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/login-popover/login-popover.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/login-popover/login-popover.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/login-popover/login-popover.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/popovers/login-popover/login-popover.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/shared/recipe-cook-overlay/recipe-cook-overlay.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/shared/recipe-cook-overlay/recipe-cook-overlay.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/shared/recipe-cook-overlay/recipe-cook-overlay.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/shared/services/household.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/shared/services/recipe-cook.service.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/widgets/widget-host/widget-host.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/widgets/widget-host/widget-host.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/widgets/widget-host/widget-host.spec.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/widgets/widget-host/widget-host.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/app/widgets/widgets.registry.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/environments/environment.development.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/environments/environment.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/index.html",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/main.ts",
+        "type": "source"
+      },
+      {
+        "path": "frontend/src/styles.css",
+        "type": "source"
+      },
+      {
+        "path": "frontend/tsconfig.app.json",
+        "type": "source"
+      },
+      {
+        "path": "frontend/tsconfig.json",
+        "type": "source"
+      },
+      {
+        "path": "frontend/tsconfig.spec.json",
+        "type": "source"
+      }
+    ]
+  },
+  "documentation": [
+    {
+      "path": "docs/README.md",
+      "type": "documentation"
+    },
+    {
+      "path": "docs/api-conventions.md",
+      "type": "documentation"
+    },
+    {
+      "path": "docs/auth.md",
+      "type": "documentation"
+    },
+    {
+      "path": "docs/models.md",
+      "type": "documentation"
+    }
+  ],
+  "configuration": [
+    {
+      "path": ".flake8",
+      "type": "configuration"
+    },
+    {
+      "path": ".gitignore",
+      "type": "configuration"
+    }
+  ],
+  "other": [
+    {
+      "path": ".env",
+      "type": "other"
+    },
+    {
+      "path": ".vscode/settings.json",
+      "type": "source"
+    }
+  ]
+}

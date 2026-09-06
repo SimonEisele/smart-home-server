@@ -1,6 +1,8 @@
-import { Component, Input, Output, EventEmitter, HostListener } from '@angular/core';
+import { Component, Input, Output, EventEmitter, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 import { Recipe, RecipeSection, RecipeStep } from '../model/recipes.model';
+import { RecipeCookService } from '../../../shared/services/recipe-cook.service';
 
 @Component({
   selector: 'app-cook-mode',
@@ -9,25 +11,51 @@ import { Recipe, RecipeSection, RecipeStep } from '../model/recipes.model';
   templateUrl: './cook-mode.html',
   styleUrl: './cook-mode.css',
 })
-export class CookMode {
+export class CookMode implements OnInit, OnDestroy {
   private _recipe: Recipe | null = null;
+  private cookSubscription?: Subscription;
+  private hasOpenedRecipe = false;
 
   @Input()
   set recipe(r: Recipe | null) {
     this._recipe = r;
     if (r) {
+      this.hasOpenedRecipe = true;
+      this.cookService.open({
+        date: this.todayIso(),
+        meal: 'dinner',
+        recipe: r,
+        persons: r.baseServings ?? 1,
+        weekTag: this.currentWeekTag(new Date()),
+      });
       this.currentStep = 0;
       this.portions = r.baseServings ?? 4;
       this.selectedSectionId = r.sections?.length ? 'picker' : null;
     }
   }
-  get recipe(): Recipe | null { return this._recipe; }
+  get recipe(): Recipe | null { return null; }
 
   @Output() closed = new EventEmitter<void>();
 
   portions = 2;
   currentStep = 0;
   selectedSectionId: number | null | 'picker' = null;
+
+  constructor(private cookService: RecipeCookService) {}
+
+  ngOnInit(): void {
+    this.cookSubscription = this.cookService.slot$.subscribe(slot => {
+      if (!slot && this.hasOpenedRecipe) {
+        this.hasOpenedRecipe = false;
+        this._recipe = null;
+        this.closed.emit();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.cookSubscription?.unsubscribe();
+  }
 
   get showPicker(): boolean { return this.selectedSectionId === 'picker'; }
 
@@ -55,7 +83,7 @@ export class CookMode {
     if (typeof this.selectedSectionId === 'number') {
       return all.filter(s => s.sectionId === this.selectedSectionId);
     }
-    return all; // null = all steps, 'picker' = not reached but returns all as fallback
+    return all;
   }
 
   get step(): RecipeStep | null { return this.steps[this.currentStep] ?? null; }
@@ -92,7 +120,7 @@ export class CookMode {
   prev(): void { if (this.currentStep > 0) this.currentStep--; }
   goToStep(i: number): void { this.currentStep = i; }
   adjustPortions(delta: number): void { this.portions = Math.max(1, this.portions + delta); }
-  close(): void { this.closed.emit(); }
+  close(): void { this.cookService.close(); }
   onBackdropClick(e: MouseEvent): void { if (e.target === e.currentTarget) this.close(); }
 
   @HostListener('document:keydown', ['$event'])
@@ -101,5 +129,18 @@ export class CookMode {
     if (e.key === 'ArrowRight') { e.preventDefault(); this.next(); }
     if (e.key === 'ArrowLeft') { e.preventDefault(); this.prev(); }
     if (e.key === 'Escape') this.close();
+  }
+
+  private todayIso(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  private currentWeekTag(date: Date): string {
+    const thu = new Date(date);
+    thu.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1) + 3);
+    const year = thu.getFullYear();
+    const startOfYear = new Date(year, 0, 1);
+    const week = Math.ceil(((thu.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
+    return `${year}-W${String(week).padStart(2, '0')}`;
   }
 }

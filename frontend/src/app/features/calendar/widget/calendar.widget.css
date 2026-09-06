@@ -66,6 +66,31 @@
   box-shadow: 0 0 0 1px rgba(111,231,255,.25);
 }
 
+.ev-cleaning-widget {
+  background: rgba(100,220,100,.12);
+  border-left-color: #7de89a;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ev-cleaning-widget:hover {
+  background: rgba(100,220,100,.2);
+}
+
+.ev-cleaning-overdue {
+  background: rgba(255,100,100,.13);
+  border-left-color: #ff8080;
+}
+
+.ev-cleaning-overdue:hover {
+  background: rgba(255,100,100,.2);
+}
+
+.cleaning-icon {
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
 /* ── Time column ── */
 .ev-time-col {
   display: flex;

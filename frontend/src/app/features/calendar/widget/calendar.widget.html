@@ -1,10 +1,12 @@
 <div class="cal-widget">
-  @if (groupedEvents.length === 0) {
-    <div class="empty-hint">Keine Termine in den nächsten 14 Tagen</div>
+  @if (!hasEntries) {
+    <div class="empty-hint">Keine Termine oder Reinigungsaufgaben in den nächsten 14 Tagen</div>
   }
+
   @for (group of groupedEvents; track group.dateStr) {
     <div class="day-group">
       <div class="day-label" [class.today-label]="group.label === 'Heute'">{{ group.label }}</div>
+
       @for (ev of group.events; track ev.id) {
         <div [class]="evClass(ev)" [class.ev-now]="isNow(ev)" [style.borderLeftColor]="ev.color || null">
           <div class="ev-time-col">
@@ -23,6 +25,18 @@
             <span class="now-badge">JETZT</span>
           }
         </div>
+      }
+
+      @for (cleaning of group.cleaningTasks; track cleaning.task.id) {
+        <a class="ev-item ev-cleaning-widget" [class.ev-cleaning-overdue]="cleaning.overdue" routerLink="/cleaning">
+          <div class="ev-time-col">
+            <span class="cleaning-icon">🧹</span>
+          </div>
+          <div class="ev-body">
+            <span class="ev-title">{{ cleaning.task.name }}</span>
+            <span class="ev-loc">{{ cleaning.overdue ? 'Überfällig' : 'Reinigung' }}</span>
+          </div>
+        </a>
       }
     </div>
   }

@@ -9,6 +9,7 @@ __pycache__/
 # Virtuelle Umgebung
 venv/
 .env/
+.env
 env/
 
 # Django spezifisch

@@ -18,6 +18,7 @@ export class Card {
 
   constructor(private router: Router) {}
 
+  // Navigate only when the card is not in edit mode.
   navigate() {
     if (!this.editMode && this.link) {
       this.router.navigate([this.link]);

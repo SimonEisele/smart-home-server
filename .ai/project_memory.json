@@ -1,0 +1,121 @@
+{
+  "architecture": [
+    {
+      "fact": "Authentication uses JWT via Django REST Framework SimpleJWT.",
+      "sources": [
+        "backend/backend/settings.py"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "The frontend uses Angular and the backend uses Django REST Framework.",
+      "sources": [
+        "backend/backend/settings.py",
+        "frontend/package.json"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Die Menüplanseite verwendet ein eigenes Auswahl-Popup, das über `activePicker` gesteuert wird und die Zuweisung von Rezepten oder Resten zu einem Menüslot ermöglicht.",
+      "sources": [
+        "frontend/src/app/features/menuplan/page/menuplan.page.html",
+        "frontend/src/app/features/menuplan/page/menuplan.page.ts"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Das Menüplan-Widget auf dem Dashboard startet den Kochvorgang für einen konkreten Slot über `RecipeCookService.open(slot)`; dieser Ablauf ist vom Auswahl-Popup der Menüplanseite getrennt.",
+      "sources": [
+        "frontend/src/app/features/menuplan/page/menuplan.page.ts",
+        "frontend/src/app/features/menuplan/widget/menuplan.widget.ts"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Das gemeinsame Koch-Popup ist standardmäßig 1200 px breit und wird responsiv auf calc(100vw - 48px) bzw. bei maximal 600 px Bildschirmbreite auf calc(100vw - 24px) begrenzt.",
+      "sources": [
+        "frontend/src/app/shared/recipe-cook-overlay/recipe-cook-overlay.css"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Das Frontend ist feature-orientiert aufgebaut und enthält eigene Bereiche für Kalender, Zutaten, Reinigung, Menüplanung und Todos sowie zentrale Core- und Shared-Services.",
+      "sources": [
+        "frontend/src/app/core/auth/service/auth.service.ts",
+        "frontend/src/app/features/calendar/calendar.ts",
+        "frontend/src/app/features/cleaning/model/cleaning.model.ts",
+        "frontend/src/app/features/ingredients/page/ingredients.page.ts",
+        "frontend/src/app/features/menuplan/page/menuplan.page.css",
+        "frontend/src/app/features/todos/service/todos.service.ts",
+        "frontend/src/app/shared/services/household.service.ts"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Das Dashboard-Kalender-Widget lädt ausschließlich normale Kalendertermine über CalendarService.getEvents() und filtert Ganztagstermine heraus; Reinigungstasks werden dort nicht geladen.",
+      "sources": [
+        "frontend/src/app/features/calendar/service/calendar.service.ts",
+        "frontend/src/app/features/calendar/widget/calendar.widget.ts"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Die vollständige Kalenderansicht lädt Reinigungstasks separat und rendert sie als eigene Ganztagseinträge; überfällige Reinigungstasks werden dabei für den aktuellen Tag berücksichtigt.",
+      "sources": [
+        "frontend/src/app/features/calendar/calendar.html",
+        "frontend/src/app/features/calendar/calendar.ts"
+      ],
+      "confidence": "confirmed"
+    }
+  ],
+  "decisions": [],
+  "known_issues": [
+    {
+      "fact": "Refresh token rotation is enabled in the backend, but the frontend may not persist rotated refresh tokens.",
+      "sources": [
+        "backend/backend/settings.py",
+        "frontend/src/app/core/auth/interceptor/auth.interceptor.ts",
+        "frontend/src/app/core/auth/service/auth.service.ts"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Refresh-Token-Rotation ist im Backend aktiviert, aber das Frontend speichert bei einer Refresh-Antwort nur den neuen Access Token. Der rotierte Refresh Token wird dadurch nicht persistiert und nach einer Blacklistung des alten Tokens kann die Session beim nächsten Refresh abbrechen.",
+      "sources": [
+        "backend/backend/settings.py",
+        "frontend/src/app/core/auth/interceptor/auth.interceptor.ts",
+        "frontend/src/app/core/auth/service/auth.service.ts"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Der AuthService meldet den Benutzer beim Ablauf des Access Tokens automatisch ab, anstatt den weiterhin gültigen Refresh Token für eine Verlängerung der Session zu verwenden.",
+      "sources": [
+        "frontend/src/app/core/auth/service/auth.service.ts"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Die Backend-Konfiguration enthält unsichere Produktionswerte: einen fest codierten SECRET_KEY, DEBUG=True, ALLOWED_HOSTS=['*'] und uneingeschränkt erlaubtes CORS.",
+      "sources": [
+        "backend/backend/settings.py"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "weather.model.ts enthält doppelte Definitionen der Interfaces HourlyWeather, DailyWeather und WeatherData; der zweite Definitionsblock wirkt veraltet und sollte auf redundanten Inhalt geprüft werden.",
+      "sources": [
+        "frontend/src/app/features/weather/model/weather.model.ts"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Überfällige Reinigungstasks wie „Bad putzen“ erscheinen derzeit nicht im Kalender-Widget des Dashboards, sondern nur in der vollständigen Kalenderansicht.",
+      "sources": [
+        "frontend/src/app/features/calendar/calendar.ts",
+        "frontend/src/app/features/calendar/widget/calendar.widget.ts"
+      ],
+      "confidence": "confirmed"
+    }
+  ]
+}

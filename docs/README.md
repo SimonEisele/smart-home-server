@@ -20,3 +20,56 @@ Die Authentifizierung erfolgt über JWT (Access Token + Refresh Token).
 
 Weitere Module (Notes, Dashboard, Automationen) bauen auf diesen
 Grundlagen auf.
+
+---
+
+## 🛠️ Development
+
+Für die lokale Entwicklung werden das Django-Backend und das Angular-Frontend
+separat gestartet.
+
+### Backend starten
+
+In das Backend-Verzeichnis wechseln, die Abhängigkeiten installieren und den
+Django-Entwicklungsserver starten:
+
+```bash
+cd backend
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+Das Backend ist anschließend standardmäßig unter
+`http://127.0.0.1:8000/` erreichbar.
+
+### Frontend starten
+
+In einem zweiten Terminal das Frontend installieren und starten:
+
+```bash
+cd frontend
+npm install
+ng serve
+```
+
+Das Frontend ist anschließend unter `http://localhost:4200/` erreichbar.
+
+Die lokale API-Adresse wird in
+`frontend/src/environments/environment.development.ts` konfiguriert.
+
+### Tests und Build
+
+Frontend-Tests können mit folgendem Befehl ausgeführt werden:
+
+```bash
+cd frontend
+ng test
+```
+
+Ein Produktions-Build des Frontends wird mit folgendem Befehl erstellt:
+
+```bash
+cd frontend
+ng build
+```

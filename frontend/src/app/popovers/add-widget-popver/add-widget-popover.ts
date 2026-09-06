@@ -27,6 +27,7 @@ export class AddWidget {
   @HostListener('document:click', ['$event'])
   onOutsideClick(event: MouseEvent) {
     const target = event.target as HTMLElement;
+    // Close the popover when the click is outside its bounds.
     if (!target.closest('add-widget-popover') && !target.closest('.add-widget-button')) {
       this.closePopover();
     }
