@@ -66,6 +66,22 @@
         "frontend/src/app/features/calendar/calendar.ts"
       ],
       "confidence": "confirmed"
+    },
+    {
+      "fact": "Das Auswahl-Popup der Menüplanseite wird unabhängig über `activePicker` gesteuert und dient der Zuweisung von Rezepten oder Resten zu einem Menüslot, nicht dem Starten des Koch-Overlays.",
+      "sources": [
+        "frontend/src/app/features/menuplan/page/menuplan.page.html"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "fact": "Das Menüplan-Widget ermittelt den nächsten passenden zukünftigen Slot mit Rezept und startet den Kochablauf über `cookService.open(slot)`; das gemeinsame Koch-Overlay reagiert auf den gesetzten Slot über `RecipeCookService.slot$`.",
+      "sources": [
+        "frontend/src/app/features/menuplan/widget/menuplan.widget.html",
+        "frontend/src/app/features/menuplan/widget/menuplan.widget.ts",
+        "frontend/src/app/shared/recipe-cook-overlay/recipe-cook-overlay.ts"
+      ],
+      "confidence": "confirmed"
     }
   ],
   "decisions": [],
@@ -115,7 +131,8 @@
         "frontend/src/app/features/calendar/calendar.ts",
         "frontend/src/app/features/calendar/widget/calendar.widget.ts"
       ],
-      "confidence": "confirmed"
+      "confidence": "confirmed",
+      "status": "resolved"
     }
   ]
 }

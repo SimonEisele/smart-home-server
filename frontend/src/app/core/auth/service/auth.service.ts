@@ -5,22 +5,33 @@ import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { environment } from '../../../../environments/environment';
 import { HouseholdService } from '../../../shared/services/household.service';
 
+interface TokenRefreshResponse {
+  access: string;
+  refresh?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   // User-Stream
   private userSubject = new BehaviorSubject<User | null>(null);
   user$ = this.userSubject.asObservable();
 
-  // Auto-Logout Timer (JWT Expiry)
+  // Auto-refresh timer (JWT expiry)
   private tokenExpiryTimer: any;
 
   // Constructor
   constructor(private http: HttpClient, private householdService: HouseholdService) {
     const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
-    if(storedUser) {
+    const storedAccess = localStorage.getItem('access') || sessionStorage.getItem('access');
+
+    if (storedUser) {
       const user = JSON.parse(storedUser);
       this.userSubject.next(user);
       this.householdService.initFromUser(user);
+    }
+
+    if (storedAccess) {
+      this.setupAutoLogout(storedAccess);
     }
   }
 
@@ -28,6 +39,7 @@ export class AuthService {
   ensureAccessToken(): Observable<string | null> {
     const access = localStorage.getItem('access') || sessionStorage.getItem('access');
     const refresh = localStorage.getItem('refresh') || sessionStorage.getItem('refresh');
+
     // If we have an access token, check its expiry and refresh if near/over expiry
     if (access) {
       try {
@@ -35,27 +47,25 @@ export class AuthService {
         const expMs = (payload?.exp ?? 0) * 1000;
         const now = Date.now();
         const bufferMs = 5_000; // 5s buffer to avoid racing expiry
+
         if (expMs > now + bufferMs) {
           return of(access);
         }
-        // Token expired or expiring soon; attempt refresh below
       } catch {
         // Malformed token, attempt refresh if possible
       }
     }
+
     if (!refresh) {
       return of(null);
     }
+
     return this.http
-      .post<{ access: string }>(`${environment.apiUrl}/users/token/refresh/`, { refresh })
+      .post<TokenRefreshResponse>(`${environment.apiUrl}/users/token/refresh/`, { refresh })
       .pipe(
-        map(res => res.access),
-        tap(token => {
-          // Store refreshed token in both storages to keep consistency
-          localStorage.setItem('access', token);
-          sessionStorage.setItem('access', token);
-          this.setupAutoLogout(token);
-        }),
+        tap(response => this.storeRefreshedTokens(response)),
+        map(response => response.access),
+        tap(token => this.setupAutoLogout(token)),
         catchError(err => {
           console.error('Token refresh failed on ensureAccessToken', err);
           return of(null);
@@ -76,7 +86,7 @@ export class AuthService {
       .pipe(
         map(res => res.data),
         tap(data => {
-          if(credentials.rememberMe) {
+          if (credentials.rememberMe) {
             localStorage.setItem('access', data.access_token);
             localStorage.setItem('refresh', data.refresh_token);
           } else {
@@ -91,7 +101,7 @@ export class AuthService {
         tap(user => {
           this.userSubject.next(user);
           this.householdService.initFromUser(user);
-          if(credentials.rememberMe) {
+          if (credentials.rememberMe) {
             localStorage.setItem('user', JSON.stringify(user));
           } else {
             sessionStorage.setItem('user', JSON.stringify(user));
@@ -108,7 +118,11 @@ export class AuthService {
       tap(user => {
         this.userSubject.next(user);
         this.householdService.initFromUser(user);
-        localStorage.setItem('user', JSON.stringify(user));
+        if (localStorage.getItem('refresh')) {
+          localStorage.setItem('user', JSON.stringify(user));
+        } else {
+          sessionStorage.setItem('user', JSON.stringify(user));
+        }
       }),
       catchError(this.handleError)
     );
@@ -144,8 +158,9 @@ export class AuthService {
     this.userSubject.next(null);
     this.householdService.clear();
 
-    if(this.tokenExpiryTimer) {
+    if (this.tokenExpiryTimer) {
       clearTimeout(this.tokenExpiryTimer);
+      this.tokenExpiryTimer = undefined;
     }
   }
 
@@ -170,17 +185,44 @@ export class AuthService {
     return throwError(() => error);
   }
 
-  // Seupt auto logout if token expires
+  private storeRefreshedTokens(response: TokenRefreshResponse): void {
+    const useLocalStorage = !!localStorage.getItem('refresh');
+    const storage = useLocalStorage ? localStorage : sessionStorage;
+    const otherStorage = useLocalStorage ? sessionStorage : localStorage;
+
+    storage.setItem('access', response.access);
+    otherStorage.removeItem('access');
+
+    if (response.refresh) {
+      storage.setItem('refresh', response.refresh);
+      otherStorage.removeItem('refresh');
+    }
+  }
+
+  // Refresh the access token instead of logging out when it expires
   private setupAutoLogout(token: string) {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
-      const expiresIn = payload.exp * 1000 - Date.now(); // Ms until expiry
-      if(expiresIn > 0) {
-        this.tokenExpiryTimer = setTimeout(() => this.logout(), expiresIn);
-        console.log('Expires in' + expiresIn);
+      const expiresIn = payload.exp * 1000 - Date.now();
+
+      if (this.tokenExpiryTimer) {
+        clearTimeout(this.tokenExpiryTimer);
+      }
+
+      if (expiresIn > 0) {
+        this.tokenExpiryTimer = setTimeout(() => {
+          this.ensureAccessToken().subscribe({
+            next: refreshedToken => {
+              if (!refreshedToken) {
+                this.logout();
+              }
+            },
+            error: () => this.logout(),
+          });
+        }, expiresIn);
       }
     } catch {
-      console.warn("JWT-Token couldn't get parsed")
+      console.warn("JWT-Token couldn't get parsed");
     }
   }
 }

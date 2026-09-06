@@ -75,18 +75,52 @@ def extract_memory_candidates(
     query: str,
     answer: str,
     context_files: list[str],
+    current_memory: str,
 ) -> list[dict]:
 
-    files_text = "\n".join(
+    context_file_text = "\n".join(
         f"- {path}"
         for path in context_files
     )
 
     prompt = f"""
-You extract durable project knowledge from a coding assistant interaction.
+You are maintaining durable project memory for the SmartHome project.
 
-Only create memory entries that will likely still be useful in future
-conversations about the project.
+Your task is to identify project facts that should be stored,
+or existing known issues that are clearly resolved.
+
+Only use information supported by the CURRENT PROJECT FILES
+and the agent answer.
+
+CURRENT PROJECT MEMORY:
+
+{current_memory}
+
+
+USER QUESTION:
+
+{query}
+
+
+AGENT ANSWER:
+
+{answer}
+
+
+CURRENT CONTEXT FILES:
+
+{context_file_text}
+
+
+Allowed actions:
+
+1. "add"
+   Use this for a new durable project fact.
+
+2. "resolve"
+   Use this only when the CURRENT PROJECT CODE clearly shows
+   that an existing known issue is no longer true.
+
 
 Allowed categories:
 
@@ -94,47 +128,45 @@ Allowed categories:
 - decisions
 - known_issues
 
-Important rules:
 
-1. Do not store temporary conversation details.
-2. Do not store recommendations as established project facts.
-3. A known issue must be supported by the supplied project files.
-4. Architecture facts must describe the current project.
-5. Decisions are intentional project/design decisions, not suggestions.
-6. Do not invent sources.
-7. Only use source paths from AVAILABLE FILES.
-8. Prefer no memory entry over a weak or uncertain entry.
-9. Return at most 3 entries.
-10. Return valid JSON only.
+Rules:
 
-Return this format:
+1. Only store durable project information.
+2. Do not store temporary implementation details.
+3. Do not store recommendations as facts.
+4. Do not store facts that are uncertain.
+5. Sources must only contain files from CURRENT CONTEXT FILES.
+6. Return at most 3 candidates.
+7. Return valid JSON only.
+8. Do not include markdown code fences.
+9. For "resolve", category must be "known_issues".
+10. For "resolve", fact must exactly match the existing memory fact.
+11. Never resolve an issue just because the assistant recommended a fix.
+12. Only resolve an issue if current project code clearly contradicts it.
+
+
+Return this structure:
 
 [
-  {{
-    "category": "architecture",
-    "fact": "Short durable project fact.",
-    "sources": [
-      "path/to/file"
-    ],
-    "confidence": "confirmed"
-  }}
+    {{
+        "action": "add",
+        "category": "architecture",
+        "fact": "...",
+        "sources": ["..."],
+        "confidence": "confirmed"
+    }},
+    {{
+        "action": "resolve",
+        "category": "known_issues",
+        "fact": "Exact existing memory fact",
+        "sources": ["..."],
+        "confidence": "confirmed"
+    }}
 ]
 
-If nothing should be remembered, return:
+If there are no useful candidates, return:
 
 []
-
-USER QUESTION:
-
-{query}
-
-ASSISTANT ANSWER:
-
-{answer}
-
-AVAILABLE FILES:
-
-{files_text}
 """
 
     response = client.responses.create(
@@ -145,11 +177,17 @@ AVAILABLE FILES:
     raw = response.output_text.strip()
 
     try:
-        data = json.loads(raw)
+        data = json.loads(
+            raw
+        )
+
     except json.JSONDecodeError:
         return []
 
-    if not isinstance(data, list):
+    if not isinstance(
+        data,
+        list,
+    ):
         return []
 
     valid_candidates = []
@@ -160,43 +198,100 @@ AVAILABLE FILES:
         "known_issues",
     }
 
-    allowed_files = set(context_files)
+    allowed_actions = {
+        "add",
+        "resolve",
+    }
 
-    for candidate in data:
+    allowed_sources = set(
+        context_files
+    )
 
-        if not isinstance(candidate, dict):
+    for candidate in data[:3]:
+
+        if not isinstance(
+            candidate,
+            dict,
+        ):
             continue
 
-        category = candidate.get("category")
-        fact = candidate.get("fact")
-        sources = candidate.get("sources", [])
+        action = candidate.get(
+            "action",
+            "add",
+        )
+
+        category = candidate.get(
+            "category",
+            "",
+        )
+
+        fact = candidate.get(
+            "fact",
+            "",
+        )
+
+        sources = candidate.get(
+            "sources",
+            [],
+        )
+
+        confidence = candidate.get(
+            "confidence",
+            "confirmed",
+        )
+
+        if action not in allowed_actions:
+            continue
 
         if category not in allowed_categories:
             continue
 
-        if not isinstance(fact, str):
+        if (
+            action == "resolve"
+            and category != "known_issues"
+        ):
             continue
 
-        if not fact.strip():
+        if not isinstance(
+            fact,
+            str,
+        ):
             continue
 
-        if not isinstance(sources, list):
+        fact = fact.strip()
+
+        if not fact:
             continue
 
-        sources = [
+        if not isinstance(
+            sources,
+            list,
+        ):
+            continue
+
+        valid_sources = [
             source
             for source in sources
-            if source in allowed_files
+            if (
+                isinstance(
+                    source,
+                    str,
+                )
+                and source in allowed_sources
+            )
         ]
 
-        if not sources:
+        if not valid_sources:
             continue
 
         valid_candidates.append({
+            "action": action,
             "category": category,
-            "fact": fact.strip(),
-            "sources": sources,
-            "confidence": "confirmed",
+            "fact": fact,
+            "sources": sorted(
+                set(valid_sources)
+            ),
+            "confidence": confidence,
         })
 
     return valid_candidates

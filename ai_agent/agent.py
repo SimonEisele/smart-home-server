@@ -13,6 +13,7 @@ from llm_client import (
     generate_code_changes,
     rewrite_search_query,
 )
+from validation_service import validation_results_to_text
 from project_memory import (
     load_memory,
     memory_to_text,
@@ -827,6 +828,7 @@ CURRENT PROJECT CONTEXT:
 def prepare_agent_context(
     query: str,
     messages: list[dict] | None = None,
+    validation_results: list[dict] | None = None,
 ) -> dict:
     """
     Prepare all shared information needed by analysis and
@@ -878,6 +880,10 @@ def prepare_agent_context(
         get_staged_diff()
     )
 
+    validation = validation_results_to_text(
+            validation_results or []
+        )
+
     return {
         "conversation": conversation,
         "search_query": search_query,
@@ -887,6 +893,7 @@ def prepare_agent_context(
         "git_status": git_status,
         "git_diff": git_diff,
         "staged_diff": staged_diff,
+        "validation": validation,
     }
 
 
@@ -897,21 +904,13 @@ def prepare_agent_context(
 def get_project_answer(
     query: str,
     messages: list[dict] | None = None,
-) -> tuple[
-    str,
-    list[dict],
-    str,
-    list[dict],
-]:
-    """
-    Answer a project question without modifying files.
-    """
+    validation_results: list[dict] | None = None,
+) -> tuple[str, list[dict], str, list[dict]]:
 
-    prepared = (
-        prepare_agent_context(
-            query=query,
-            messages=messages,
-        )
+    prepared = prepare_agent_context(
+        query=query,
+        messages=messages,
+        validation_results=validation_results,
     )
 
     prompt = build_prompt(
@@ -946,12 +945,11 @@ def get_project_answer(
         in prepared["results"]
     ]
 
-    memory_candidates = (
-        extract_memory_candidates(
-            query=query,
-            answer=answer,
-            context_files=context_files,
-        )
+    memory_candidates = extract_memory_candidates(
+        query=query,
+        answer=answer,
+        context_files=context_files,
+        current_memory=prepared["memory"],
     )
 
     return (
@@ -969,23 +967,13 @@ def get_project_answer(
 def propose_project_changes(
     query: str,
     messages: list[dict] | None = None,
-) -> tuple[
-    dict,
-    list[dict],
-    str,
-]:
-    """
-    Generate proposed project-file changes.
+    validation_results: list[dict] | None = None,
+) -> tuple[dict, list[dict], str]:
 
-    Nothing is written here. The UI must explicitly approve
-    and apply the returned changes through code_editor.py.
-    """
-
-    prepared = (
-        prepare_agent_context(
-            query=query,
-            messages=messages,
-        )
+    prepared = prepare_agent_context(
+        query=query,
+        messages=messages,
+        validation_results=validation_results,
     )
 
     proposal = (

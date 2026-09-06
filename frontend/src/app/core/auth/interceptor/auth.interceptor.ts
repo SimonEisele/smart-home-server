@@ -5,8 +5,13 @@ import { Observable, catchError, shareReplay, switchMap, throwError } from "rxjs
 import { environment } from '../../../../environments/environment';
 import { Router } from "@angular/router";
 
+interface TokenRefreshResponse {
+  access: string;
+  refresh?: string;
+}
+
 // Shared in-flight refresh — prevents parallel refresh races on page load
-let pendingRefresh$: Observable<{ access: string }> | null = null;
+let pendingRefresh$: Observable<TokenRefreshResponse> | null = null;
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const http = inject(HttpClient);
@@ -46,7 +51,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         // Reuse an in-progress refresh instead of firing N parallel requests
         if (!pendingRefresh$) {
           pendingRefresh$ = http
-            .post<{ access: string }>(`${environment.apiUrl}/users/token/refresh/`, { refresh })
+            .post<TokenRefreshResponse>(`${environment.apiUrl}/users/token/refresh/`, { refresh })
             .pipe(
               shareReplay(1),
               catchError(refreshErr => {
@@ -56,14 +61,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
                 return throwError(() => refreshErr);
               })
             );
+
           // Clear the shared observable once all subscribers have received the value
-          pendingRefresh$.subscribe({ error: () => { pendingRefresh$ = null; }, complete: () => { pendingRefresh$ = null; } });
+          pendingRefresh$.subscribe({
+            error: () => { pendingRefresh$ = null; },
+            complete: () => { pendingRefresh$ = null; }
+          });
         }
 
         return pendingRefresh$.pipe(
           switchMap(res => {
-            localStorage.setItem('access', res.access);
-            sessionStorage.setItem('access', res.access);
+            storeRefreshedTokens(res);
             const retried = req.clone({ setHeaders: { Authorization: `Bearer ${res.access}` } });
             return next(retried);
           }),
@@ -75,6 +83,20 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     })
   );
 };
+
+function storeRefreshedTokens(response: TokenRefreshResponse): void {
+  const useLocalStorage = !!localStorage.getItem('refresh');
+  const storage = useLocalStorage ? localStorage : sessionStorage;
+  const otherStorage = useLocalStorage ? sessionStorage : localStorage;
+
+  storage.setItem('access', response.access);
+  otherStorage.removeItem('access');
+
+  if (response.refresh) {
+    storage.setItem('refresh', response.refresh);
+    otherStorage.removeItem('refresh');
+  }
+}
 
 function clearSession(): void {
   ['access', 'refresh', 'user'].forEach(key => {

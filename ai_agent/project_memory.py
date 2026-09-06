@@ -77,6 +77,10 @@ def add_memory_entry(
             .strip()
             .lower()
             == normalized_fact
+            and entry.get(
+                "status",
+                "active",
+            ) == "active"
         ):
             return False
 
@@ -84,6 +88,7 @@ def add_memory_entry(
         "fact": fact.strip(),
         "sources": sorted(set(sources)),
         "confidence": confidence,
+        "status": "active",
     })
 
     save_memory(memory)
@@ -91,7 +96,44 @@ def add_memory_entry(
     return True
 
 
-def memory_to_text(memory: dict) -> str:
+def resolve_memory_entry(
+    category: str,
+    fact: str,
+) -> bool:
+
+    memory = load_memory()
+
+    if category not in memory:
+        return False
+
+    normalized_fact = (
+        fact.strip().lower()
+    )
+
+    for entry in memory[category]:
+
+        if (
+            entry.get("fact", "")
+            .strip()
+            .lower()
+            == normalized_fact
+        ):
+
+            entry["status"] = "resolved"
+
+            save_memory(
+                memory
+            )
+
+            return True
+
+    return False
+
+
+def memory_to_text(
+    memory: dict,
+) -> str:
+
     parts = []
 
     for category in (
@@ -99,10 +141,18 @@ def memory_to_text(memory: dict) -> str:
         "decisions",
         "known_issues",
     ):
-        entries = memory.get(
-            category,
-            [],
-        )
+
+        entries = [
+            entry
+            for entry in memory.get(
+                category,
+                [],
+            )
+            if entry.get(
+                "status",
+                "active",
+            ) == "active"
+        ]
 
         if not entries:
             continue
@@ -115,6 +165,7 @@ def memory_to_text(memory: dict) -> str:
         )
 
         for entry in entries:
+
             fact = entry.get(
                 "fact",
                 "",
@@ -141,6 +192,10 @@ def memory_to_text(memory: dict) -> str:
             )
 
     if not parts:
-        return "No project memory available."
+        return (
+            "No project memory available."
+        )
 
-    return "\n".join(parts)
+    return "\n".join(
+        parts
+    )

@@ -151,3 +151,30 @@ def run_validation(
         "stdout": result.stdout.strip(),
         "stderr": result.stderr.strip(),
     }
+
+
+def validation_results_to_text(
+    results: list[dict],
+) -> str:
+    if not results:
+        return "No validation results available."
+
+    parts = []
+
+    for result in results:
+        parts.append(
+            f"""
+VALIDATION: {result.get("label", "Validation")}
+SUCCESS: {result.get("success", False)}
+COMMAND: {result.get("command", "")}
+EXIT CODE: {result.get("returncode", -1)}
+
+STDOUT:
+{result.get("stdout", "")}
+
+STDERR:
+{result.get("stderr", "")}
+""".strip()
+        )
+
+    return "\n\n".join(parts)
