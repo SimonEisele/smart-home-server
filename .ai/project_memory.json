@@ -109,7 +109,8 @@
       "sources": [
         "frontend/src/app/core/auth/service/auth.service.ts"
       ],
-      "confidence": "confirmed"
+      "confidence": "confirmed",
+      "status": "resolved"
     },
     {
       "fact": "Die Backend-Konfiguration enthält unsichere Produktionswerte: einen fest codierten SECRET_KEY, DEBUG=True, ALLOWED_HOSTS=['*'] und uneingeschränkt erlaubtes CORS.",
