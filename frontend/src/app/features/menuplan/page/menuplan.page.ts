@@ -1,3 +1,4 @@
+import { localIsoDate } from '../../../shared/date-utils';
 import { Component, HostListener, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -455,7 +456,7 @@ export class MenuplanPage implements OnInit {
     }
   }
 
-  private toIsoDate(d: Date): string { return d.toISOString().split('T')[0]; }
+  private toIsoDate(d: Date): string { return localIsoDate(d); }
 
 
 }

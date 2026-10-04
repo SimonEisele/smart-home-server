@@ -24,7 +24,7 @@
 }
 
 .todo-widget-list li:hover {
-  border-color: rgba(111, 231, 255, 0.25);
+  border-color: rgba(137, 223, 207, 0.25);
 }
 
 .todo-row {
@@ -41,7 +41,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  color: rgba(111, 231, 255, 0.45);
+  color: rgba(137, 223, 207, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -50,7 +50,7 @@
 }
 .complete-btn svg { width: 22px; height: 22px; }
 .complete-btn:hover {
-  color: #6fe7ff;
+  color: var(--color-accent);
   transform: scale(1.15);
 }
 
@@ -97,7 +97,7 @@
 .progress-fill {
   height: 100%;
   border-radius: 3px;
-  background: linear-gradient(90deg, #6fe7ff, #24c8f4);
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-strong));
 }
 
 .all-done {

@@ -29,8 +29,8 @@
 .brand-icon {
   width: 56px;
   height: 56px;
-  color: #6fe7ff;
-  filter: drop-shadow(0 0 12px rgba(111,231,255,.5));
+  color: var(--color-accent);
+  filter: drop-shadow(0 0 12px rgba(137, 223, 207,.5));
 }
 
 .brand-name {
@@ -82,8 +82,8 @@
   transition: border-color .2s, box-shadow .2s;
 }
 .glass-input:focus {
-  border-color: #6fe7ff;
-  box-shadow: 0 0 0 3px rgba(111,231,255,.15);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(137, 223, 207,.15);
 }
 
 .field-group.has-error .glass-input {
@@ -130,10 +130,10 @@
   color: rgba(255,255,255,.55);
   cursor: pointer;
 }
-.remember-row input { cursor: pointer; accent-color: #6fe7ff; }
+.remember-row input { cursor: pointer; accent-color: var(--color-accent); }
 
 .btn-primary {
-  background: linear-gradient(135deg, #6fe7ff, #24c8f4);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
   border: none;
   border-radius: 10px;
   color: #08101d;
@@ -154,7 +154,7 @@
   gap: 0.4rem;
   background: none;
   border: none;
-  color: #6fe7ff;
+  color: var(--color-accent);
   font-size: 0.85rem;
   cursor: pointer;
   padding: 0;

@@ -21,7 +21,7 @@ export interface WidgetDefinition {
 export const WIDGET_REGISTRY: WidgetDefinition[] = [
   {
     type: 'todos',
-    title: "ToDo's",
+    title: 'Aufgaben',
     icon: 'todo.svg',
     component: TodosWidget,
     defaultCols: 3,

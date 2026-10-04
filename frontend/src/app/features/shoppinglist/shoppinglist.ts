@@ -1,3 +1,4 @@
+import { localIsoDate } from '../../shared/date-utils';
 import { Component, ChangeDetectorRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -419,6 +420,6 @@ export class Shoppinglist implements OnInit {
     return this.toIso(mon);
   }
 
-  private toIso(d: Date): string { return d.toISOString().split('T')[0]; }
+  private toIso(d: Date): string { return localIsoDate(d); }
 }
 

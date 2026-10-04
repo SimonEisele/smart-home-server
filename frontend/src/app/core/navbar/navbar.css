@@ -1,379 +1,48 @@
-/* =========================
-   NAVBAR CONTAINER
-========================= */
-
-.navbar {
-    height: 80px;
-    position: sticky;
-    top: 0;
-    z-index: 2000;
-
-    background: linear-gradient(135deg, rgba(14, 27, 47, 0.88), rgba(9, 20, 36, 0.86));
-
-    backdrop-filter: blur(18px) saturate(160%);
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-
-    border-bottom: 1px solid rgba(255,255,255,0.2);
-
-    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
-
-    transition: all 0.3s ease;
-}
-
-/* ===============================
-   BRAND
-================================= */
-
-.navbar-brand {
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    font-size: 1.2rem;
-    color: #ffffff !important;
-    transition: 0.3s ease;
-}
-
-.navbar-brand:hover {
-    color: var(--color-accent) !important;
-}
-
-/* ===============================
-   NAV LINKS
-================================= */
-
-.navbar-nav .nav-link {
-    position: relative;
-    color: rgba(255,255,255,0.85);
-    font-weight: 500;
-    padding: 0.5rem 0.9rem;
-    transition: all 0.25s ease;
-}
-
-/* Soft glow hover */
-.navbar-nav .nav-link:hover {
-    color: #ffffff;
-    text-shadow: 0 0 8px rgba(255,255,255,0.5);
-}
-
-/* Animated gradient underline */
-.navbar-nav .nav-link::after {
-    content: "";
-    position: absolute;
-    bottom: -4px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0%;
-    height: 3px;
-    border-radius: 3px;
-
-    background: linear-gradient(
-        90deg,
-        var(--color-accent),
-        var(--color-accent-strong)
-    );
-
-    transition: width 0.3s ease;
-}
-
-.navbar-nav .nav-link:hover::after {
-    width: 70%;
-}
-
-/* ===============================
-   ACTION BUTTONS
-================================= */
-
-.nav-icon-btn {
-    width: 42px;
-    height: 42px;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.25);
-
-    background: rgba(255,255,255,0.08);
-    color: white;
-
-    backdrop-filter: blur(10px);
-    transition: all 0.25s ease;
-}
-
-/* Gradient hover glow */
-.nav-icon-btn:hover {
-    background: linear-gradient(
-        135deg,
-        rgba(111, 231, 255, 0.24),
-        rgba(36, 200, 244, 0.24)
-    );
-
-    border-color: rgba(255,255,255,0.4);
-
-    box-shadow:
-        0 0 15px rgba(111, 231, 255, 0.42),
-        0 0 25px rgba(36, 200, 244, 0.28);
-
-    transform: translateY(-2px);
-}
-
-
-/* ===============================
-   ACCOUNT BUTTON
-================================= */
-
-.account-btn {
-    width: 42px;
-    height: 42px;
-
-    border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.3);
-
-    background: rgba(255,255,255,0.1);
-
-    transition: all 0.3s ease;
-}
-
-.account-btn:hover {
-    background: linear-gradient(
-        135deg,
-        rgba(111, 231, 255, 0.28),
-        rgba(36, 200, 244, 0.28)
-    );
-
-    box-shadow:
-        0 0 20px rgba(36, 200, 244, 0.35);
-
-    transform: scale(1.08);
-}
-
-
-/* ===============================
-   TOGGLER
-================================= */
-
-.navbar-toggler {
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.3);
-    background: rgba(255,255,255,0.08);
-    transition: all 0.25s ease;
-}
-
-.navbar-toggler:hover {
-    background: rgba(111, 231, 255, 0.16);
-    border-color: var(--color-accent);
-}
-
-.navbar-toggler-icon {
-    filter: invert(1);
-}
-
-.login-popover-container,
-.account-popover-container {
-    position: fixed;
-    z-index: 5000;
-}
-
-/* ===============================
-   WG SWITCHER
-================================= */
-
-/* WG SWITCHER */
-
-.wg-switcher {
-    position: relative;
-    display: inline-block;
-}
-
-.wg-btn {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    background: rgba(111, 231, 255, 0.12);
-    border: 1px solid rgba(111, 231, 255, 0.28);
-    border-radius: 20px;
-    color: var(--color-accent);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: default;
-    transition: all 0.2s;
-}
-
-.wg-btn.multi {
-    cursor: pointer;
-}
-
-.wg-btn.multi:hover {
-    background: rgba(111, 231, 255, 0.22);
-    border-color: rgba(111, 231, 255, 0.5);
-}
-
-.wg-chevron {
-    width: 14px;
-    height: 14px;
-    opacity: 0.7;
-}
-
-.wg-dropdown {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 8px);
-    min-width: 200px;
-    background: linear-gradient(135deg, rgba(14, 27, 47, 0.97), rgba(9, 18, 32, 0.97));
-    border: 1px solid rgba(174, 193, 222, 0.22);
-    border-radius: 14px;
-    padding: 6px;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-    backdrop-filter: blur(20px);
-    z-index: 6000;
-    animation: fadeIn 0.15s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-6px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-.wg-option {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 8px 12px;
-    border: none;
-    background: transparent;
-    color: rgba(255,255,255,0.85);
-    border-radius: 8px;
-    font-size: 0.88rem;
-    cursor: pointer;
-    transition: background 0.2s;
-    text-align: left;
-}
-
-.wg-option:hover {
-    background: rgba(111, 231, 255, 0.12);
-    color: white;
-}
-
-.wg-option.active {
-    background: rgba(111, 231, 255, 0.18);
-    color: var(--color-accent);
-}
-
-.wg-role {
-    font-size: 0.72rem;
-    opacity: 0.55;
-    text-transform: capitalize;
-}
-
-.wg-divider {
-    height: 1px;
-    background: rgba(255,255,255,0.1);
-    margin: 4px 0;
-}
-
-.wg-manage {
-    color: var(--color-accent) !important;
-    font-size: 0.82rem;
-}
-
-.nav-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-/* ── Right-side grouping ── */
-.navbar-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-left: auto;
-}
-
-/* Thin vertical separator */
-.nav-sep {
-    width: 1px;
-    height: 28px;
-    background: rgba(255,255,255,0.18);
-    border-radius: 1px;
-    flex-shrink: 0;
-}
-
-/* User block: info + avatar button */
-.nav-user {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.nav-user-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 3px;
-}
-
-.nav-user-name {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: rgba(255,255,255,0.9);
-    white-space: nowrap;
-    line-height: 1;
-}
-
-/* Login button */
-.nav-login-btn {
-    background: linear-gradient(135deg, rgba(111,231,255,.2), rgba(79,209,197,.15));
-    border: 1px solid rgba(111,231,255,.4);
-    color: #6fe7ff;
-    border-radius: 20px;
-    padding: 6px 16px;
-    font-size: 0.83rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all .2s;
-    white-space: nowrap;
-}
-.nav-login-btn:hover {
-    background: rgba(111,231,255,.3);
-    box-shadow: 0 0 12px rgba(111,231,255,.3);
-}
-
-/* ===============================
-   MOBILE EXPANDED PANEL
-================================= */
-
-@media (max-width: 991.98px) {
-
-    .navbar-collapse {
-        position: absolute;
-        top: 80px;
-        left: 10px;
-        right: 10px;
-
-        border-radius: 20px;
-
-        background: linear-gradient(
-            135deg,
-            rgba(9, 20, 36, 0.96),
-            rgba(15, 29, 49, 0.96)
-        );
-
-        backdrop-filter: blur(20px);
-
-        border: 1px solid rgba(255,255,255,0.25);
-
-        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-
-        padding: 1.2rem;
-
-        animation: slideDown 0.25s ease;
-    }
-
-    @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-15px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
+ :host { display:block; position:sticky; top:0; z-index:2000; }
+.app-header { background:#111e30; border-bottom:1px solid var(--color-card-border); }
+.header-bar { height:72px; display:flex; align-items:center; gap:16px; padding:0 28px; }
+.navbar-brand { display:flex; align-items:center; gap:12px; text-decoration:none; font-size:1.15rem; font-weight:700; color:var(--color-text); margin:0; }
+.navbar-brand small { display:block; font:500 .72rem "Segoe UI",sans-serif; color:var(--color-muted); margin-top:3px; }
+.brand-mark { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; background:var(--color-accent); color:#102332; font-size:1.9rem; }
+.main-navigation { display:flex; align-items:center; gap:4px; height:56px; padding:0 28px; overflow-x:auto; scrollbar-width:thin; }
+.main-navigation a { display:flex; align-items:center; gap:8px; padding:12px 16px; min-height:44px; color:var(--color-muted); border-radius:10px; font-size:.88rem; font-weight:600; white-space:nowrap; text-decoration:none; }
+.main-navigation a:hover { color:var(--color-text); background:#1d2f46; }
+.main-navigation a.active { color:var(--color-accent); background:#22394c; }
+.main-navigation img { width:17px; height:17px; filter:none; opacity:.65; }
+.navbar-right { margin-left:auto; display:flex; align-items:center; gap:16px; }
+.nav-actions { display:flex; gap:8px; }
+.nav-icon-btn,.account-btn { display:grid; place-items:center; width:44px; height:44px; border:1px solid var(--color-card-border); border-radius:12px; background:#1a2a40; color:var(--color-text); cursor:pointer; }
+.icon-svg,.account-icon { width:21px; height:21px; fill:currentColor; }
+.nav-icon-btn:hover,.account-btn:hover { background:#294058; color:var(--color-accent); }
+.nav-sep { height:28px; width:1px; background:var(--color-card-border); }
+.nav-user { display:flex; align-items:center; gap:12px; }
+.nav-user-info { text-align:right; }
+.nav-user-name { display:block; font-weight:600; font-size:.86rem; }
+.wg-switcher { position:relative; }
+.wg-btn { border:0; background:none; color:var(--color-muted); padding:3px 0; font-size:.75rem; }
+.wg-btn.multi { cursor:pointer; }
+.wg-chevron { width:13px; height:13px; margin-left:4px; }
+.wg-dropdown { position:absolute; top:100%; right:0; width:240px; padding:8px; background:#17283d; border:1px solid var(--color-card-border); border-radius:14px; box-shadow:0 12px 30px #0005; }
+.wg-option { display:flex; width:100%; justify-content:space-between; padding:12px; border:0; border-radius:8px; background:transparent; color:var(--color-text); }
+.wg-option:hover,.wg-option.active { background:#294058; }
+.wg-role { color:var(--color-muted); }
+.wg-divider { border-top:1px solid var(--color-card-border); margin:5px 0; }
+.nav-login-btn { min-height:44px; padding:10px 20px; border:0; border-radius:12px; background:var(--color-accent); color:#102332; font-weight:700; }
+.menu-toggle { display:none; }
+.login-popover-container,.account-popover-container { position:fixed; z-index:2200; }
+.popover-backdrop { position:fixed; inset:0; background:#0005; z-index:2100; }
+.skip-link { position:fixed; left:12px; top:-100px; padding:12px; background:var(--color-accent); color:#102332; z-index:3000; }
+.skip-link:focus { top:12px; }
+@media(max-width:600px) {
+ .header-bar { padding:0 16px; gap:8px; }
+ .navbar-brand small,.nav-user-info,.nav-sep { display:none; }
+ .navbar-brand { font-size:1rem; gap:8px; }
+ .brand-mark { width:32px; height:32px; }
+ .navbar-right,.nav-user { gap:8px; }
+ .menu-toggle { display:grid; margin-left:auto; }
+ .navbar-right { margin-left:0; }
+ .nav-actions { display:none; }
+ .main-navigation { padding:0 12px; }
+ .main-navigation.menu-open { height:auto; display:grid; grid-template-columns:1fr 1fr; padding:12px; }
+ .main-navigation a { padding:10px 12px; }
 }

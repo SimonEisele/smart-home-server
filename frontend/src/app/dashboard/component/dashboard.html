@@ -1,3 +1,11 @@
+<section class="dashboard-heading">
+  <div><p class="eyebrow">DEIN ZUHAUSE IM BLICK</p><h1>Übersicht</h1></div>
+  <p>Was heute ansteht – alles an einem Ort.</p>
+</section>
+<div *ngIf="errorMessage" class="dashboard-status" role="alert">{{ errorMessage }}
+  <button (click)="errorMessage = ''" aria-label="Meldung schliessen">✕</button>
+</div>
+<div *ngIf="!dashboardLoaded && !errorMessage" class="dashboard-status" role="status">Dashboard wird geladen…</div>
 <div *ngIf="dashboardLoaded" class="dashboard-container">
 
   <!-- Edit mode banner -->
@@ -6,7 +14,7 @@
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
     </svg>
-    <span>Bearbeitungsmodus — Widgets verschieben &amp; verkleinern</span>
+    <span>Bearbeitungsmodus — Widgets verschieben &amp; Grösse anpassen</span>
     <button class="btn-layouts" (click)="openLayoutPanel()">📋 Layouts</button>
     <button class="btn-edit-done" (click)="dashboardService.setEditMode(false)">Fertig</button>
   </div>
@@ -22,7 +30,7 @@
       <div class="layout-save-row">
         <input class="layout-name-input" type="text" placeholder="Name für aktuelles Layout…"
                [(ngModel)]="newLayoutName" (keydown.enter)="saveCurrentLayout()" />
-        <button class="layout-save-btn" [disabled]="!newLayoutName.trim() || layoutSaving"
+        <button class="layout-save-btn" [disabled]="!newLayoutName.trim() || layoutSaving || layoutApplying"
                 (click)="saveCurrentLayout()">Speichern</button>
       </div>
       <ng-container *ngIf="layouts.length === 0">
@@ -43,7 +51,13 @@
     </div>
   </ng-container>
 
-  <gridster [options]="options">
+  <div *ngIf="isMobile && !editMode" class="mobile-dashboard">
+    <card *ngFor="let item of dashboard" [attr.data-widget]="item.widget_type"
+      [title]="item.title || ''" [link]="item.widget_type" [icon]="item.icon || ''">
+      <widget-host [widget]="item"></widget-host>
+    </card>
+  </div>
+  <gridster *ngIf="!isMobile || editMode" #dashboardGrid [options]="options">
     <gridster-item *ngFor="let item of dashboard" [item]="item">
       <card style="height:100%; width:100%;" [title]="item.title || ''" [editMode]="editMode" [link]="item.widget_type" [icon]="item.icon || ''" (remove)="removeWidget(item.id)">
         <widget-host [widget]="item"></widget-host>
@@ -51,7 +65,7 @@
     </gridster-item>
   </gridster>
 
-  <button *ngIf="editMode" #addWidgetButton class="add-widget-fab" (click)="toggleAddWidgetPopover()" title="Widget hinzufügen">
+  <button *ngIf="editMode" #addWidgetButton class="add-widget-fab" (click)="toggleAddWidgetPopover()" title="Widget hinzufügen" aria-label="Widget hinzufügen">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
       <path d="M12 5v14M5 12h14"/>
     </svg>

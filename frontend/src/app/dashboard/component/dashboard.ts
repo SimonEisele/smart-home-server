@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnInit, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild, ChangeDetectorRef, DestroyRef, inject, OnDestroy } from '@angular/core';
 import { CompactType, DisplayGrid, Gridster, GridsterConfig, GridsterItem, GridsterItemConfig, GridType } from 'angular-gridster2';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -9,6 +9,8 @@ import { WIDGET_REGISTRY, WidgetDefinition } from '../../widgets/widgets.registr
 import { AddWidget } from '../../popovers/add-widget-popver/add-widget-popover';
 import { DashboardService, DashboardLayout } from '../service/dashboard.service';
 import { AuthService } from '../../core/auth/service/auth.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable, Subject, catchError, concatMap, distinctUntilChanged, finalize, forkJoin, of } from 'rxjs';
 import { User } from '../../core/auth/model/auth.model';
 
 const ADD_WIDGET_POPOVER_WIDTH = 250;
@@ -22,7 +24,13 @@ const ARROW_WIDTH = 20;
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
-export class Dashboard implements OnInit {
+export class Dashboard implements OnInit, OnDestroy {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly mutations = new Subject<() => Observable<unknown>>();
+  private readonly saveTimeouts = new Map<DashboardItem, ReturnType<typeof setTimeout>>();
+  errorMessage = "";
+  isMobile = window.innerWidth < 700;
+  @ViewChild('dashboardGrid', { read: ElementRef }) dashboardGrid?: ElementRef<HTMLElement>;
   @ViewChild('addWidgetButton', { read: ElementRef }) addWidgetBtn!: ElementRef;
 
   showAddWidgetPopover = false;
@@ -41,7 +49,7 @@ export class Dashboard implements OnInit {
   rows = 12;
   maxColumns = 24;
   maxRows = 24;
-  navbarHeight = 80;
+  navbarHeight = 128;
 
   // Layout manager
   showLayoutPanel = false;
@@ -50,10 +58,16 @@ export class Dashboard implements OnInit {
   layoutSaving = false;
   layoutApplying = false;
 
-  private saveTimeout?: any;
 
   constructor(public dashboardService: DashboardService, private cdr: ChangeDetectorRef, public auth: AuthService) {
-    this.dashboardService.editMode$.subscribe(mode => {
+    this.mutations.pipe(
+      concatMap(operation => operation().pipe(catchError(() => {
+        this.errorMessage = 'Änderung konnte nicht gespeichert werden. Bitte erneut versuchen.';
+        this.cdr.markForCheck();
+        return of(null);
+      })))
+    ).subscribe();
+    this.dashboardService.editMode$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(mode => {
       this.editMode = mode;
       this.updateGridsterOptions();
     });
@@ -62,16 +76,21 @@ export class Dashboard implements OnInit {
   ngOnInit() {
     this.initGrid();
 
-    this.auth.user$.subscribe(user => {
+    this.auth.user$.pipe(
+      distinctUntilChanged((a, b) => a?.id === b?.id),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(user => {
       this.loadDashboardForUser(user);
     });
   }
 
   private initGrid() {
     this.options = {
-      gridType: GridType.Fixed,
+      gridType: GridType.Fit,
+      mobileBreakpoint: 700,
+      keepFixedHeightInMobile: true,
       compactType: CompactType.None,
-      margin: 0,
+      margin: 8,
       outerMargin: false,
       useTransformPositioning: false,
       fixedColWidth: this.containerWith / this.columns,
@@ -153,19 +172,26 @@ export class Dashboard implements OnInit {
 
     this.dashboard.push(newItem);
     this.saveItem(newItem);
+    this.showAddWidgetPopover = false;
   }
 
   removeWidget(id: string) {
-    this.dashboard = this.dashboard.filter(w => w.id !== id);
-    clearTimeout(this.saveTimeout);
-    const user = this.auth.user;
-    if (user) {
-      this.dashboardService.deleteItem(id).subscribe();
+    const item = this.dashboard.find(w => w.id === id);
+    if (!item) return;
+    clearTimeout(this.saveTimeouts.get(item));
+    this.saveTimeouts.delete(item);
+    if (this.auth.user) {
+      this.mutations.next(() => this.dashboardService.deleteItem(id).pipe(
+        finalize(() => this.cdr.markForCheck()),
+        // Keep the card until the server confirms deletion.
+        concatMap(() => {
+          this.dashboard = this.dashboard.filter(w => w !== item);
+          return of(null);
+        })
+      ));
     } else {
-      const saved: DashboardItem[] = JSON.parse(localStorage.getItem('dashboard') || '[]');
-      const updated = saved.filter(d => d.id !== id);
-      console.log(updated);
-      localStorage.setItem('dashboard', JSON.stringify(updated));
+      this.dashboard = this.dashboard.filter(w => w !== item);
+      localStorage.setItem('dashboard', JSON.stringify(this.dashboard));
     }
   }
 
@@ -176,15 +202,12 @@ export class Dashboard implements OnInit {
           this.applyLoadedItems(items);
         } else {
           const initialItems = this.getInitialLayout();
-          this.dashboard = initialItems;
-          initialItems.forEach(item =>
-            this.dashboardService.saveItem(item).subscribe(saved => {
-              item.id = saved.id;
-              this.applyLoadedItems(this.dashboard);
-            })
-          );
+          forkJoin(initialItems.map(item => this.dashboardService.saveItem(item))).subscribe({
+            next: saved => this.applyLoadedItems(saved),
+            error: () => { this.errorMessage = 'Dashboard konnte nicht angelegt werden.'; this.cdr.markForCheck(); }
+          });
         }
-      });
+      }, () => { this.errorMessage = 'Dashboard konnte nicht geladen werden.'; this.cdr.markForCheck(); });
     } else {
       let items: DashboardItem[] = JSON.parse(localStorage.getItem('dashboard') || '[]');
 
@@ -200,27 +223,41 @@ export class Dashboard implements OnInit {
   }
 
   private saveItem(item: DashboardItem) {
-    clearTimeout(this.saveTimeout);
-    this.saveTimeout = setTimeout(() => {
-      const user = this.auth.user;
-      if (user) {
-        if (!item.id) {
-          this.dashboardService.saveItem(item).subscribe(saved => item.id = saved.id);
-        } else {
-          this.dashboardService.saveItem(item).subscribe();
-        }
-      } else {
-        if (!item.id) item.id = this.generateId();
-        const saved: DashboardItem[] = JSON.parse(localStorage.getItem('dashboard') || '[]');
-        const existingIndex = saved.findIndex(d => d.id === item.id);
-        if (existingIndex >= 0) {
-          saved[existingIndex] = item;
-        } else {
-          saved.push(item);
-        }
-        localStorage.setItem('dashboard', JSON.stringify(saved));
-      }
-    }, 300);
+    clearTimeout(this.saveTimeouts.get(item));
+    // Persist new cards immediately so rapid additions get independent IDs.
+    if (!item.id) {
+      this.persistItem(item);
+      return;
+    }
+    this.saveTimeouts.set(item, setTimeout(() => {
+      this.saveTimeouts.delete(item);
+      this.persistItem(item);
+    }, 300));
+  }
+
+  private persistItem(item: DashboardItem) {
+    if (this.auth.user) {
+      this.mutations.next(() => this.dashboardService.saveItem(item).pipe(
+        concatMap(saved => { item.id = saved.id; this.cdr.markForCheck(); return of(saved); })
+      ));
+    } else {
+      if (!item.id) item.id = this.generateId();
+      localStorage.setItem('dashboard', JSON.stringify(this.dashboard));
+    }
+  }
+
+  private flushPendingSaves() {
+    for (const [item, timer] of this.saveTimeouts) {
+      clearTimeout(timer);
+      this.persistItem(item);
+    }
+    this.saveTimeouts.clear();
+  }
+
+  ngOnDestroy() {
+    this.flushPendingSaves();
+    // Completing the queue drains outstanding requests before it unsubscribes.
+    this.mutations.complete();
   }
 
   private onItemChange(item: GridsterItemConfig) {
@@ -269,11 +306,11 @@ export class Dashboard implements OnInit {
     const effectiveCols = Math.max(this.columns, maxExtentCols);
     const effectiveRows = Math.max(this.rows, maxExtentRows);
 
-    // Create a NEW options reference so Angular + gridster detect the change
+    // Fit the saved coordinates to the actual grid viewport.
     this.options = {
       ...this.options,
-      fixedColWidth: window.innerWidth / effectiveCols,
-      fixedRowHeight: (window.innerHeight - this.navbarHeight) / effectiveRows,
+
+      fixedRowHeight: 48,
       minCols: effectiveCols,
       minRows: effectiveRows,
     };
@@ -284,7 +321,8 @@ export class Dashboard implements OnInit {
       { id: '', widget_type: 'datetime',  x: 0, y: 0, cols: 3, minItemCols: 3, rows: 4, minItemRows: 4, config: {}, title: 'Datum und Uhrzeit', icon: 'datetime.svg' },
       { id: '', widget_type: 'menuplan',  x: 3, y: 0, cols: 9, minItemCols: 2, rows: 4, minItemRows: 4, config: {}, title: 'Menüplan',           icon: 'menuplan.svg' },
       { id: '', widget_type: 'weather',   x: 0, y: 4, cols: 4, minItemCols: 2, rows: 8, minItemRows: 8, config: {}, title: 'Wetter',             icon: 'weather.svg'  },
-      { id: '', widget_type: 'todos',     x: 4, y: 4, cols: 3, minItemCols: 2, rows: 8, minItemRows: 4, config: {}, title: "ToDo's",             icon: 'todo.svg'     },
+      { id: '', widget_type: 'todos',     x: 4, y: 4, cols: 4, minItemCols: 2, rows: 8, minItemRows: 4, config: {}, title: 'Aufgaben',             icon: 'todo.svg'     },
+      { id: '', widget_type: 'shoppinglist', x: 8, y: 4, cols: 4, minItemCols: 2, rows: 8, minItemRows: 4, config: {}, title: 'Einkaufsliste', icon: 'todo.svg' },
     ];
   }
 
@@ -307,14 +345,17 @@ export class Dashboard implements OnInit {
   saveCurrentLayout(): void {
     const name = this.newLayoutName.trim();
     if (!name || this.layoutSaving) return;
+    this.flushPendingSaves();
     this.layoutSaving = true;
     if (this.auth.user) {
-      this.dashboardService.saveLayout(name).subscribe(layout => {
-        this.layouts = [...this.layouts, layout];
-        this.newLayoutName = '';
-        this.layoutSaving = false;
-        this.cdr.detectChanges();
-      });
+      this.mutations.next(() => this.dashboardService.saveLayout(name).pipe(
+        concatMap(layout => {
+          this.layouts = [...this.layouts, layout];
+          this.newLayoutName = '';
+          return of(layout);
+        }),
+        finalize(() => { this.layoutSaving = false; this.cdr.markForCheck(); })
+      ));
     } else {
       const snapshot = this.dashboard.map(({ id, widget_type, x, y, cols, rows, minItemCols, minItemRows, maxItemCols, maxItemRows, title, icon, config }) =>
         ({ id, widget_type, x, y, cols, rows, minItemCols, minItemRows, maxItemCols, maxItemRows, title, icon, config }));
@@ -336,12 +377,11 @@ export class Dashboard implements OnInit {
     if (!confirm(`Layout „${layout.name}" laden? Das aktuelle Dashboard wird ersetzt.`)) return;
     this.layoutApplying = true;
     if (this.auth.user) {
-      this.dashboardService.applyLayout(layout.id).subscribe(items => {
-        this.applyLoadedItems(items);
-        this.layoutApplying = false;
-        this.showLayoutPanel = false;
-        this.cdr.detectChanges();
-      });
+      this.flushPendingSaves();
+      this.mutations.next(() => this.dashboardService.applyLayout(layout.id).pipe(
+        concatMap(items => { this.applyLoadedItems(items); this.showLayoutPanel = false; return of(items); }),
+        finalize(() => { this.layoutApplying = false; this.cdr.markForCheck(); })
+      ));
     } else {
       const all: any[] = JSON.parse(localStorage.getItem('dashboard_layouts') || '[]');
       const found = all.find(l => l.id === layout.id);
@@ -388,6 +428,7 @@ export class Dashboard implements OnInit {
 
   @HostListener('window:resize')
   onResize() {
+    this.isMobile = window.innerWidth < 700;
     this.recalcFixedCellSize();
     this.options['api'].optionsChanged();
     this.options['api'].resize();

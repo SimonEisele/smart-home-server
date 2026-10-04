@@ -1,4 +1,6 @@
-﻿import { Component, ChangeDetectorRef, HostListener, OnInit, OnDestroy } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { localIsoDate } from '../../shared/date-utils';
+import { Component, DestroyRef, inject, ChangeDetectorRef, HostListener, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -28,6 +30,7 @@ const HOUR_PX    = 64; // px per hour
   styleUrl: './calendar.css',
 })
 export class Calendar implements OnInit, OnDestroy {
+  private readonly destroyRef = inject(DestroyRef);
   weekStart!: Date;
   weekDays: DayEntry[] = [];
 
@@ -113,7 +116,7 @@ export class Calendar implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.authService.user$.subscribe(u => {
+    this.authService.user$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(u => {
       this.currentUserId = u?.id ?? null;
       this.isHouseholdAccount = u?.is_household_account ?? false;
       this.cdr.detectChanges();
@@ -906,7 +909,7 @@ export class Calendar implements OnInit, OnDestroy {
   }
 
   // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  private iso(d: Date): string { return d.toISOString().split('T')[0]; }
+  private iso(d: Date): string { return localIsoDate(d); }
 
   private emptyForm(): EvModalForm {
     const now = new Date();

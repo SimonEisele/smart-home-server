@@ -24,8 +24,8 @@
   font-size: .72rem; font-weight: 600; padding: 3px 9px;
   cursor: pointer; transition: all .15s;
 }
-.map-tab:hover { background: rgba(111,231,255,.1); color: #6fe7ff; border-color: rgba(111,231,255,.3); }
-.map-tab.active { background: rgba(111,231,255,.15); color: #6fe7ff; border-color: rgba(111,231,255,.4); }
+.map-tab:hover { background: rgba(137, 223, 207,.1); color: var(--color-accent); border-color: rgba(137, 223, 207,.3); }
+.map-tab.active { background: rgba(137, 223, 207,.15); color: var(--color-accent); border-color: rgba(137, 223, 207,.4); }
 
 .map-frame-wrap {
   position: relative; width: 100%;
@@ -69,7 +69,7 @@
   display: flex; align-items: center; justify-content: center;
   transition: background .15s;
 }
-.icon-btn:hover { background: rgba(111,231,255,0.12); }
+.icon-btn:hover { background: rgba(137, 223, 207,0.12); }
 
 /* ─── Search ────────────────────────────────────────────────────────────────── */
 .search-box {
@@ -92,7 +92,7 @@
   font-family: inherit;
   transition: border-color .15s;
 }
-.glass-input:focus { border-color: rgba(111,231,255,.4); }
+.glass-input:focus { border-color: rgba(137, 223, 207,.4); }
 
 .search-hint { font-size: 0.75rem; color: rgba(255,255,255,.35); padding: 2px 4px; }
 
@@ -118,7 +118,7 @@
   border-bottom: 1px solid rgba(255,255,255,.06);
 }
 .search-result:last-child { border-bottom: none; }
-.search-result:hover { background: rgba(111,231,255,0.08); }
+.search-result:hover { background: rgba(137, 223, 207,0.08); }
 
 .sr-name { font-weight: 600; color: #e2e8f0; font-size: 0.88rem; }
 .sr-sub  { font-size: 0.75rem; color: rgba(255,255,255,.4); }
@@ -140,8 +140,8 @@
 
 .spinner {
   width: 32px; height: 32px;
-  border: 3px solid rgba(111,231,255,0.2);
-  border-top-color: #6fe7ff;
+  border: 3px solid rgba(137, 223, 207,0.2);
+  border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin .8s linear infinite;
 }
@@ -149,9 +149,9 @@
 
 /* ─── Shared buttons ────────────────────────────────────────────────────────── */
 .btn-primary {
-  background: linear-gradient(135deg,rgba(111,231,255,.22),rgba(79,209,197,.18));
-  border: 1px solid rgba(111,231,255,.4);
-  color: #6fe7ff;
+  background: linear-gradient(135deg,rgba(137, 223, 207,.22),rgba(79,209,197,.18));
+  border: 1px solid rgba(137, 223, 207,.4);
+  color: var(--color-accent);
   border-radius: 10px;
   padding: 8px 20px;
   font-size: 0.85rem;
@@ -159,7 +159,7 @@
   cursor: pointer;
   transition: background .15s;
 }
-.btn-primary:hover { background: rgba(111,231,255,0.3); }
+.btn-primary:hover { background: rgba(137, 223, 207,0.3); }
 
 .btn-ghost {
   background: rgba(255,255,255,0.05);
@@ -283,8 +283,8 @@
   cursor: default;
   transition: background .15s;
 }
-.hour-card:hover { background: rgba(111,231,255,0.07); }
-.hour-card.current-hour { border-color: rgba(111,231,255,0.3); background: rgba(111,231,255,0.06); }
+.hour-card:hover { background: rgba(137, 223, 207,0.07); }
+.hour-card.current-hour { border-color: rgba(137, 223, 207,0.3); background: rgba(137, 223, 207,0.06); }
 
 .h-time { font-size: 0.68rem; color: rgba(255,255,255,.4); font-weight: 600; }
 .h-icon { font-size: 1.4rem; }
@@ -301,11 +301,11 @@
 }
 .h-precip-bar { width: 100%; height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
 .h-precip-fill { height: 100%; border-radius: 2px; min-width: 2px; }
-.h-precip-val { font-size: 0.6rem; color: rgba(111,231,255,0.7); }
+.h-precip-val { font-size: 0.6rem; color: rgba(137, 223, 207,0.7); }
 .h-precip-empty { height: 24px; }
 
 .h-wind { font-size: 0.65rem; color: rgba(255,255,255,.35); display: flex; align-items: center; gap: 2px; }
-.wind-arrow { display: inline-block; font-size: 0.9rem; color: rgba(111,231,255,0.6); }
+.wind-arrow { display: inline-block; font-size: 0.9rem; color: rgba(137, 223, 207,0.6); }
 
 /* ─── Daily forecast ────────────────────────────────────────────────────────── */
 .daily-list { display: flex; flex-direction: column; gap: 8px; }
@@ -329,7 +329,7 @@
 
 .day-precip-badge {
   font-size: 0.68rem;
-  color: rgba(111,231,255,0.6);
+  color: rgba(137, 223, 207,0.6);
   visibility: hidden;
   white-space: nowrap;
 }
@@ -424,7 +424,7 @@
   width: 0; height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-bottom: 22px solid #6fe7ff;
+  border-bottom: 22px solid var(--color-accent);
   margin: 0 auto;
 }
 .arrow-down {
@@ -472,5 +472,5 @@
   justify-content: center;
   font-size: 1rem;
   font-weight: 700;
-  color: #6fe7ff;
+  color: var(--color-accent);
 }

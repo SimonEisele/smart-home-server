@@ -1,5 +1,7 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { localIsoDate } from '../../../shared/date-utils';
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, DestroyRef, inject, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { Menu } from '../model/menuplan.model';
 import { MenuService } from '../service/menuplan.service';
 import { CalendarService } from '../../calendar/service/calendar.service';
@@ -18,7 +20,9 @@ type MealType = 'breakfast' | 'lunch' | 'dinner';
   styleUrl: './menuplan.widget.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MenuplanWidget implements OnInit, AfterViewInit {
+export class MenuplanWidget implements OnInit, AfterViewInit, OnDestroy {
+  private observer?: ResizeObserver;
+  private readonly destroyRef = inject(DestroyRef);
   @ViewChild('container', { static: true })
   container!: ElementRef<HTMLDivElement>;
 
@@ -27,7 +31,7 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
   mealAttendances: UserMealAttendance[] = [];
   externalGuests: ExternalMealGuest[] = [];
   householdMemberCount = 2;
-  todayStr = new Date().toISOString().split('T')[0];
+  todayStr = localIsoDate(new Date());
 
   readonly GAP = 10;
   readonly MENU_WIDTH = 148;
@@ -45,35 +49,37 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
   ngOnInit(): void {
     const weekStart = this.getWeekStartIso(new Date());
     const weekEnd = this.getWeekEndIso(new Date());
-    this.authService.user$.subscribe(user => {
+    this.authService.user$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(user => {
       if (user?.active_household_id) {
         const hh = user.households.find(h => h.id === user.active_household_id);
         this.householdMemberCount = hh?.member_count ?? 2;
       }
       this.cdr.detectChanges();
     });
-    this.menuService.getMenus(weekStart, 7).subscribe(menus => {
+    this.menuService.getMenus(weekStart, 7).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(menus => {
       this.menus = menus;
       this.updateVisibleData();
       this.cdr.detectChanges();
     });
-    this.calendarService.getMealAttendance(weekStart, weekEnd).subscribe(att => {
+    this.calendarService.getMealAttendance(weekStart, weekEnd).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(att => {
       this.mealAttendances = att;
       this.cdr.detectChanges();
     });
-    this.calendarService.getExternalGuests(weekStart, weekEnd).subscribe(guests => {
+    this.calendarService.getExternalGuests(weekStart, weekEnd).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(guests => {
       this.externalGuests = guests;
       this.cdr.detectChanges();
     });
   }
 
   ngAfterViewInit(): void {
-    const observer = new ResizeObserver(() => {
-      setTimeout(() => { this.updateVisibleData(); this.cdr.detectChanges(); });
+    this.observer = new ResizeObserver(() => {
+      setTimeout(() => { if (!this.destroyRef.destroyed) { this.updateVisibleData(); this.cdr.detectChanges(); } });
     });
-    observer.observe(this.container.nativeElement);
-    setTimeout(() => { this.updateVisibleData(); this.cdr.detectChanges(); });
+    this.observer.observe(this.container.nativeElement);
+    setTimeout(() => { if (!this.destroyRef.destroyed) { this.updateVisibleData(); this.cdr.detectChanges(); } });
   }
+
+  ngOnDestroy(): void { this.observer?.disconnect(); }
 
   updateVisibleData(): void {
     if (!this.menus?.length) return;
@@ -86,7 +92,7 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
   // ── Next cook slot ──────────────────────────────────────────────────────
   get nextCookSlot(): CookSlot | null {
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = localIsoDate(today);
     const hour = today.getHours();
     const cutoffs: Record<string, number> = { breakfast: 10, lunch: 14, dinner: 25 };
     const sorted = [...this.menus].sort((a, b) => a.date.localeCompare(b.date));
@@ -131,14 +137,14 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
     const scale = persons / base;
     return (recipe.ingredients || []).map(ing => {
       const q = ing.quantityPerPerson != null ? ing.quantityPerPerson * scale : null;
-      const fmtQty = q != null ? (Math.round(q * 100) / 100).toString().replace(/\.?0+$/, '') : '';
+      const fmtQty = q != null ? (Math.round(q * 100) / 100).toString() : '';
       return { name: ing.name, qty: fmtQty, unit: ing.unit || '' };
     });
   }
 
   addToShoppingList(slot: { menu: Menu; meal: MealType; recipe: Recipe; persons: number }): void {
     const weekTag = this.getWeekTag(new Date(slot.menu.date));
-    this.menuService.exportMeal(slot.menu.date, slot.meal, weekTag).subscribe();
+    this.menuService.exportMeal(slot.menu.date, slot.meal, weekTag).pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -162,14 +168,14 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
     const d = new Date(input);
     const day = d.getDay();
     d.setDate(d.getDate() + (day === 0 ? -6 : 1) - day);
-    return d.toISOString().split('T')[0];
+    return localIsoDate(d);
   }
 
   private getWeekEndIso(input: Date): string {
     const d = new Date(input);
     const day = d.getDay();
     d.setDate(d.getDate() + (day === 0 ? 0 : 7) - day);
-    return d.toISOString().split('T')[0];
+    return localIsoDate(d);
   }
 
   private getWeekTag(d: Date): string {

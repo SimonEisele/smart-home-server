@@ -1,119 +1,39 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap");
-
 :root {
-  --color-bg-start: #08101d;
-  --color-bg-end: #050b14;
-  --color-surface: rgba(10, 18, 32, 0.86);
-  --color-surface-soft: rgba(16, 28, 49, 0.78);
-  --color-accent: #6fe7ff;
-  --color-accent-strong: #24c8f4;
-  --color-text: #edf4ff;
-  --color-muted: #a9b8cd;
-  --color-card-bg: linear-gradient(180deg, rgba(16, 28, 49, 0.9), rgba(8, 15, 26, 0.84));
-  --color-card-border: rgba(174, 193, 222, 0.18);
+  --header-height:128px;
+  --color-bg-start:#0d1726;
+  --color-bg-end:#0d1726;
+  --color-surface:#142236;
+  --color-surface-soft:#1b2c42;
+  --color-accent:#89dfcf;
+  --color-accent-strong:#56cbb6;
+  --color-text:#edf4ff;
+  --color-muted:#a9b8cd;
+  --color-card-bg:#142236;
+  --color-card-border:#2b3d53;
 }
-
-html,
-body {
-  height: 100%;
-  margin: 0;
-  min-height: 100vh;
-  color: var(--color-text);
-  background:
-    radial-gradient(circle at top left, rgba(111, 231, 255, 0.30), transparent 38%),
-    radial-gradient(circle at top right, rgba(138, 151, 255, 0.22), transparent 32%),
-    radial-gradient(ellipse at bottom center, rgba(36, 100, 180, 0.20), transparent 55%),
-    linear-gradient(160deg, #1c3050 0%, #152641 50%, #0f1e33 100%);
-  background-attachment: fixed;
-}
-
-@media (max-width: 1024px) {
-  html, body {
-    background-attachment: scroll;
-  }
-}
-
-html {
-  color-scheme: only light;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    filter: none !important;
-  }
-
-  html, body {
-    background:
-      radial-gradient(circle at top left, rgba(111, 231, 255, 0.30), transparent 38%),
-      radial-gradient(circle at top right, rgba(138, 151, 255, 0.22), transparent 32%),
-      radial-gradient(ellipse at bottom center, rgba(36, 100, 180, 0.20), transparent 55%),
-      linear-gradient(160deg, #1c3050 0%, #152641 50%, #0f1e33 100%) !important;
-    background-attachment: fixed !important;
-  }
-}
-
-@media (max-width: 1024px) and (prefers-color-scheme: dark) {
-  html, body {
-    background-attachment: scroll !important;
-  }
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  font-family: "Manrope", "Segoe UI", sans-serif;
-  overflow-x: hidden;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 80%);
-  opacity: 0.65;
-  z-index: -1;
-}
-
-app-root,
-router-outlet + * {
-  display: block;
-}
-
-.app-page {
-  width: 100%;
-  margin: 0 auto;
-  padding: 24px 32px;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
-  color: #05131d;
-  border: 1px solid rgba(111, 231, 255, 0.55);
-  box-shadow: 0 12px 24px rgba(36, 200, 244, 0.18);
-}
-
-.btn-primary:hover {
-  filter: brightness(1.04);
-}
-
-h1,
-h2,
-h3,
-h4,
-.navbar-brand {
-  font-family: "Space Grotesk", "Manrope", sans-serif;
-  letter-spacing: -0.02em;
-}
-
-@media (max-width: 768px) {
-  .app-page {
-    padding: 16px;
-  }
+* { box-sizing:border-box; }
+html { color-scheme:dark; }
+html,body { margin:0; min-height:100%; color:var(--color-text); background:var(--color-bg-start); }
+body { font-family:"Segoe UI",system-ui,sans-serif; line-height:1.5; }
+app-root,router-outlet + * { display:block; }
+main { min-width:0; }
+h1,h2,h3,h4,.navbar-brand { font-family:"Segoe UI",system-ui,sans-serif; letter-spacing:-.025em; }
+.app-page { width:100%; max-width:1440px; margin:auto; padding:28px 32px; }
+button,input,select,textarea { font:inherit; }
+button,a { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+button:disabled { opacity:.5; cursor:not-allowed; }
+:focus-visible { outline:2px solid var(--color-accent); outline-offset:4px; }
+input,select,textarea { color-scheme:dark; }
+.btn-primary { background:var(--color-accent); color:#102332; border:1px solid var(--color-accent); border-radius:10px; }
+.btn-primary:hover { background:var(--color-accent-strong); color:#102332; }
+/* Shared page actions and surfaces. Feature-specific layouts remain local. */
+main .btn-add { min-height:44px; background:var(--color-accent); color:#102332; border:1px solid var(--color-accent); box-shadow:none; font-weight:650; }
+main .btn-add:hover { background:var(--color-accent-strong); color:#102332; }
+main :is(.recipe-card,.task-card,.todo-card,.modal-panel) { background:var(--color-surface); border-color:var(--color-card-border); box-shadow:0 6px 20px #0002; }
+main :is(.page-header,.todo-header,.recipes-header) { gap:16px; flex-wrap:wrap; }
+main :is(.btn-icon,.modal-close,.remove-btn) { min-width:40px; min-height:40px; }
+@media(pointer:coarse) { button { min-height:44px; } }
+@media(max-width:768px) { .app-page { padding:20px 16px; } }
+@media(prefers-reduced-motion:reduce) {
+ *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
 }

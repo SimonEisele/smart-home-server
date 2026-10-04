@@ -1,0 +1,5 @@
+.error-notice { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:10000;
+  width:min(560px,calc(100vw - 32px)); display:flex; align-items:center; gap:16px; padding:16px 20px;
+  background:#342735; border:1px solid #b97e8c; border-radius:14px; color:#fff; box-shadow:0 8px 32px #0005; }
+.error-notice button { flex-shrink:0; margin-left:auto; min-width:40px; min-height:40px; border:0;
+  border-radius:8px; background:#ffffff15; color:inherit; }

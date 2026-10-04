@@ -1,3 +1,4 @@
+import { localIsoDate, dateTimeInZone } from '../../../shared/date-utils';
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -113,15 +114,16 @@ export class WeatherPage implements OnInit, OnDestroy {
   // ── Computed ──────────────────────────────────────────────────────────
   get next24Hours(): HourlyWeather[] {
     if (!this.weather) return [];
-    const nowStr = new Date().toISOString().slice(0, 16); // "2026-07-03T14"
+    const nowStr = dateTimeInZone(new Date(), this.weather.location.timezone); // "2026-07-03T14"
     const idx = this.weather.hourly.findIndex(h => h.time >= nowStr);
-    const start = Math.max(0, idx);
+    if (idx < 0) return [];
+    const start = idx;
     return this.weather.hourly.slice(start, start + 24);
   }
 
   get todayForecast(): DailyWeather | null {
     if (!this.weather) return null;
-    const today = new Date().toISOString().split('T')[0];
+    const today = dateTimeInZone(new Date(), this.weather.location.timezone).split('T')[0];
     return this.weather.daily.find(d => d.date === today) ?? this.weather.daily[0] ?? null;
   }
 

@@ -1,4 +1,5 @@
-﻿import { AfterViewInit, Component, ChangeDetectorRef, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AfterViewInit, Component, OnDestroy, DestroyRef, inject, ChangeDetectorRef, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DailyWeather, HourlyWeather, WeatherData } from '../model/weather.model';
 import { WeatherIconPipe, WeatherLabelPipe } from '../pipes/weather.pipe';
@@ -11,7 +12,9 @@ import { WeatherService } from '../service/weather.service';
   templateUrl: './weather.widget.html',
   styleUrl: './weather.widget.css',
 })
-export class WeatherWidget implements OnInit, AfterViewInit {
+export class WeatherWidget implements OnInit, AfterViewInit, OnDestroy {
+  private observer?: ResizeObserver;
+  private readonly destroyRef = inject(DestroyRef);
   @ViewChild('container', { static: true })
   container!: ElementRef<HTMLDivElement>;
 
@@ -26,7 +29,7 @@ export class WeatherWidget implements OnInit, AfterViewInit {
   constructor(private weatherService: WeatherService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
-    this.weatherService.getWeather().subscribe((weather) => {
+    this.weatherService.getWeather().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((weather) => {
       this.data = weather;
       this.updateVisibleData();
       this.cdr.detectChanges();
@@ -34,12 +37,14 @@ export class WeatherWidget implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    const observer = new ResizeObserver(() => {
-      setTimeout(() => { this.updateVisibleData(); this.cdr.detectChanges(); });
+    this.observer = new ResizeObserver(() => {
+      setTimeout(() => { if (!this.destroyRef.destroyed) { this.updateVisibleData(); this.cdr.detectChanges(); } });
     });
-    observer.observe(this.container.nativeElement);
-    setTimeout(() => { this.updateVisibleData(); this.cdr.detectChanges(); });
+    this.observer.observe(this.container.nativeElement);
+    setTimeout(() => { if (!this.destroyRef.destroyed) { this.updateVisibleData(); this.cdr.detectChanges(); } });
   }
+
+  ngOnDestroy(): void { this.observer?.disconnect(); }
 
   updateVisibleData() {
     if (!this.data) return;

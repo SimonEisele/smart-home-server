@@ -26,7 +26,7 @@
   font-family: inherit;
   transition: border-color .15s;
 }
-.add-input:focus { border-color: rgba(111,231,255,.4); }
+.add-input:focus { border-color: rgba(137, 223, 207,.4); }
 .add-input::placeholder { color: rgba(255,255,255,.25); }
 .add-input:disabled { opacity: .5; }
 
@@ -34,15 +34,15 @@
   width: 30px; height: 30px;
   flex-shrink: 0;
   border-radius: 8px;
-  background: rgba(111,231,255,.14);
-  border: 1px solid rgba(111,231,255,.3);
-  color: #6fe7ff;
+  background: rgba(137, 223, 207,.14);
+  border: 1px solid rgba(137, 223, 207,.3);
+  color: var(--color-accent);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background .15s;
 }
 .add-btn svg { width: 16px; height: 16px; }
-.add-btn:hover:not(:disabled) { background: rgba(111,231,255,.25); }
+.add-btn:hover:not(:disabled) { background: rgba(137, 223, 207,.25); }
 .add-btn:disabled { opacity: .35; cursor: default; }
 
 /* ── Lists ── */
@@ -85,7 +85,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  color: rgba(111,231,255,.45);
+  color: rgba(137, 223, 207,.45);
   display: flex; align-items: center; justify-content: center;
   pointer-events: none; /* handled by li click */
 }

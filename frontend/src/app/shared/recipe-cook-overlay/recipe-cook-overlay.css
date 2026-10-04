@@ -13,7 +13,7 @@
 
 .cook-panel {
   background: linear-gradient(160deg, #0e1c36 0%, #07111e 100%);
-  border: 1px solid rgba(111, 231, 255, 0.18);
+  border: 1px solid rgba(137, 223, 207, 0.18);
   border-radius: 20px;
   width: 1200px;
   height: 760px;
@@ -23,7 +23,7 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(111,231,255,0.06);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(137, 223, 207,0.06);
 }
 
 .cook-close {
@@ -54,8 +54,8 @@
 .cook-panel-badge {
   font-size: 0.7rem;
   font-weight: 700;
-  color: #6fe7ff;
-  background: rgba(111, 231, 255, 0.12);
+  color: var(--color-accent);
+  background: rgba(137, 223, 207, 0.12);
   border-radius: 6px;
   display: inline-block;
   padding: 3px 9px;
@@ -82,11 +82,11 @@
   padding: 4px 10px;
 }
 .cook-meta-pill svg { width: 13px; height: 13px; }
-.cook-meta-persons { color: #6fe7ff; background: rgba(111, 231, 255, 0.1); gap: 6px; }
+.cook-meta-persons { color: var(--color-accent); background: rgba(137, 223, 207, 0.1); gap: 6px; }
 .persons-adj {
-  background: rgba(111,231,255,0.15);
-  border: 1px solid rgba(111,231,255,0.3);
-  color: #6fe7ff;
+  background: rgba(137, 223, 207,0.15);
+  border: 1px solid rgba(137, 223, 207,0.3);
+  color: var(--color-accent);
   border-radius: 5px;
   width: 22px; height: 22px;
   font-size: 1rem;
@@ -98,7 +98,7 @@
   font-family: inherit;
   transition: background 0.12s;
 }
-.persons-adj:hover:not(:disabled) { background: rgba(111,231,255,0.28); }
+.persons-adj:hover:not(:disabled) { background: rgba(137, 223, 207,0.28); }
 .persons-adj:disabled { opacity: 0.3; cursor: not-allowed; }
 .persons-val {
   font-size: 1rem;
@@ -139,7 +139,7 @@
 .ing-qty {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #6fe7ff;
+  color: var(--color-accent);
   min-width: 90px;
   flex-shrink: 0;
 }
@@ -154,8 +154,8 @@
 .step-num {
   width: 28px;
   height: 28px;
-  background: rgba(111, 231, 255, 0.12);
-  color: #6fe7ff;
+  background: rgba(137, 223, 207, 0.12);
+  color: var(--color-accent);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -175,8 +175,8 @@
 .step-ings { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .step-ing {
   font-size: 0.72rem;
-  background: rgba(111, 231, 255, 0.08);
-  color: #6fe7ff;
+  background: rgba(137, 223, 207, 0.08);
+  color: var(--color-accent);
   border-radius: 5px;
   padding: 2px 8px;
 }
@@ -206,13 +206,13 @@
 }
 .cook-added-msg {
   font-size: 0.82rem;
-  color: #6fe7ff;
+  color: var(--color-accent);
   flex: 1;
 }
 .cook-list-btn {
-  background: rgba(111, 231, 255, 0.12);
-  border: 1px solid rgba(111, 231, 255, 0.3);
-  color: #6fe7ff;
+  background: rgba(137, 223, 207, 0.12);
+  border: 1px solid rgba(137, 223, 207, 0.3);
+  color: var(--color-accent);
   border-radius: 11px;
   padding: 10px 20px;
   font-size: 0.86rem;
@@ -225,7 +225,7 @@
   transition: background 0.15s;
 }
 .cook-list-btn svg { width: 15px; height: 15px; }
-.cook-list-btn:hover:not(:disabled) { background: rgba(111, 231, 255, 0.22); }
+.cook-list-btn:hover:not(:disabled) { background: rgba(137, 223, 207, 0.22); }
 .cook-list-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────────── */
@@ -253,7 +253,7 @@
   margin-bottom: -1px;
 }
 .cook-tab:hover { color: rgba(174,193,222,0.85); }
-.cook-tab-active { color: #6fe7ff !important; border-bottom-color: #6fe7ff; }
+.cook-tab-active { color: var(--color-accent) !important; border-bottom-color: var(--color-accent); }
 .cook-tab:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* ── Step-by-step mode ────────────────────────────────────────────────────── */
@@ -299,8 +299,8 @@
 }
 .step-card-num {
   width: 36px; height: 36px;
-  background: rgba(111,231,255,0.14);
-  color: #6fe7ff;
+  background: rgba(137, 223, 207,0.14);
+  color: var(--color-accent);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 0.95rem; font-weight: 800;
