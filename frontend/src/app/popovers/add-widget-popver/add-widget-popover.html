@@ -1,7 +1,9 @@
 <div class="add-widget-popover-panel">
   <div class="popover-arrow" [style.left.px]="arrowLeft"></div>
-  <div class="widget-entry" *ngFor="let w of widgets" (click)="onSelect(w.type)">
+  <div class="popover-heading"><strong>Widget hinzufügen</strong><button (click)="closePopover()" aria-label="Schliessen">×</button></div>
+  <p class="popover-description">Wähle, was du im Blick behalten möchtest.</p>
+  <button type="button" class="widget-entry" *ngFor="let w of widgets" (click)="onSelect(w.type)">
     <img src="icons/{{ w.icon }}" alt="">
-    <span>{{ w.title }}</span>
-  </div>
+    <span>{{ w.title }}</span><span class="widget-entry-plus" aria-hidden="true">+</span>
+  </button>
 </div>

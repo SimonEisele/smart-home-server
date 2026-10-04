@@ -25,7 +25,7 @@
           </button>
 
           <!-- Fullscreen icon -->
-          <button class="nav-icon-btn" (click)="toggleFullscreen(); closeMenu()" [attr.aria-label]="isFullscreen ? 'Vollbild beenden' : 'Vollbild'">
+          <button class="nav-icon-btn fullscreen-button" (click)="toggleFullscreen(); closeMenu()" [attr.aria-label]="isFullscreen ? 'Vollbild beenden' : 'Vollbild'">
             <ng-container *ngIf="!isFullscreen">
               <svg class="icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M3 9V3h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>

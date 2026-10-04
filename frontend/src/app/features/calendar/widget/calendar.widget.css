@@ -240,3 +240,6 @@
     transition: none;
   }
 }
+.ev { border-radius:10px; }
+.day-label { color:var(--color-muted); padding:8px 0; font-weight:600; }
+.ev-title { overflow-wrap:anywhere; }

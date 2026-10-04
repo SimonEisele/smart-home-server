@@ -1,7 +1,3 @@
-<section class="dashboard-heading">
-  <div><p class="eyebrow">DEIN ZUHAUSE IM BLICK</p><h1>Übersicht</h1></div>
-  <p>Was heute ansteht – alles an einem Ort.</p>
-</section>
 <div *ngIf="errorMessage" class="dashboard-status" role="alert">{{ errorMessage }}
   <button (click)="errorMessage = ''" aria-label="Meldung schliessen">✕</button>
 </div>
@@ -22,10 +18,10 @@
   <!-- Layout manager panel -->
   <ng-container *ngIf="showLayoutPanel">
     <div class="layout-overlay" (click)="closeLayoutPanel()"></div>
-    <div class="layout-panel">
+    <div class="layout-panel" role="dialog" aria-modal="true" aria-label="Layouts verwalten">
       <div class="layout-panel-header">
         <span>Layouts verwalten</span>
-        <button class="layout-close-btn" (click)="closeLayoutPanel()">✕</button>
+        <button class="layout-close-btn" (click)="closeLayoutPanel()" aria-label="Schliessen">✕</button>
       </div>
       <div class="layout-save-row">
         <input class="layout-name-input" type="text" placeholder="Name für aktuelles Layout…"

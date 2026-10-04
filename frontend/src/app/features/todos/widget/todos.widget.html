@@ -1,12 +1,12 @@
 <div #container class="todos-widget">
   <ng-container *ngIf="openTodos.length > 0; else allDone">
     <ul class="todo-widget-list">
-      <li *ngFor="let todo of visibleTodos"
+      <li *ngFor="let todo of openTodos"
           [class.overdue]="isOverdue(todo)"
           [class.due-today]="isDueToday(todo)">
 
         <div class="todo-row">
-          <button class="complete-btn" (click)="completeTodo(todo, $event)" title="Erledigt">
+          <button class="complete-btn" (click)="completeTodo(todo, $event)" title="Erledigt" [attr.aria-label]="todo.title + ' erledigen'">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
             </svg>

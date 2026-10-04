@@ -1,10 +1,6 @@
-.dashboard-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:24px 28px 12px; }
-.dashboard-heading h1 { margin:0; font-size:1.65rem; font-weight:650; }
-.dashboard-heading p { margin:0; color:var(--color-muted); font-size:.88rem; }
-.dashboard-heading .eyebrow { color:var(--color-accent); font-size:.64rem; letter-spacing:.14em; font-weight:700; margin-bottom:5px; }
 .dashboard-status { margin:16px 28px; padding:16px; background:var(--color-surface); border:1px solid var(--color-card-border); border-radius:12px; }
 .dashboard-status button { float:right; background:none; color:var(--color-text); border:0; }
-.dashboard-container { height:calc(100dvh - var(--header-height) - 104px); min-height:480px; padding:8px 20px 20px; position:relative; }
+.dashboard-container { height:calc(100dvh - var(--header-height)); min-height:480px; padding:16px; position:relative; }
 gridster,gridster-item { background:transparent; }
 @media(max-width:699px) { .dashboard-heading { padding:20px 20px 8px; } .dashboard-heading > p { display:none; } .dashboard-container { height:auto; min-height:calc(100dvh - var(--header-height)); padding:8px 12px; } }
 /* ── Edit mode banner ── */
@@ -366,5 +362,5 @@ gridster,gridster-item { background:transparent; }
 .mobile-dashboard { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
 .mobile-dashboard card { height:260px; min-width:0; }
 .mobile-dashboard card[data-widget="datetime"] { height:220px; }
-.mobile-dashboard card[data-widget="weather"] { height:360px; }
-.mobile-dashboard card[data-widget="menuplan"] { height:260px; }
+.mobile-dashboard card[data-widget="weather"] { height:440px; }
+.mobile-dashboard card[data-widget="menuplan"] { height:320px; }

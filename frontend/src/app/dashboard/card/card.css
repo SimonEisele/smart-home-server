@@ -120,3 +120,8 @@
   overflow: auto;
   padding: 10px 12px 10px;
 }
+.dash-card { border-color:var(--color-card-border); box-shadow:0 6px 20px #0002; border-radius:16px; }
+.dash-card-header { padding:0 14px; gap:10px; background:transparent; }
+.card-title { color:var(--color-text); font-weight:600; }
+.card-icon { opacity:.8; width:18px; height:18px; }
+.dash-card-content { padding:14px; overscroll-behavior:contain; }
