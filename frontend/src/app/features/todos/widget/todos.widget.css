@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  color: #edf4ff;
+  color: #25332d;
 }
 
 .todo-widget-list {
@@ -13,18 +13,37 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(82, 122, 99, .28) transparent;
+}
+
+.todo-widget-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.todo-widget-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.todo-widget-list::-webkit-scrollbar-thumb {
+  background: rgba(82, 122, 99, .28);
+  border-radius: 999px;
 }
 
 .todo-widget-list li {
-  border-radius: 10px;
+  border-radius: 11px;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(174, 193, 222, 0.12);
-  transition: border-color 0.15s;
+  background: #fbfcfa;
+  border: 1px solid #e1e8e1;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease;
 }
 
 .todo-widget-list li:hover {
-  border-color: rgba(111, 231, 255, 0.25);
+  background: #f2f8f3;
+  border-color: #b8d3bf;
+  box-shadow: 0 5px 14px rgba(37, 51, 45, .08);
+  transform: translateX(2px);
 }
 
 .todo-row {
@@ -41,17 +60,23 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  color: rgba(111, 231, 255, 0.45);
+  color: rgba(82, 122, 99, .55);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: color 0.18s, transform 0.15s;
+  transition: color .18s ease, background .18s ease, transform .15s ease;
 }
-.complete-btn svg { width: 22px; height: 22px; }
+
+.complete-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
 .complete-btn:hover {
-  color: #6fe7ff;
-  transform: scale(1.15);
+  color: #527a63;
+  background: #e7f0e9;
+  transform: scale(1.12);
 }
 
 .todo-info {
@@ -64,24 +89,40 @@
 }
 
 .todo-title {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #edf4ff;
+  font-size: .85rem;
+  font-weight: 600;
+  color: #25332d;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .todo-date {
-  font-size: 0.70rem;
-  color: #a9b8cd;
+  font-size: .7rem;
+  color: #647067;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-.todo-widget-list li.overdue .todo-title { color: #ff8080; }
-.todo-widget-list li.overdue .todo-date  { color: #ff8080; }
-.todo-widget-list li.due-today .todo-title { color: #ffbe50; }
+.todo-widget-list li.overdue {
+  background: linear-gradient(100deg, #fff0ed, #fff9f8);
+  border-left: 3px solid #c43d3d;
+}
+
+.todo-widget-list li.overdue .todo-title,
+.todo-widget-list li.overdue .todo-date {
+  color: #c43d3d;
+}
+
+.todo-widget-list li.due-today {
+  background: linear-gradient(100deg, #fff5e5, #fffaf2);
+  border-left: 3px solid #b7791f;
+}
+
+.todo-widget-list li.due-today .todo-title,
+.todo-widget-list li.due-today .todo-date {
+  color: #986515;
+}
 
 .progress-bar-row {
   margin-top: 6px;
@@ -90,72 +131,29 @@
 .progress-track {
   height: 3px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
+  background: #e1e8e1;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   border-radius: 3px;
-  background: linear-gradient(90deg, #6fe7ff, #24c8f4);
+  background: linear-gradient(90deg, #527a63, #6f967c);
 }
 
 .all-done {
   text-align: center;
-  font-size: 0.88rem;
-  color: #a9b8cd;
-  padding: 16px 0;
+  font-size: .88rem;
+  color: #647067;
+  background: #fbfcfa;
+  border: 1px dashed #c7d3c8;
+  border-radius: 14px;
+  padding: 16px 10px;
 }
 
-
-.todo-widget-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.todo-widget-list li {
-  margin-bottom: 12px;
-}
-
-.todo-widget-list li.overdue .todo-title {
-  color: red;
-  font-weight: bold;
-}
-
-.todo-widget-list li.dueToday .todo-title {
-  color: orange;
-  font-weight: bold;
-}
-
-.todo-row {
-  display: flex;
-  justify-content: space-between;
-  font-weight: 500;
-}
-
-.todo-progress {
-  font-size: 0.85rem;
-  opacity: 0.8;
-}
-
-.progress {
-  height: 6px;
-  margin: 4px 0;
-}
-
-.progress-bar {
-  background-color: rgb(20, 134, 20);
-}
-
-.todo-date {
-  font-size: 0.75rem;
-  opacity: 0.6;
-}
-
-.all-done {
-  text-align: center;
-  font-size: 0.95rem;
-  opacity: 0.7;
-  padding: 12px 0;
+@media (prefers-reduced-motion: reduce) {
+  .todo-widget-list li,
+  .complete-btn {
+    transition: none;
+  }
 }

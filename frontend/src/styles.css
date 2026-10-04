@@ -1,84 +1,47 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap");
 
 :root {
-  --color-bg-start: #08101d;
-  --color-bg-end: #050b14;
-  --color-surface: rgba(10, 18, 32, 0.86);
-  --color-surface-soft: rgba(16, 28, 49, 0.78);
-  --color-accent: #6fe7ff;
-  --color-accent-strong: #24c8f4;
-  --color-text: #edf4ff;
-  --color-muted: #a9b8cd;
-  --color-card-bg: linear-gradient(180deg, rgba(16, 28, 49, 0.9), rgba(8, 15, 26, 0.84));
-  --color-card-border: rgba(174, 193, 222, 0.18);
-}
-
-html,
-body {
-  height: 100%;
-  margin: 0;
-  min-height: 100vh;
-  color: var(--color-text);
-  background:
-    radial-gradient(circle at top left, rgba(111, 231, 255, 0.30), transparent 38%),
-    radial-gradient(circle at top right, rgba(138, 151, 255, 0.22), transparent 32%),
-    radial-gradient(ellipse at bottom center, rgba(36, 100, 180, 0.20), transparent 55%),
-    linear-gradient(160deg, #1c3050 0%, #152641 50%, #0f1e33 100%);
-  background-attachment: fixed;
-}
-
-@media (max-width: 1024px) {
-  html, body {
-    background-attachment: scroll;
-  }
-}
-
-html {
-  color-scheme: only light;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    filter: none !important;
-  }
-
-  html, body {
-    background:
-      radial-gradient(circle at top left, rgba(111, 231, 255, 0.30), transparent 38%),
-      radial-gradient(circle at top right, rgba(138, 151, 255, 0.22), transparent 32%),
-      radial-gradient(ellipse at bottom center, rgba(36, 100, 180, 0.20), transparent 55%),
-      linear-gradient(160deg, #1c3050 0%, #152641 50%, #0f1e33 100%) !important;
-    background-attachment: fixed !important;
-  }
-}
-
-@media (max-width: 1024px) and (prefers-color-scheme: dark) {
-  html, body {
-    background-attachment: scroll !important;
-  }
+  --color-bg-start: #f5f3ee;
+  --color-bg-end: #edf1eb;
+  --color-surface: #ffffff;
+  --color-surface-soft: #e7f0e9;
+  --color-accent: #527a63;
+  --color-accent-strong: #3e604c;
+  --color-text: #25332d;
+  --color-muted: #647067;
+  --color-card-bg: #ffffff;
+  --color-card-border: #dfe5de;
+  --color-warning: #b7791f;
+  --color-error: #c43d3d;
 }
 
 * {
   box-sizing: border-box;
 }
 
-body {
-  font-family: "Manrope", "Segoe UI", sans-serif;
-  overflow-x: hidden;
+html {
+  height: 100%;
+  color-scheme: light;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 80%);
-  opacity: 0.65;
-  z-index: -1;
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--color-text);
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  overflow-x: hidden;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(82, 122, 99, 0.08),
+      transparent 45%
+    ),
+    linear-gradient(
+      160deg,
+      var(--color-bg-start),
+      var(--color-bg-end)
+    );
+  background-attachment: fixed;
 }
 
 app-root,
@@ -93,14 +56,26 @@ router-outlet + * {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
-  color: #05131d;
-  border: 1px solid rgba(111, 231, 255, 0.55);
-  box-shadow: 0 12px 24px rgba(36, 200, 244, 0.18);
+  background: var(--color-accent);
+  color: #ffffff;
+  border: 1px solid var(--color-accent);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(62, 96, 76, 0.12);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .btn-primary:hover {
-  filter: brightness(1.04);
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+  box-shadow: 0 6px 16px rgba(62, 96, 76, 0.16);
+}
+
+.btn-primary:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
 }
 
 h1,
@@ -110,6 +85,12 @@ h4,
 .navbar-brand {
   font-family: "Space Grotesk", "Manrope", sans-serif;
   letter-spacing: -0.02em;
+}
+
+@media (max-width: 1024px) {
+  body {
+    background-attachment: scroll;
+  }
 }
 
 @media (max-width: 768px) {

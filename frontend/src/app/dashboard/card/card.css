@@ -1,4 +1,3 @@
-/* ── Outer wrapper fills gridster cell ───────────────────────────────────── */
 :host {
   display: block;
   height: 100%;
@@ -7,42 +6,41 @@
   box-sizing: border-box;
 }
 
-/* ── Card ────────────────────────────────────────────────────────────────── */
 .dash-card {
   height: 100%;
   width: 100%;
   box-sizing: border-box;
-  background: linear-gradient(135deg, rgba(255,255,255,.1) 0%, rgba(255,255,255,.04) 100%);
-  border: 1px solid rgba(174,193,222,.2);
-  border-top-color: rgba(255,255,255,.18);
+  background: #ffffff;
+  border: 1px solid #dfe5de;
   border-radius: 16px;
-  box-shadow: 0 8px 28px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.12);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: 0 5px 18px rgba(37, 51, 45, .08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  color: #e2e8f0;
-  transition: border-color .2s, box-shadow .2s;
+  color: #25332d;
+  transition: border-color .2s, box-shadow .2s, transform .2s;
 }
 
 .dash-card.edit-mode {
-  border-color: rgba(111,231,255,.3);
-  box-shadow: 0 0 0 1px rgba(111,231,255,.15), 0 8px 28px rgba(0,0,0,.2);
+  border-color: #9fbea8;
+  box-shadow: 0 0 0 2px rgba(82, 122, 99, .12), 0 5px 18px rgba(37, 51, 45, .08);
   cursor: grab;
 }
-.dash-card.edit-mode:active { cursor: grabbing; }
+
+.dash-card.edit-mode:active {
+  cursor: grabbing;
+}
 
 .dash-card.clickable {
   cursor: pointer;
-  transition: border-color .18s, box-shadow .18s;
-}
-.dash-card.clickable:hover {
-  border-color: rgba(111,231,255,.28);
-  box-shadow: 0 10px 36px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.16);
 }
 
-/* ── Header ──────────────────────────────────────────────────────────────── */
+.dash-card.clickable:hover {
+  border-color: #9fbea8;
+  box-shadow: 0 9px 24px rgba(37, 51, 45, .13);
+  transform: translateY(-1px);
+}
+
 .dash-card-header {
   display: flex;
   align-items: center;
@@ -50,25 +48,25 @@
   padding: 0 10px;
   height: 36px;
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.03);
+  border-bottom: 1px solid #edf0ec;
+  background: #fbfcfa;
 }
 
 .card-icon {
   width: 16px;
   height: 16px;
-  opacity: .65;
+  opacity: .75;
   flex-shrink: 0;
-  filter: invert(1) brightness(2);
+  filter: none;
 }
 
 .card-title {
   flex: 1;
-  font-size: 0.76rem;
+  font-size: .76rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .05em;
-  color: rgba(255,255,255,.5);
+  color: #527a63;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -81,42 +79,58 @@
   flex-shrink: 0;
 }
 
-/* Open page button */
-.btn-open {
-  width: 26px; height: 26px;
+.btn-open,
+.btn-remove {
+  width: 26px;
+  height: 26px;
   border-radius: 7px;
   background: none;
-  border: none;
-  color: rgba(255,255,255,.25);
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   transition: color .15s, background .15s;
+}
+
+.btn-open {
+  border: none;
+  color: #9aa69d;
   opacity: 0;
 }
-.dash-card:hover .btn-open { opacity: 1; }
-.btn-open:hover { color: #6fe7ff; background: rgba(111,231,255,.1); }
-.btn-open svg { width: 13px; height: 13px; }
 
-/* Remove button (edit mode) */
-.btn-remove {
-  width: 26px; height: 26px;
-  border-radius: 7px;
-  background: none;
-  border: none;
-  color: rgba(252,129,129,.6);
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0;
-  transition: color .15s, background .15s;
+.dash-card:hover .btn-open {
+  opacity: 1;
 }
-.btn-remove:hover { color: #fc8181; background: rgba(252,129,129,.12); }
-.btn-remove svg { width: 14px; height: 14px; }
 
-/* ── Content ─────────────────────────────────────────────────────────────── */
+.btn-open:hover {
+  color: #527a63;
+  background: #e7f0e9;
+}
+
+.btn-remove {
+  border: none;
+  color: rgba(196, 61, 61, .7);
+}
+
+.btn-remove:hover {
+  color: #c43d3d;
+  background: rgba(196, 61, 61, .10);
+}
+
+.btn-open svg {
+  width: 13px;
+  height: 13px;
+}
+
+.btn-remove svg {
+  width: 14px;
+  height: 14px;
+}
+
 .dash-card-content {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding: 10px 12px 10px;
+  padding: 10px 12px;
 }

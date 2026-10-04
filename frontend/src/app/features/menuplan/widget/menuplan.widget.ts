@@ -27,10 +27,12 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
   mealAttendances: UserMealAttendance[] = [];
   externalGuests: ExternalMealGuest[] = [];
   householdMemberCount = 2;
-  todayStr = new Date().toISOString().split('T')[0];
+  todayStr = this.toIso(new Date());
+  weekMaxHeight = 0;
 
   readonly GAP = 10;
   readonly MENU_WIDTH = 148;
+  readonly MENU_HEIGHT = 118;
   readonly DAY_NAMES = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
   readonly MEAL_LABELS: Record<string, string> = { breakfast: 'Morgen', lunch: 'Mittag', dinner: 'Abend' };
 
@@ -43,8 +45,10 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
   ) {}
 
   ngOnInit(): void {
-    const weekStart = this.getWeekStartIso(new Date());
-    const weekEnd = this.getWeekEndIso(new Date());
+    const startDate = new Date();
+    const weekStart = this.toIso(startDate);
+    const weekEnd = this.toIso(this.addDays(startDate, 6));
+
     this.authService.user$.subscribe(user => {
       if (user?.active_household_id) {
         const hh = user.households.find(h => h.id === user.active_household_id);
@@ -52,15 +56,28 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
       }
       this.cdr.detectChanges();
     });
+
     this.menuService.getMenus(weekStart, 7).subscribe(menus => {
-      this.menus = menus;
+      const menusByDate = new Map(
+        menus
+          .filter(menu => menu.date >= weekStart)
+          .map(menu => [menu.date, menu]),
+      );
+
+      this.menus = Array.from({ length: 7 }, (_, index) => {
+        const date = this.toIso(this.addDays(startDate, index));
+        return menusByDate.get(date) ?? { id: `empty-${date}`, date };
+      });
+
       this.updateVisibleData();
       this.cdr.detectChanges();
     });
+
     this.calendarService.getMealAttendance(weekStart, weekEnd).subscribe(att => {
       this.mealAttendances = att;
       this.cdr.detectChanges();
     });
+
     this.calendarService.getExternalGuests(weekStart, weekEnd).subscribe(guests => {
       this.externalGuests = guests;
       this.cdr.detectChanges();
@@ -69,27 +86,41 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
 
   ngAfterViewInit(): void {
     const observer = new ResizeObserver(() => {
-      setTimeout(() => { this.updateVisibleData(); this.cdr.detectChanges(); });
+      setTimeout(() => {
+        this.updateVisibleData();
+        this.cdr.detectChanges();
+      });
     });
     observer.observe(this.container.nativeElement);
-    setTimeout(() => { this.updateVisibleData(); this.cdr.detectChanges(); });
+
+    setTimeout(() => {
+      this.updateVisibleData();
+      this.cdr.detectChanges();
+    });
   }
 
   updateVisibleData(): void {
-    if (!this.menus?.length) return;
     const width = this.container.nativeElement.clientWidth;
-    if (width <= 0) return;
-    const count = Math.max(1, Math.floor((width + this.GAP) / (this.MENU_WIDTH + this.GAP)));
-    this.visibleMenus = this.menus.slice(0, count);
+    const height = this.container.nativeElement.clientHeight;
+    if (width <= 0 || height <= 0) return;
+
+    const columns = Math.max(1, Math.floor((width + this.GAP) / (this.MENU_WIDTH + this.GAP)));
+    const bannerHeight = this.nextCookSlot ? 58 : 0;
+    const availableHeight = Math.max(this.MENU_HEIGHT, height - bannerHeight);
+    const rows = Math.max(1, Math.floor((availableHeight + this.GAP) / (this.MENU_HEIGHT + this.GAP)));
+
+    this.weekMaxHeight = availableHeight;
+    this.visibleMenus = this.menus.slice(0, columns * rows);
   }
 
   // ── Next cook slot ──────────────────────────────────────────────────────
   get nextCookSlot(): CookSlot | null {
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = this.toIso(today);
     const hour = today.getHours();
     const cutoffs: Record<string, number> = { breakfast: 10, lunch: 14, dinner: 25 };
     const sorted = [...this.menus].sort((a, b) => a.date.localeCompare(b.date));
+
     for (const menu of sorted) {
       if (menu.date < todayStr) continue;
       for (const meal of ['breakfast', 'lunch', 'dinner'] as MealType[]) {
@@ -110,7 +141,6 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
   }
 
   attendanceCount(dateStr: string, meal: MealType): number {
-    // Opt-in: count only members explicitly marked present + external guests for this meal
     const presentMembers = this.mealAttendances.filter(a => {
       if (a.date !== dateStr) return false;
       if (meal === 'breakfast') return a.breakfastPresent;
@@ -158,18 +188,17 @@ export class MenuplanWidget implements OnInit, AfterViewInit {
     return `Reste: ${this.DAY_NAMES[d.getDay()]}. ${this.MEAL_LABELS[meal] ?? meal}`;
   }
 
-  private getWeekStartIso(input: Date): string {
-    const d = new Date(input);
-    const day = d.getDay();
-    d.setDate(d.getDate() + (day === 0 ? -6 : 1) - day);
-    return d.toISOString().split('T')[0];
+  private addDays(input: Date, days: number): Date {
+    const result = new Date(input);
+    result.setDate(result.getDate() + days);
+    return result;
   }
 
-  private getWeekEndIso(input: Date): string {
-    const d = new Date(input);
-    const day = d.getDay();
-    d.setDate(d.getDate() + (day === 0 ? 0 : 7) - day);
-    return d.toISOString().split('T')[0];
+  private toIso(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private getWeekTag(d: Date): string {

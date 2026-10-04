@@ -4,6 +4,11 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ShoppingItem } from '../model/shoppinglist.model';
 
+interface ExportResponse {
+  data?: unknown[];
+  count?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ShoppinglistService {
   constructor(private http: HttpClient) {}
@@ -47,7 +52,11 @@ export class ShoppinglistService {
 
   exportMenuplan(meals: string[], weekTag: string, personCounts: Record<string, number> = {}): Observable<number> {
     return this.http
-      .post<{ count: number }>(`${environment.apiUrl}/shopping-items/export-week/`, { meals, weekTag, personCounts })
-      .pipe(map((res) => res.count));
+      .post<ExportResponse>(`${environment.apiUrl}/shopping-items/export-week/`, {
+        meals,
+        weekTag,
+        personCounts,
+      })
+      .pipe(map((res) => res.count ?? res.data?.length ?? 0));
   }
 }

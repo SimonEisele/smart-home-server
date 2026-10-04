@@ -1,4 +1,14 @@
-/* Gridster */
+/* Warm & natural dashboard theme */
+:host {
+  --dashboard-bg: #f8f6f1;
+  --dashboard-card: #ffffff;
+  --dashboard-text: #25332d;
+  --dashboard-muted: #647067;
+  --dashboard-accent: #527a63;
+  --dashboard-accent-soft: #e7f0e9;
+  --dashboard-border: #dfe5de;
+}
+
 .dashboard-container {
   height: calc(100vh - 80px);
   width: 100%;
@@ -6,9 +16,10 @@
   position: relative;
   isolation: isolate;
   background:
-    radial-gradient(circle at 12% 8%, rgba(111, 231, 255, .11), transparent 28%),
-    radial-gradient(circle at 88% 18%, rgba(79, 209, 197, .09), transparent 26%),
-    linear-gradient(145deg, rgba(15, 23, 42, .16), rgba(15, 23, 42, 0));
+    radial-gradient(circle at 8% 4%, rgba(82, 122, 99, .13), transparent 26%),
+    radial-gradient(circle at 92% 18%, rgba(183, 121, 31, .08), transparent 24%),
+    radial-gradient(circle at 76% 100%, rgba(111, 150, 124, .10), transparent 30%),
+    linear-gradient(135deg, #faf8f3 0%, #f2f5ef 52%, #f7f1e8 100%);
 }
 
 .dashboard-container::before,
@@ -18,25 +29,24 @@
   pointer-events: none;
   z-index: -1;
   border-radius: 50%;
-  filter: blur(2px);
 }
 
 .dashboard-container::before {
-  width: 320px;
-  height: 320px;
-  top: 12%;
-  left: -180px;
-  background: rgba(111, 231, 255, .07);
-  box-shadow: 0 0 100px rgba(111, 231, 255, .08);
+  width: 340px;
+  height: 340px;
+  top: 10%;
+  left: -190px;
+  background: rgba(82, 122, 99, .07);
+  box-shadow: 0 0 110px rgba(82, 122, 99, .12);
 }
 
 .dashboard-container::after {
-  width: 260px;
-  height: 260px;
-  right: -120px;
-  bottom: 8%;
-  background: rgba(79, 209, 197, .06);
-  box-shadow: 0 0 100px rgba(79, 209, 197, .08);
+  width: 300px;
+  height: 300px;
+  right: -150px;
+  bottom: 5%;
+  background: rgba(183, 121, 31, .045);
+  box-shadow: 0 0 110px rgba(183, 121, 31, .08);
 }
 
 gridster {
@@ -49,7 +59,7 @@ gridster-item {
 }
 
 gridster-item:hover {
-  filter: brightness(1.04);
+  filter: brightness(1.01);
 }
 
 .dashboard-container,
@@ -57,7 +67,6 @@ card {
   position: static !important;
 }
 
-/* ── Edit mode banner ── */
 .edit-banner {
   position: fixed;
   top: 86px;
@@ -67,13 +76,11 @@ card {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(135deg, rgba(15, 23, 42, .96), rgba(30, 41, 59, .94));
-  border: 1px solid rgba(111, 231, 255, .35);
+  background: rgba(37, 51, 45, .96);
+  border: 1px solid rgba(82, 122, 99, .55);
   border-radius: 24px;
   padding: 7px 10px 7px 14px;
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: 0 10px 35px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .08);
+  box-shadow: 0 10px 30px rgba(37, 51, 45, .22);
   white-space: nowrap;
   pointer-events: all;
   animation: dashboardBannerIn .2s ease-out;
@@ -83,18 +90,19 @@ card {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  color: #6fe7ff;
+  color: #b8d3bf;
 }
 
 .edit-banner span {
   font-size: .78rem;
-  color: rgba(255, 255, 255, .68);
+  color: rgba(255, 255, 255, .82);
 }
 
-.btn-edit-done {
-  background: linear-gradient(135deg, rgba(111, 231, 255, .25), rgba(79, 209, 197, .2));
-  border: 1px solid rgba(111, 231, 255, .4);
-  color: #6fe7ff;
+.btn-edit-done,
+.layout-save-btn {
+  background: #527a63;
+  border: 1px solid #6f967c;
+  color: #fff;
   border-radius: 14px;
   padding: 4px 14px;
   font-size: .78rem;
@@ -103,15 +111,16 @@ card {
   transition: background .15s, transform .15s;
 }
 
-.btn-edit-done:hover {
-  background: rgba(111, 231, 255, .3);
+.btn-edit-done:hover,
+.layout-save-btn:not(:disabled):hover {
+  background: #41644f;
   transform: translateY(-1px);
 }
 
 .btn-layouts {
-  background: rgba(255, 255, 255, .08);
-  border: 1px solid rgba(255, 255, 255, .2);
-  color: rgba(255, 255, 255, .85);
+  background: rgba(255, 255, 255, .10);
+  border: 1px solid rgba(255, 255, 255, .24);
+  color: rgba(255, 255, 255, .9);
   border-radius: 14px;
   padding: 4px 12px;
   font-size: .78rem;
@@ -120,16 +129,15 @@ card {
 }
 
 .btn-layouts:hover {
-  background: rgba(255, 255, 255, .16);
+  background: rgba(255, 255, 255, .18);
   transform: translateY(-1px);
 }
 
-/* ── Layout manager ── */
 .layout-overlay {
   position: fixed;
   inset: 0;
   z-index: 1100;
-  background: rgba(0, 0, 0, .45);
+  background: rgba(37, 51, 45, .30);
   backdrop-filter: blur(3px);
 }
 
@@ -141,15 +149,15 @@ card {
   z-index: 1101;
   width: min(420px, 94vw);
   max-height: 80vh;
-  background: linear-gradient(135deg, rgba(15, 23, 42, .98), rgba(30, 41, 59, .97));
-  border: 1px solid rgba(111, 231, 255, .25);
+  background: #fff;
+  border: 1px solid #dfe5de;
   border-radius: 18px;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   overflow: hidden;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .08);
+  box-shadow: 0 24px 70px rgba(37, 51, 45, .24);
   animation: dashboardPanelIn .2s ease-out;
 }
 
@@ -159,20 +167,20 @@ card {
   justify-content: space-between;
   font-size: .95rem;
   font-weight: 700;
-  color: #fff;
+  color: #25332d;
 }
 
 .layout-close-btn {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, .5);
+  color: #647067;
   font-size: 1rem;
   cursor: pointer;
   padding: 2px 6px;
 }
 
 .layout-close-btn:hover {
-  color: #fff;
+  color: #25332d;
 }
 
 .layout-save-row {
@@ -182,34 +190,22 @@ card {
 
 .layout-name-input {
   flex: 1;
-  background: rgba(255, 255, 255, .08);
-  border: 1px solid rgba(255, 255, 255, .18);
+  background: #f5f3ee;
+  border: 1px solid #dfe5de;
   border-radius: 8px;
-  color: #fff;
+  color: #25332d;
   padding: 7px 12px;
   font-size: .83rem;
 }
 
 .layout-name-input::placeholder {
-  color: rgba(255, 255, 255, .35);
+  color: #8b968d;
 }
 
 .layout-name-input:focus {
   outline: none;
-  border-color: rgba(111, 231, 255, .5);
-  box-shadow: 0 0 0 3px rgba(111, 231, 255, .08);
-}
-
-.layout-save-btn {
-  background: linear-gradient(135deg, rgba(111, 231, 255, .25), rgba(79, 209, 197, .2));
-  border: 1px solid rgba(111, 231, 255, .4);
-  color: #6fe7ff;
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: .83rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
+  border-color: #527a63;
+  box-shadow: 0 0 0 3px rgba(82, 122, 99, .12);
 }
 
 .layout-save-btn:disabled {
@@ -217,12 +213,8 @@ card {
   cursor: default;
 }
 
-.layout-save-btn:not(:disabled):hover {
-  background: rgba(111, 231, 255, .35);
-}
-
 .layout-empty {
-  color: rgba(255, 255, 255, .4);
+  color: #647067;
   font-size: .83rem;
   text-align: center;
   margin: 8px 0 0;
@@ -244,16 +236,16 @@ card {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(255, 255, 255, .06);
-  border: 1px solid rgba(255, 255, 255, .12);
+  background: #f5f3ee;
+  border: 1px solid #dfe5de;
   border-radius: 10px;
   padding: 10px 12px;
   transition: background .15s, border-color .15s;
 }
 
 .layout-item:hover {
-  background: rgba(111, 231, 255, .08);
-  border-color: rgba(111, 231, 255, .22);
+  background: #e7f0e9;
+  border-color: #b8d3bf;
 }
 
 .layout-info {
@@ -264,7 +256,7 @@ card {
 }
 
 .layout-name {
-  color: #fff;
+  color: #25332d;
   font-size: .88rem;
   font-weight: 600;
   white-space: nowrap;
@@ -273,7 +265,7 @@ card {
 }
 
 .layout-meta {
-  color: rgba(255, 255, 255, .4);
+  color: #647067;
   font-size: .73rem;
 }
 
@@ -284,9 +276,9 @@ card {
 }
 
 .btn-layout-load {
-  background: rgba(111, 231, 255, .15);
-  border: 1px solid rgba(111, 231, 255, .35);
-  color: #6fe7ff;
+  background: #e7f0e9;
+  border: 1px solid #b8d3bf;
+  color: #41644f;
   border-radius: 7px;
   padding: 4px 10px;
   font-size: .78rem;
@@ -294,19 +286,19 @@ card {
   cursor: pointer;
 }
 
+.btn-layout-load:hover {
+  background: #d6e7da;
+}
+
 .btn-layout-load:disabled {
   opacity: .45;
   cursor: default;
 }
 
-.btn-layout-load:not(:disabled):hover {
-  background: rgba(111, 231, 255, .28);
-}
-
 .btn-layout-del {
-  background: rgba(239, 68, 68, .12);
-  border: 1px solid rgba(239, 68, 68, .3);
-  color: rgba(239, 68, 68, .8);
+  background: rgba(196, 61, 61, .08);
+  border: 1px solid rgba(196, 61, 61, .25);
+  color: #c43d3d;
   border-radius: 7px;
   padding: 4px 8px;
   font-size: .78rem;
@@ -314,10 +306,9 @@ card {
 }
 
 .btn-layout-del:hover {
-  background: rgba(239, 68, 68, .25);
+  background: rgba(196, 61, 61, .15);
 }
 
-/* ── Add widget FAB ── */
 .add-widget-fab {
   position: fixed;
   bottom: 24px;
@@ -325,14 +316,14 @@ card {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(111, 231, 255, .32), rgba(79, 209, 197, .28));
-  border: 1px solid rgba(111, 231, 255, .48);
-  color: #6fe7ff;
+  background: #527a63;
+  border: 1px solid #6f967c;
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .3), 0 0 0 0 rgba(111, 231, 255, .3);
+  box-shadow: 0 8px 24px rgba(37, 51, 45, .24);
   z-index: 1000;
   transition: background .15s, transform .15s, box-shadow .15s;
 }
@@ -343,37 +334,24 @@ card {
 }
 
 .add-widget-fab:hover {
-  background: rgba(111, 231, 255, .4);
+  background: #41644f;
   transform: scale(1.08) rotate(90deg);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .4), 0 0 0 6px rgba(111, 231, 255, .1);
+  box-shadow: 0 10px 30px rgba(37, 51, 45, .30);
 }
 
-/* Add widget popover */
 .add-widget-popover {
   position: fixed;
   z-index: 1050;
 }
 
 @keyframes dashboardBannerIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -8px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 @keyframes dashboardPanelIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, calc(-50% + 10px));
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%);
-  }
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 10px)); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
 }
 
 @media (max-width: 600px) {
@@ -404,9 +382,7 @@ card {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
