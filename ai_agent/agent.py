@@ -13,16 +13,17 @@ from llm_client import (
     generate_code_changes,
     rewrite_search_query,
 )
+from validation_service import validation_results_to_text
 from project_memory import (
     load_memory,
     memory_to_text,
 )
 from project_scanner import PROJECT_ROOT
-from validation_service import validation_results_to_text
+
 
 MAX_INITIAL_FILES = 8
 MAX_CONTEXT_FILES = 20
-MAX_CHARS_PER_FILE = 40_000
+MAX_CHARS_PER_FILE = 12_000
 
 DEPENDENCY_DEPTH = 2
 
@@ -38,7 +39,6 @@ RELATED_EXTENSIONS = {
 # File reading
 # =========================================================
 
-
 def read_file(
     relative_path: str,
 ) -> str:
@@ -49,9 +49,14 @@ def read_file(
     cannot consume the complete LLM context.
     """
 
-    path = (PROJECT_ROOT / relative_path).resolve()
+    path = (
+        PROJECT_ROOT
+        / relative_path
+    ).resolve()
 
-    project_root = PROJECT_ROOT.resolve()
+    project_root = (
+        PROJECT_ROOT.resolve()
+    )
 
     try:
         path.relative_to(project_root)
@@ -72,13 +77,14 @@ def read_file(
     except OSError:
         return ""
 
-    return content[:MAX_CHARS_PER_FILE]
+    return content[
+        :MAX_CHARS_PER_FILE
+    ]
 
 
 # =========================================================
 # Conversation context
 # =========================================================
-
 
 def conversation_to_text(
     messages: list[dict],
@@ -91,11 +97,14 @@ def conversation_to_text(
     if not messages:
         return "No previous conversation."
 
-    recent_messages = messages[-max_messages:]
+    recent_messages = messages[
+        -max_messages:
+    ]
 
     parts = []
 
     for message in recent_messages:
+
         role = message.get(
             "role",
             "unknown",
@@ -115,15 +124,18 @@ def conversation_to_text(
         else:
             label = role.upper()
 
-        parts.append(f"{label}:\n{content}")
+        parts.append(
+            f"{label}:\n{content}"
+        )
 
-    return "\n\n".join(parts)
+    return "\n\n".join(
+        parts
+    )
 
 
 # =========================================================
 # Retrieval expansion
 # =========================================================
-
 
 def find_angular_feature_files(
     relative_path: str,
@@ -146,7 +158,9 @@ def find_angular_feature_files(
     parts = path.parts
 
     try:
-        features_index = parts.index("features")
+        features_index = parts.index(
+            "features"
+        )
     except ValueError:
         return []
 
@@ -155,11 +169,17 @@ def find_angular_feature_files(
     if len(parts) <= features_index + 1:
         return []
 
-    feature_name = parts[features_index + 1]
+    feature_name = parts[
+        features_index + 1
+    ]
 
-    feature_root_parts = parts[: features_index + 2]
+    feature_root_parts = parts[
+        :features_index + 2
+    ]
 
-    feature_root = Path(*feature_root_parts)
+    feature_root = Path(
+        *feature_root_parts
+    )
 
     candidates = [
         feature_root / f"{feature_name}.ts",
@@ -171,12 +191,18 @@ def find_angular_feature_files(
     results = []
 
     for candidate in candidates:
-        full_path = PROJECT_ROOT / candidate
+
+        full_path = (
+            PROJECT_ROOT
+            / candidate
+        )
 
         if not full_path.is_file():
             continue
 
-        results.append(candidate.as_posix())
+        results.append(
+            candidate.as_posix()
+        )
 
     return results
 
@@ -205,7 +231,10 @@ def find_angular_companion_files(
     if path.suffix.lower() != ".ts":
         return []
 
-    parent = PROJECT_ROOT / path.parent
+    parent = (
+        PROJECT_ROOT
+        / path.parent
+    )
 
     if not parent.exists():
         return []
@@ -221,18 +250,28 @@ def find_angular_companion_files(
     companions = []
 
     for name in candidate_names:
-        candidate = parent / name
+
+        candidate = (
+            parent
+            / name
+        )
 
         if not candidate.is_file():
             continue
 
         try:
-            relative = candidate.relative_to(PROJECT_ROOT).as_posix()
+            relative = (
+                candidate
+                .relative_to(PROJECT_ROOT)
+                .as_posix()
+            )
 
         except ValueError:
             continue
 
-        companions.append(relative)
+        companions.append(
+            relative
+        )
 
     return companions
 
@@ -264,25 +303,31 @@ def expand_related_files(
         Returns True when the file was newly added.
         """
 
-        normalized = Path(path).as_posix()
+        normalized = (
+            Path(path)
+            .as_posix()
+        )
 
         if normalized in selected_paths:
             return False
 
-        full_path = PROJECT_ROOT / normalized
+        full_path = (
+            PROJECT_ROOT
+            / normalized
+        )
 
         if not full_path.is_file():
             return False
 
-        selected_paths.add(normalized)
-
-        selected.append(
-            {
-                "path": normalized,
-                "type": file_type,
-                "score": score,
-            }
+        selected_paths.add(
+            normalized
         )
+
+        selected.append({
+            "path": normalized,
+            "type": file_type,
+            "score": score,
+        })
 
         return True
 
@@ -291,6 +336,7 @@ def expand_related_files(
     # =====================================================
 
     for result in initial_results:
+
         add_file(
             path=result["path"],
             file_type=result.get(
@@ -310,12 +356,20 @@ def expand_related_files(
     # 2. Angular feature entry files
     # =====================================================
 
-    current_files = list(selected)
+    current_files = list(
+        selected
+    )
 
     for result in current_files:
-        feature_files = find_angular_feature_files(result["path"])
+
+        feature_files = (
+            find_angular_feature_files(
+                result["path"]
+            )
+        )
 
         for feature_file in feature_files:
+
             add_file(
                 path=feature_file,
                 file_type="feature",
@@ -332,12 +386,20 @@ def expand_related_files(
     # 3. Angular companion files
     # =====================================================
 
-    current_files = list(selected)
+    current_files = list(
+        selected
+    )
 
     for result in current_files:
-        companions = find_angular_companion_files(result["path"])
+
+        companions = (
+            find_angular_companion_files(
+                result["path"]
+            )
+        )
 
         for companion in companions:
+
             add_file(
                 path=companion,
                 file_type="companion",
@@ -365,13 +427,21 @@ def expand_related_files(
     #
     # =====================================================
 
-    dependency_frontier = list(selected)
+    dependency_frontier = list(
+        selected
+    )
 
-    for depth in range(DEPENDENCY_DEPTH):
+    for depth in range(
+        DEPENDENCY_DEPTH
+    ):
+
         next_frontier = []
 
         for result in dependency_frontier:
-            path = result["path"]
+
+            path = result[
+                "path"
+            ]
 
             if not path.endswith(
                 (
@@ -381,42 +451,64 @@ def expand_related_files(
             ):
                 continue
 
-            dependencies = find_dependencies(path)
+            dependencies = (
+                find_dependencies(
+                    path
+                )
+            )
 
             for dependency in dependencies:
+
                 added = add_file(
                     path=dependency,
                     file_type="dependency",
                     score=max(
-                        result["score"] - 2 - depth,
+                        result["score"]
+                        - 2
+                        - depth,
                         1,
                     ),
                 )
 
                 if added:
+
                     dependency_result = {
-                        "path": (Path(dependency).as_posix()),
+                        "path": (
+                            Path(dependency)
+                            .as_posix()
+                        ),
                         "type": "dependency",
                         "score": max(
-                            result["score"] - 2 - depth,
+                            result["score"]
+                            - 2
+                            - depth,
                             1,
                         ),
                     }
 
-                    next_frontier.append(dependency_result)
+                    next_frontier.append(
+                        dependency_result
+                    )
 
                     # ---------------------------------------------
                     # Angular feature entry files
                     # ---------------------------------------------
 
-                    feature_files = find_angular_feature_files(dependency)
+                    feature_files = (
+                        find_angular_feature_files(
+                            dependency
+                        )
+                    )
 
                     for feature_file in feature_files:
+
                         add_file(
                             path=feature_file,
                             file_type="feature",
                             score=max(
-                                result["score"] - 2 - depth,
+                                result["score"]
+                                - 2
+                                - depth,
                                 1,
                             ),
                         )
@@ -428,14 +520,21 @@ def expand_related_files(
                     # Angular companion files
                     # ---------------------------------------------
 
-                    companions = find_angular_companion_files(dependency)
+                    companions = (
+                        find_angular_companion_files(
+                            dependency
+                        )
+                    )
 
                     for companion in companions:
+
                         add_file(
                             path=companion,
                             file_type="companion",
                             score=max(
-                                result["score"] - 3 - depth,
+                                result["score"]
+                                - 3
+                                - depth,
                                 1,
                             ),
                         )
@@ -446,7 +545,9 @@ def expand_related_files(
                 if len(selected) >= max_files:
                     return selected
 
-        dependency_frontier = next_frontier
+        dependency_frontier = (
+            next_frontier
+        )
 
         if not dependency_frontier:
             break
@@ -455,9 +556,12 @@ def expand_related_files(
     # 5. Strong sibling files
     # =====================================================
 
-    current_files = list(selected)
+    current_files = list(
+        selected
+    )
 
     for result in current_files:
+
         if (
             result.get(
                 "score",
@@ -467,24 +571,35 @@ def expand_related_files(
         ):
             continue
 
-        path = Path(result["path"])
+        path = Path(
+            result["path"]
+        )
 
-        parent = PROJECT_ROOT / path.parent
+        parent = (
+            PROJECT_ROOT
+            / path.parent
+        )
 
         if not parent.exists():
             continue
 
         try:
-            candidates = list(parent.iterdir())
+            candidates = list(
+                parent.iterdir()
+            )
 
         except OSError:
             continue
 
         for candidate in candidates:
+
             if not candidate.is_file():
                 continue
 
-            if candidate.suffix.lower() not in RELATED_EXTENSIONS:
+            if (
+                candidate.suffix.lower()
+                not in RELATED_EXTENSIONS
+            ):
                 continue
 
             # Specs are usually less important for
@@ -493,7 +608,13 @@ def expand_related_files(
                 continue
 
             try:
-                relative = candidate.relative_to(PROJECT_ROOT).as_posix()
+                relative = (
+                    candidate
+                    .relative_to(
+                        PROJECT_ROOT
+                    )
+                    .as_posix()
+                )
 
             except ValueError:
                 continue
@@ -508,9 +629,15 @@ def expand_related_files(
             )
 
             if added:
-                companions = find_angular_companion_files(relative)
+
+                companions = (
+                    find_angular_companion_files(
+                        relative
+                    )
+                )
 
                 for companion in companions:
+
                     add_file(
                         path=companion,
                         file_type="companion",
@@ -529,7 +656,6 @@ def expand_related_files(
 # =========================================================
 # Project context
 # =========================================================
-
 
 def build_context(
     search_query: str,
@@ -552,14 +678,22 @@ def build_context(
     context_parts = []
 
     for result in results:
-        path = result["path"]
 
-        content = read_file(path)
+        path = result[
+            "path"
+        ]
+
+        content = read_file(
+            path
+        )
 
         if not content:
             continue
 
-        print(f"Context: {path} ({len(content):,} chars)")
+        print(
+            f"Context: {path} "
+            f"({len(content):,} chars)"
+        )
 
         context_parts.append(
             f"""
@@ -586,7 +720,6 @@ FILE: {path}
 # =========================================================
 # Analysis prompt
 # =========================================================
-
 
 def build_prompt(
     query: str,
@@ -692,7 +825,6 @@ CURRENT PROJECT CONTEXT:
 # Shared context preparation
 # =========================================================
 
-
 def prepare_agent_context(
     query: str,
     messages: list[dict] | None = None,
@@ -703,29 +835,54 @@ def prepare_agent_context(
     code-change modes.
     """
 
-    conversation = conversation_to_text(messages or [])
+    conversation = (
+        conversation_to_text(
+            messages or []
+        )
+    )
 
-    search_query = rewrite_search_query(
-        query=query,
-        conversation=conversation,
+    search_query = (
+        rewrite_search_query(
+            query=query,
+            conversation=conversation,
+        )
     )
 
     print()
-    print(f"Retrieval query: {search_query}")
+    print(
+        f"Retrieval query: "
+        f"{search_query}"
+    )
 
-    context, results = build_context(search_query)
+    context, results = (
+        build_context(
+            search_query
+        )
+    )
 
-    memory_data = load_memory()
+    memory_data = (
+        load_memory()
+    )
 
-    memory = memory_to_text(memory_data)
+    memory = memory_to_text(
+        memory_data
+    )
 
-    git_status = get_git_status_text()
+    git_status = (
+        get_git_status_text()
+    )
 
-    git_diff = get_git_diff()
+    git_diff = (
+        get_git_diff()
+    )
 
-    staged_diff = get_staged_diff()
+    staged_diff = (
+        get_staged_diff()
+    )
 
-    validation = validation_results_to_text(validation_results or [])
+    validation = validation_results_to_text(
+            validation_results or []
+        )
 
     return {
         "conversation": conversation,
@@ -744,7 +901,6 @@ def prepare_agent_context(
 # Analysis mode
 # =========================================================
 
-
 def get_project_answer(
     query: str,
     messages: list[dict] | None = None,
@@ -759,17 +915,35 @@ def get_project_answer(
 
     prompt = build_prompt(
         query=query,
-        context=prepared["context"],
-        conversation=prepared["conversation"],
-        memory=prepared["memory"],
-        git_status=prepared["git_status"],
-        git_diff=prepared["git_diff"],
-        staged_diff=prepared["staged_diff"],
+        context=prepared[
+            "context"
+        ],
+        conversation=prepared[
+            "conversation"
+        ],
+        memory=prepared[
+            "memory"
+        ],
+        git_status=prepared[
+            "git_status"
+        ],
+        git_diff=prepared[
+            "git_diff"
+        ],
+        staged_diff=prepared[
+            "staged_diff"
+        ],
     )
 
-    answer = ask_llm(prompt)
+    answer = ask_llm(
+        prompt
+    )
 
-    context_files = [result["path"] for result in prepared["results"]]
+    context_files = [
+        result["path"]
+        for result
+        in prepared["results"]
+    ]
 
     memory_candidates = extract_memory_candidates(
         query=query,
@@ -790,7 +964,6 @@ def get_project_answer(
 # Code-change mode
 # =========================================================
 
-
 def propose_project_changes(
     query: str,
     messages: list[dict] | None = None,
@@ -803,13 +976,25 @@ def propose_project_changes(
         validation_results=validation_results,
     )
 
-    proposal = generate_code_changes(
-        query=query,
-        context=prepared["context"],
-        conversation=prepared["conversation"],
-        memory=prepared["memory"],
-        git_status=prepared["git_status"],
-        git_diff=prepared["git_diff"],
+    proposal = (
+        generate_code_changes(
+            query=query,
+            context=prepared[
+                "context"
+            ],
+            conversation=prepared[
+                "conversation"
+            ],
+            memory=prepared[
+                "memory"
+            ],
+            git_status=prepared[
+                "git_status"
+            ],
+            git_diff=prepared[
+                "git_diff"
+            ],
+        )
     )
 
     return (
@@ -823,7 +1008,6 @@ def propose_project_changes(
 # Optional console interface
 # =========================================================
 
-
 def ask_project(
     query: str,
 ) -> None:
@@ -836,7 +1020,9 @@ def ask_project(
         results,
         search_query,
         memory_candidates,
-    ) = get_project_answer(query)
+    ) = get_project_answer(
+        query
+    )
 
     print()
     print("=" * 70)
@@ -850,7 +1036,11 @@ def ask_project(
     print("=" * 70)
 
     for result in results:
-        print(f"{result.get('score', 0):>3}  {result.get('path', '')}")
+
+        print(
+            f"{result.get('score', 0):>3}  "
+            f"{result.get('path', '')}"
+        )
 
     print()
     print("=" * 70)
@@ -859,13 +1049,19 @@ def ask_project(
     print(answer)
 
     if memory_candidates:
+
         print()
         print("=" * 70)
         print("MEMORY CANDIDATES")
         print("=" * 70)
 
-        for candidate in memory_candidates:
-            print(candidate)
+        for candidate in (
+            memory_candidates
+        ):
+
+            print(
+                candidate
+            )
 
 
 # =========================================================
@@ -873,9 +1069,13 @@ def ask_project(
 # =========================================================
 
 if __name__ == "__main__":
+
     while True:
+
         try:
-            query = input("\nSmartHome > ").strip()
+            query = input(
+                "\nSmartHome > "
+            ).strip()
 
         except (
             KeyboardInterrupt,
@@ -894,4 +1094,6 @@ if __name__ == "__main__":
         }:
             break
 
-        ask_project(query)
+        ask_project(
+            query
+        )

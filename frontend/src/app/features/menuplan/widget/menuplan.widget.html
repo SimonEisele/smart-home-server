@@ -1,4 +1,4 @@
-<div #container class="menu-widget" style="height: 100%; overflow: hidden;">
+<div #container class="menu-widget">
   <!-- Next recipe cook button -->
   <ng-container *ngIf="nextCookSlot as slot">
     <div class="cook-banner">
@@ -14,7 +14,7 @@
     </div>
   </ng-container>
 
-  <div class="week" [style.max-height.px]="weekMaxHeight || null" style="display: flex; flex-wrap: wrap; align-content: flex-start; overflow: hidden;">
+  <div class="week">
     <div class="day-card" *ngFor="let m of visibleMenus" [class.today]="m.date === todayStr">
       <div class="day-head">
         <span class="day-name">{{ dayName(m.date) }}</span>

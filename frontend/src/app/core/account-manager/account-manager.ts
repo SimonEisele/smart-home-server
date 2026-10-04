@@ -1,4 +1,5 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -15,6 +16,7 @@ import { Observable } from 'rxjs';
   styleUrl: './account-manager.css',
 })
 export class AccountManager implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   user$: Observable<User | null>;
   households$: Observable<Household[]>;
   activeHousehold$: Observable<Household | null>;
@@ -86,7 +88,7 @@ export class AccountManager implements OnInit {
   }
 
   ngOnInit() {
-    this.activeHousehold$.subscribe(hh => {
+    this.activeHousehold$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(hh => {
       if (hh) this.loadMembers(hh.id);
     });
   }

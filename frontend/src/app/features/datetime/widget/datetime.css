@@ -1,46 +1,8 @@
-.datetime-widget {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  font-family: sans-serif;
-  gap: 4px;
-}
-
-/* Datum / Zeit */
-.weekday {
-  font-size: 1.1rem;
-  opacity: 0.7;
-  text-transform: capitalize;
-}
-
-.time {
-  font-size: 3rem;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.date {
-  font-size: 0.9rem;
-  opacity: 0.6;
-}
-
-/* Begrüssung */
-.greeting {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.greeting-text {
-  font-size: 0.95rem;
-  opacity: 0.75;
-  white-space: nowrap;
-}
-
-.username {
-  font-size: 1.3rem;
-  font-weight: 600;
-}
+:host { display:block; height:100%; min-height:0; container-type:size; }
+.datetime-widget { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:clamp(2px,1cqh,5px); }
+.weekday { font-size:clamp(.65rem,12cqh,1.1rem); color:var(--color-muted); text-transform:capitalize; }
+.time { font-size:clamp(1.5rem,32cqh,3rem); font-weight:650; line-height:1.1; letter-spacing:-.03em; }
+.date { font-size:clamp(.65rem,10cqh,.9rem); color:var(--color-muted); }
+.greeting { margin-top:clamp(2px,4cqh,10px); display:flex; align-items:baseline; gap:6px; max-width:100%; }
+.greeting-text { font-size:clamp(.65rem,12cqh,.95rem); color:var(--color-muted); white-space:nowrap; }
+.username { font-size:clamp(.9rem,15cqh,1.3rem); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

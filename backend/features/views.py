@@ -39,6 +39,13 @@ from .serializers import (
 )
 
 
+class HasActiveHousehold(permissions.BasePermission):
+    message = 'Bitte zuerst eine WG erstellen oder einer WG beitreten.'
+
+    def has_permission(self, request, view):
+        return bool(request.user.is_authenticated and request.user.active_household_id)
+
+
 class IngredientListView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = IngredientSerializer
@@ -112,15 +119,15 @@ def recalculate_menu_persons_for_range(household, week_start, week_end):
     for menu in menus:
         new = att_counts.get(menu.date, {})
         old = legacy.get(menu.date, {})
-        # Prefer modern data; fall back to legacy if modern gives 0
+        # A recorded absence is authoritative; use legacy only without modern records.
         menu.breakfast_persons = new.get('breakfast', 0)
-        menu.lunch_persons     = new.get('lunch', 0) or old.get('lunch', 0)
-        menu.dinner_persons    = new.get('dinner', 0) or old.get('dinner', 0)
+        menu.lunch_persons     = new['lunch'] if menu.date in att_counts else old.get('lunch', 0)
+        menu.dinner_persons    = new['dinner'] if menu.date in att_counts else old.get('dinner', 0)
         menu.save(update_fields=['breakfast_persons', 'lunch_persons', 'dinner_persons', 'updated_at'])
 
 
 class TodoListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = TodoSerializer
 
     def get_queryset(self):
@@ -150,12 +157,14 @@ class TodoListCreateView(generics.ListCreateAPIView):
 
 
 class TodoDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = TodoSerializer
     lookup_field = 'id'
 
     def get_queryset(self):
-        return Todo.objects.filter(household=self.request.user.active_household)
+        return Todo.objects.filter(household=self.request.user.active_household).filter(
+            Q(global_todo=True) | Q(created_by=self.request.user)
+        )
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -165,15 +174,13 @@ class TodoDetailView(generics.RetrieveUpdateDestroyAPIView):
     def update(self, request, *args, **kwargs):
         kwargs['partial'] = True
         instance = self.get_object()
-        # Auto-set done_by when marking as done; clear when un-doing
-        if 'done' in request.data:
-            if request.data['done'] and not instance.done:
-                instance.done_by = request.user
-            elif not request.data['done']:
-                instance.done_by = None
-            instance.save(update_fields=['done_by'])
-        response = super().update(request, *args, **kwargs)
-        return Response({"data": response.data})
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        done = serializer.validated_data.get('done', instance.done)
+        done_by = (request.user if not instance.done else instance.done_by) if done else None
+        # Validate the entire update before recording who completed it.
+        serializer.save(done_by=done_by)
+        return Response({"data": serializer.data})
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -186,7 +193,7 @@ class TodoDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class RecipeListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = RecipeSerializer
 
     def get_queryset(self):
@@ -205,7 +212,7 @@ class RecipeListCreateView(generics.ListCreateAPIView):
 
 
 class RecipeDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = RecipeSerializer
     lookup_field = 'id'
 
@@ -226,7 +233,7 @@ class RecipeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class MenuListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = MenuSerializer
 
     def get_queryset(self):
@@ -267,7 +274,7 @@ class MenuListCreateView(generics.ListCreateAPIView):
 
 
 class MenuDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = MenuSerializer
     lookup_field = 'id'
 
@@ -290,7 +297,7 @@ class MenuDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class ShoppingItemListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = ShoppingItemSerializer
 
     def get_queryset(self):
@@ -321,7 +328,7 @@ class ShoppingItemListCreateView(generics.ListCreateAPIView):
 
 
 class ShoppingItemDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = ShoppingItemSerializer
     lookup_field = 'id'
 
@@ -342,7 +349,7 @@ class ShoppingItemDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class ShoppingSuggestionView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
 
     def get(self, request):
         query = request.query_params.get('q', '').strip().lower()
@@ -364,7 +371,7 @@ class ShoppingSuggestionView(APIView):
 
 
 class CalendarEventListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = CalendarEventSerializer
 
     def get_queryset(self):
@@ -379,7 +386,10 @@ class CalendarEventListCreateView(generics.ListCreateAPIView):
             Q(created_by=user, calendar_type='private')
         )
         if start_raw:
-            queryset = queryset.filter(start__date__gte=parse_date(start_raw) or date.min)
+            queryset = queryset.filter(
+                Q(end__date__gte=parse_date(start_raw) or date.min) |
+                Q(end__isnull=True, start__date__gte=parse_date(start_raw) or date.min)
+            )
         if end_raw:
             queryset = queryset.filter(start__date__lte=parse_date(end_raw) or date.max)
         return queryset.order_by('start')
@@ -400,7 +410,7 @@ class CalendarEventListCreateView(generics.ListCreateAPIView):
 
 
 class CalendarEventDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = CalendarEventSerializer
     lookup_field = 'id'
 
@@ -427,7 +437,7 @@ class CalendarEventDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class AddRecipeToShoppingListView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
 
     def post(self, request):
         recipe_id = request.data.get('recipeId')
@@ -478,7 +488,7 @@ class AddRecipeToShoppingListView(APIView):
 
 
 class ExportWeekToShoppingListView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
 
     @staticmethod
     def _get_category(name, ing_catalog, cat_display):
@@ -517,6 +527,8 @@ class ExportWeekToShoppingListView(APIView):
                 week_tag = f'{iso[0]}-W{iso[1]:02d}'
 
         # Parse meal references
+        if not isinstance(meals_raw, list) or not isinstance(person_counts, dict):
+            return Response({"error": "Invalid meals or personCounts"}, status=400)
         meal_refs = []
         for ref in meals_raw:
             if ':' not in str(ref):
@@ -524,7 +536,8 @@ class ExportWeekToShoppingListView(APIView):
             date_str, meal = str(ref).split(':', 1)
             d = parse_date(date_str)
             if d and meal in ('breakfast', 'lunch', 'dinner'):
-                meal_refs.append((d, meal))
+                if (d, meal) not in meal_refs:
+                    meal_refs.append((d, meal))
 
         if not meal_refs:
             return Response({'data': [], 'count': 0})
@@ -551,7 +564,14 @@ class ExportWeekToShoppingListView(APIView):
 
             # Persons: prefer frontend-provided value, then stored menu value
             if ref_key in person_counts:
-                persons = int(person_counts[ref_key])
+                try:
+                    persons = int(person_counts[ref_key])
+                except (TypeError, ValueError):
+                    return Response({'error': 'Invalid person count'}, status=400)
+                if persons < 0:
+                    return Response({'error': 'Person count cannot be negative'}, status=400)
+                if persons == 0:
+                    continue
             elif meal == 'breakfast':
                 persons = menu.breakfast_persons
             elif meal == 'lunch':
@@ -598,6 +618,11 @@ class ExportWeekToShoppingListView(APIView):
                     }
 
         with transaction.atomic():
+            if request.data.get('resetExisting') is True:
+                ShoppingItem.objects.filter(
+                    household=request.user.active_household,
+                    list_type='menuplan', week_tag=week_tag,
+                ).delete()
             created_items = [
                 ShoppingItem.objects.create(
                     household=request.user.active_household,
@@ -616,7 +641,7 @@ class ExportWeekToShoppingListView(APIView):
 
 
 class HouseholdMemberListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = HouseholdMemberSerializer
 
     def get_queryset(self):
@@ -635,7 +660,7 @@ class HouseholdMemberListCreateView(generics.ListCreateAPIView):
 
 
 class HouseholdMemberDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = HouseholdMemberSerializer
     lookup_field = 'id'
 
@@ -656,7 +681,7 @@ class HouseholdMemberDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class MemberAvailabilityListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = MemberAvailabilitySerializer
 
     def get_queryset(self):
@@ -693,7 +718,7 @@ class MemberAvailabilityListCreateView(generics.ListCreateAPIView):
 
 
 class MemberAvailabilityDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = MemberAvailabilitySerializer
     lookup_field = 'id'
 
@@ -716,7 +741,7 @@ class MemberAvailabilityDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class UserMealAttendanceView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
 
     def get(self, request):
         hh = request.user.active_household
@@ -765,7 +790,7 @@ class UserMealAttendanceView(APIView):
 
 
 class ExternalMealGuestListCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
 
     def get(self, request):
         hh = request.user.active_household
@@ -802,7 +827,7 @@ class ExternalMealGuestListCreateView(APIView):
 
 
 class ExternalMealGuestDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
 
     def delete(self, request, id):
         hh = request.user.active_household
@@ -812,7 +837,7 @@ class ExternalMealGuestDetailView(APIView):
 
 
 class RecalculateMenuPersonsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
 
     def post(self, request):
         week_start_raw = request.data.get('weekStart')
@@ -852,7 +877,7 @@ class RecalculateMenuPersonsView(APIView):
 # ── Cleaning ──────────────────────────────────────────────────────────
 
 class CleaningTaskListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = CleaningTaskSerializer
 
     def get_queryset(self):
@@ -873,7 +898,7 @@ class CleaningTaskListCreateView(generics.ListCreateAPIView):
 
 
 class CleaningTaskDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = CleaningTaskSerializer
     lookup_field = 'id'
 
@@ -896,7 +921,7 @@ class CleaningTaskDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class CleaningLogListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = CleaningLogSerializer
 
     def get_queryset(self):
@@ -923,7 +948,7 @@ class CleaningLogListCreateView(generics.ListCreateAPIView):
 
 
 class CleaningLogDetailView(generics.RetrieveDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = CleaningLogSerializer
     lookup_field = 'id'
 

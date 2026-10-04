@@ -1,19 +1,23 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { catchError, map, of, switchMap } from 'rxjs';
 import { AuthService } from '../service/auth.service';
 
-/** Redirects unauthenticated users to the landing page. */
+/** Restore the session even when only refresh tokens, rather than cached user data, remain. */
 export const authGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  if (auth.user) return true;
-  return router.createUrlTree(['/']);
+  return auth.ensureAccessToken().pipe(
+    switchMap(token => token ? (auth.user ? of(true) : auth.fetchUser().pipe(map(() => true))) : of(router.createUrlTree(['/']))),
+    catchError(() => of(router.createUrlTree(['/'])))
+  );
 };
 
-/** Redirects already-authenticated users to the dashboard. */
 export const guestGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  if (!auth.user) return true;
-  return router.createUrlTree(['/home']);
+  return auth.ensureAccessToken().pipe(
+    switchMap(token => token ? (auth.user ? of(router.createUrlTree(['/home'])) : auth.fetchUser().pipe(map(() => router.createUrlTree(['/home'])))) : of(true)),
+    catchError(() => of(true))
+  );
 };

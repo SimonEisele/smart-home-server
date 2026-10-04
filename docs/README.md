@@ -23,6 +23,12 @@ Grundlagen auf.
 
 ---
 
+## Review and screenshots
+
+See [the October 2026 review](review-2026-10-04.md) for tested fixes, deployment notes, and remaining findings.
+
+![Tablet dashboard with sample data](screenshots/dashboard-tablet.png)
+
 ## 🛠️ Development
 
 Für die lokale Entwicklung werden das Django-Backend und das Angular-Frontend

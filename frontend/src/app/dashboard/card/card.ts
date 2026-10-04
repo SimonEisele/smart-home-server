@@ -21,7 +21,7 @@ export class Card {
   // Navigate only when the card is not in edit mode.
   navigate() {
     if (!this.editMode && this.link) {
-      this.router.navigate([this.link]);
+      this.router.navigate([this.link === "datetime" ? "/home" : "/" + this.link]);
     }
   }
 
@@ -30,6 +30,6 @@ export class Card {
     const target = event.target as HTMLElement;
     // Don't navigate when clicking interactive elements inside the widget
     if (target.closest('button, input, select, textarea, a, [role="button"], label')) return;
-    this.router.navigate([this.link]);
+    this.router.navigate([this.link === "datetime" ? "/home" : "/" + this.link]);
   }
 }

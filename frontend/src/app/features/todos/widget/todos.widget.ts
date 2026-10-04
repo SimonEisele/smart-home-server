@@ -1,4 +1,5 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, DestroyRef, inject, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { Todo } from '../model/todos.model';
 import { TodosService } from '../service/todos.service';
 import { CommonModule } from '@angular/common';
@@ -10,7 +11,9 @@ import { CommonModule } from '@angular/common';
   templateUrl: './todos.widget.html',
   styleUrl: './todos.widget.css',
 })
-export class TodosWidget implements OnInit, AfterViewInit {
+export class TodosWidget implements OnInit, AfterViewInit, OnDestroy {
+  private observer?: ResizeObserver;
+  private readonly destroyRef = inject(DestroyRef);
   @ViewChild('container', { static: true })
   container!: ElementRef<HTMLDivElement>;
 
@@ -22,26 +25,28 @@ export class TodosWidget implements OnInit, AfterViewInit {
   constructor(private todosService: TodosService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
-    this.todosService.getUserTodos().subscribe(todos => {
+    this.todosService.getUserTodos().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(todos => {
       this.openTodos = todos
         .filter(t => !t.done)
         .sort((a, b) =>
           new Date(a.dueDate ?? '').getTime() -
           new Date(b.dueDate ?? '').getTime()
         );
-      setTimeout(() => this.updateVisibleTodos());
+      setTimeout(() => { if (!this.destroyRef.destroyed) this.updateVisibleTodos(); });
       this.cdr.detectChanges();
     });
   }
 
   ngAfterViewInit(): void {
-    const observer = new ResizeObserver(() => {
-      setTimeout(() => this.updateVisibleTodos());
+    this.observer = new ResizeObserver(() => {
+      setTimeout(() => { if (!this.destroyRef.destroyed) this.updateVisibleTodos(); });
     });
 
-    observer.observe(this.container.nativeElement);
-    setTimeout(() => this.updateVisibleTodos());
+    this.observer.observe(this.container.nativeElement);
+    setTimeout(() => { if (!this.destroyRef.destroyed) this.updateVisibleTodos(); });
   }
+
+  ngOnDestroy(): void { this.observer?.disconnect(); }
 
   updateVisibleTodos() {
     const height = this.container.nativeElement.clientHeight;
@@ -64,7 +69,7 @@ export class TodosWidget implements OnInit, AfterViewInit {
     // Optimistic: remove from list immediately
     this.openTodos = this.openTodos.filter(t => t.id !== todo.id);
     this.updateVisibleTodos();
-    this.todosService.updateTodo(todo.id, { done: true }).subscribe({
+    this.todosService.updateTodo(todo.id, { done: true }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       error: () => {
         // Revert on failure
         this.openTodos = [todo, ...this.openTodos].sort(

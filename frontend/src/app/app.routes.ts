@@ -27,6 +27,7 @@ export const routes: Routes = [
   { path: 'calendar', component: Calendar, canActivate: [authGuard] },
   { path: 'cleaning', component: CleaningPage, canActivate: [authGuard] },
   { path: 'account', component: AccountManager, canActivate: [authGuard] },
+  { path: '**', redirectTo: '' },
 ];
 
 @NgModule({

@@ -58,7 +58,7 @@ export class RecipeCookOverlay implements OnInit {
     const scale = (persons * unitsPerPerson) / base;
     return (recipe.ingredients || []).map((ing: RecipeIngredient) => {
       const q = ing.quantityPerPerson != null ? ing.quantityPerPerson * scale : null;
-      const fmtQty = q != null ? (Math.round(q * 100) / 100).toString().replace(/\.?0+$/, '') : '';
+      const fmtQty = q != null ? (Math.round(q * 100) / 100).toString() : '';
       return { name: ing.name, qty: fmtQty, unit: ing.unit || '' };
     });
   }

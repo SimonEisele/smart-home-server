@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from .models import (
     CalendarEvent,
@@ -112,6 +113,25 @@ class MenuSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def validate(self, attrs):
+        household = self.context['request'].user.active_household
+        for field in ('breakfast_recipe_id', 'lunch_recipe_id', 'dinner_recipe_id'):
+            recipe_id = attrs.get(field)
+            if recipe_id and not Recipe.objects.filter(id=recipe_id, household=household).exists():
+                raise serializers.ValidationError({field: 'Recipe is not available in this household.'})
+        extra_ids = attrs.get('extra_recipe_ids')
+        if extra_ids is not None:
+            if not isinstance(extra_ids, list):
+                raise serializers.ValidationError({'extraRecipeIds': 'Expected a recipe list.'})
+            for recipe_id in extra_ids:
+                try:
+                    available = Recipe.objects.filter(id=recipe_id, household=household).exists()
+                except (ValueError, TypeError, DjangoValidationError):
+                    available = False
+                if not available:
+                    raise serializers.ValidationError({'extraRecipeIds': 'Recipe is not available in this household.'})
+        return attrs
+
     def create(self, validated_data):
         rating_data = validated_data.pop('rating', None)
         instance = Menu.objects.create(**validated_data)
@@ -164,7 +184,7 @@ class ShoppingItemSerializer(serializers.ModelSerializer):
 
 class CalendarEventSerializer(serializers.ModelSerializer):
     allDay = serializers.BooleanField(source='all_day', required=False)
-    calendarType = serializers.CharField(source='calendar_type', required=False)
+    calendarType = serializers.ChoiceField(choices=CalendarEvent.CALENDAR_TYPE_CHOICES, source='calendar_type', required=False)
     todoRefId = serializers.UUIDField(source='todo_ref_id', required=False, allow_null=True)
     color = serializers.CharField(required=False, allow_blank=True)
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
@@ -177,6 +197,13 @@ class CalendarEventSerializer(serializers.ModelSerializer):
             'calendarType', 'todoRefId', 'color', 'createdAt', 'updatedAt'
         ]
         read_only_fields = ['id', 'createdAt', 'updatedAt']
+
+    def validate(self, attrs):
+        start = attrs.get('start', getattr(self.instance, 'start', None))
+        end = attrs.get('end', getattr(self.instance, 'end', None))
+        if start and end and end < start:
+            raise serializers.ValidationError({'end': 'End must not precede start.'})
+        return attrs
 
 
 class MemberAvailabilitySerializer(serializers.ModelSerializer):
@@ -192,6 +219,7 @@ class MemberAvailabilitySerializer(serializers.ModelSerializer):
             'id', 'memberId', 'date', 'lunchPresent', 'dinnerPresent', 'note', 'createdAt', 'updatedAt'
         ]
         read_only_fields = ['id', 'createdAt', 'updatedAt']
+
 
 
 class HouseholdMemberSerializer(serializers.ModelSerializer):

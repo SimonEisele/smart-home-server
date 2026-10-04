@@ -1,3 +1,4 @@
+import { localIsoDate } from '../../../shared/date-utils';
 import { Component, HostListener, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -32,6 +33,7 @@ export class MenuplanPage implements OnInit {
   leftoverDays: DayEntry[] = [];
   leftoverMenus: Record<string, Menu> = {};
 
+  // ── Export modal state ──────────────────────────────────────────────
   showExportModal = false;
   exportWeekStart = '';
   exportMenus: Menu[] = [];
@@ -39,7 +41,6 @@ export class MenuplanPage implements OnInit {
   exportLoading = false;
   exportDone = '';
 
-  readonly DEFAULT_PERSONS = 2;
   readonly DAY_NAMES = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
   readonly MEAL_LABELS: Record<string, string> = { breakfast: 'Morgen', lunch: 'Mittag', dinner: 'Abend', extra: 'Extra' };
   readonly MEALS: MealType[] = ['breakfast', 'lunch', 'dinner'];
@@ -63,6 +64,7 @@ export class MenuplanPage implements OnInit {
     this.loadLeftoverRange();
   }
 
+  // ── Week navigation ──────────────────────────────────────────────────
   initWeek(date: Date): void {
     const d = new Date(date);
     const day = d.getDay();
@@ -87,6 +89,7 @@ export class MenuplanPage implements OnInit {
     return `${fmt(a)} – ${fmt(b)}${b.getFullYear()}`;
   }
 
+  // ── Meal accessors ───────────────────────────────────────────────────
   getMealRecipe(dateStr: string, meal: MealType): Recipe | null {
     const m = this.menus[dateStr];
     if (!m) return null;
@@ -98,21 +101,25 @@ export class MenuplanPage implements OnInit {
   getMealPersons(dateStr: string, meal: MealType): number {
     const m = this.menus[dateStr];
     if (!m) return 0;
-    const recipe = this.getMealRecipe(dateStr, meal);
-    if (meal === 'breakfast') return m.breakfastPersons ?? (recipe ? this.DEFAULT_PERSONS : 0);
-    if (meal === 'lunch') return m.lunchPersons ?? (recipe ? this.DEFAULT_PERSONS : 0);
-    return m.dinnerPersons ?? (recipe ? this.DEFAULT_PERSONS : 0);
+    if (meal === 'breakfast') return m.breakfastPersons ?? 0;
+    if (meal === 'lunch') return m.lunchPersons ?? 0;
+    return m.dinnerPersons ?? 0;
   }
 
+  /** How many people will eat THIS meal's leftovers (from other meals in the current week) */
   getMealLeftoverPersons(dateStr: string, meal: MealType): number {
     const ref = `${dateStr}:${meal}`;
     let total = 0;
     for (const m of Object.values(this.menus)) {
       for (const cm of this.MEALS) {
         const cmRef = cm === 'breakfast' ? m.breakfastLeftoversRef
-                    : cm === 'lunch' ? m.lunchLeftoversRef
-                    : m.dinnerLeftoversRef;
-        if (cmRef === ref) total += this.getStoredMealPersons(m, cm);
+                    : cm === 'lunch'     ? m.lunchLeftoversRef
+                    :                     m.dinnerLeftoversRef;
+        if (cmRef === ref) {
+          total += cm === 'breakfast' ? (m.breakfastPersons ?? 0)
+                 : cm === 'lunch'     ? (m.lunchPersons ?? 0)
+                 :                     (m.dinnerPersons ?? 0);
+        }
       }
     }
     return total;
@@ -130,6 +137,14 @@ export class MenuplanPage implements OnInit {
     return m.dinnerLeftoversRef ?? null;
   }
 
+  private getLeftoverMealRecipe(dateStr: string, meal: MealType): Recipe | null {
+    const m = this.leftoverMenus[dateStr];
+    if (!m) return null;
+    if (meal === 'breakfast') return m.breakfastRecipe ?? null;
+    if (meal === 'lunch') return m.lunchRecipe ?? null;
+    return m.dinnerRecipe ?? null;
+  }
+
   formatLeftoversRef(ref: string): string {
     const [dateStr, meal] = ref.split(':');
     const allDays = [...this.days, ...this.leftoverDays];
@@ -142,6 +157,7 @@ export class MenuplanPage implements OnInit {
     return `Reste: ${dayName} ${this.MEAL_LABELS[meal as MealType] ?? meal}`;
   }
 
+  // ── Picker ───────────────────────────────────────────────────────────
   openPicker(dateStr: string, meal: PickerMode): void {
     this.activePicker = { dateStr, meal };
     this.pickerTab = 'recipe';
@@ -172,7 +188,9 @@ export class MenuplanPage implements OnInit {
       ? this.recipes.filter(r => r.category && r.category !== 'mahlzeit')
       : this.recipes.filter(r => !r.category || r.category === 'mahlzeit');
     if (!q) return byCategory;
-    return byCategory.filter(r => r.name.toLowerCase().includes(q) || (r.description ?? '').toLowerCase().includes(q));
+    return byCategory.filter(r =>
+      r.name.toLowerCase().includes(q) || (r.description ?? '').toLowerCase().includes(q)
+    );
   }
 
   get leftoversOptions(): Array<{ ref: string; label: string; recipeName: string }> {
@@ -180,16 +198,24 @@ export class MenuplanPage implements OnInit {
     const { dateStr: cd, meal: cm } = this.activePicker;
     const result: Array<{ ref: string; label: string; recipeName: string }> = [];
     const seen = new Set<string>();
-    const allMenuEntries: Array<[string, Menu]> = [...Object.entries(this.menus), ...Object.entries(this.leftoverMenus)];
+
+    // Prefer this.menus (fresh, updated on every upsert) over leftoverMenus (loaded once)
+    const allMenuEntries: Array<[string, Menu]> = [
+      ...Object.entries(this.menus),
+      ...Object.entries(this.leftoverMenus),
+    ];
 
     for (const [dateStr, m] of allMenuEntries) {
-      const date = new Date(`${dateStr}T12:00:00`);
+      const date = new Date(`${dateStr}T12:00:00`); // noon avoids timezone day-shift
       for (const meal of this.MEALS) {
         const key = `${dateStr}:${meal}`;
         if (dateStr === cd && meal === cm) continue;
         if (seen.has(key)) continue;
         seen.add(key);
-        const recipe = meal === 'breakfast' ? m.breakfastRecipe : meal === 'lunch' ? m.lunchRecipe : m.dinnerRecipe;
+        let recipe: Recipe | null = null;
+        if (meal === 'breakfast') recipe = m.breakfastRecipe ?? null;
+        else if (meal === 'lunch') recipe = m.lunchRecipe ?? null;
+        else recipe = m.dinnerRecipe ?? null;
         if (!recipe) continue;
         result.push({
           ref: key,
@@ -199,7 +225,7 @@ export class MenuplanPage implements OnInit {
       }
     }
 
-    result.sort((a, b) => b.ref.localeCompare(a.ref));
+    result.sort((a, b) => b.ref.localeCompare(a.ref)); // newest first
     return result;
   }
 
@@ -209,8 +235,7 @@ export class MenuplanPage implements OnInit {
     if (meal === 'extra') {
       this.addExtra(dateStr, recipe.id);
     } else {
-      this.setLocalMealRecipe(dateStr, meal, recipe);
-      this.upsertMenu(dateStr, this.mealPatch(meal, recipe.id, null));
+      this.upsertMenu(dateStr, this.mealPatch(meal as MealType, recipe.id, null));
     }
     this.closePicker();
   }
@@ -229,7 +254,9 @@ export class MenuplanPage implements OnInit {
     this.upsertMenu(dateStr, this.mealPatch(meal, null, null));
   }
 
-  getExtras(dateStr: string): Recipe[] { return this.menus[dateStr]?.extraRecipes ?? []; }
+  getExtras(dateStr: string): Recipe[] {
+    return this.menus[dateStr]?.extraRecipes ?? [];
+  }
 
   addExtra(dateStr: string, recipeId: string): void {
     const ids = [...(this.menus[dateStr]?.extraRecipeIds ?? [])].filter(id => id !== recipeId);
@@ -245,13 +272,14 @@ export class MenuplanPage implements OnInit {
 
   private mealPatch(meal: MealType, recipeId: string | null, ref: string | null): Partial<Menu> {
     if (meal === 'breakfast') return { breakfastRecipeId: recipeId, breakfastLeftoversRef: ref };
-    if (meal === 'lunch') return { lunchRecipeId: recipeId, lunchLeftoversRef: ref };
-    return { dinnerRecipeId: recipeId, dinnerLeftoversRef: ref };
+    if (meal === 'lunch')     return { lunchRecipeId: recipeId,      lunchLeftoversRef: ref };
+    return                           { dinnerRecipeId: recipeId,     dinnerLeftoversRef: ref };
   }
 
+  // ── Export modal ─────────────────────────────────────────────────────
   get exportDays(): Array<{ date: Date; dateStr: string }> {
     if (!this.exportWeekStart) return [];
-    const d = new Date(`${this.exportWeekStart}T12:00:00`);
+    const d = new Date(this.exportWeekStart);
     return Array.from({ length: 7 }, (_, i) => {
       const di = new Date(d); di.setDate(d.getDate() + i);
       return { date: di, dateStr: this.toIsoDate(di) };
@@ -273,17 +301,22 @@ export class MenuplanPage implements OnInit {
     this.cdr.detectChanges();
   }
 
-  closeExportModal(): void { this.showExportModal = false; this.cdr.detectChanges(); }
+  closeExportModal(): void {
+    this.showExportModal = false;
+    this.cdr.detectChanges();
+  }
 
-  onExportBackdropClick(e: MouseEvent): void { if (e.target === e.currentTarget) this.closeExportModal(); }
+  onExportBackdropClick(e: MouseEvent): void {
+    if (e.target === e.currentTarget) this.closeExportModal();
+  }
 
   prevExportWeek(): void {
-    const d = new Date(`${this.exportWeekStart}T12:00:00`); d.setDate(d.getDate() - 7);
+    const d = new Date(this.exportWeekStart); d.setDate(d.getDate() - 7);
     this.exportWeekStart = this.toIsoDate(d); this.loadExportMenus();
   }
 
   nextExportWeek(): void {
-    const d = new Date(`${this.exportWeekStart}T12:00:00`); d.setDate(d.getDate() + 7);
+    const d = new Date(this.exportWeekStart); d.setDate(d.getDate() + 7);
     this.exportWeekStart = this.toIsoDate(d); this.loadExportMenus();
   }
 
@@ -292,11 +325,13 @@ export class MenuplanPage implements OnInit {
     this.exportSelected = new Set();
     this.menuService.getMenus(this.exportWeekStart, 7).subscribe(menus => {
       this.exportMenus = menus;
-      this.exportSelected = new Set(
-        menus.flatMap(m => this.MEALS
-          .filter(meal => !!this.exportMealRecipe(m.date, meal))
-          .map(meal => `${m.date}:${meal}`))
-      );
+      const sel = new Set<string>();
+      for (const m of menus) {
+        if (m.breakfastRecipe) sel.add(`${m.date}:breakfast`);
+        if (m.lunchRecipe)     sel.add(`${m.date}:lunch`);
+        if (m.dinnerRecipe)    sel.add(`${m.date}:dinner`);
+      }
+      this.exportSelected = sel;
       this.exportLoading = false;
       this.cdr.detectChanges();
     });
@@ -306,66 +341,70 @@ export class MenuplanPage implements OnInit {
     const m = this.exportMenus.find(m => m.date === dateStr);
     if (!m) return null;
     if (meal === 'breakfast') return m.breakfastRecipe ?? null;
-    if (meal === 'lunch') return m.lunchRecipe ?? null;
+    if (meal === 'lunch')     return m.lunchRecipe ?? null;
     return m.dinnerRecipe ?? null;
   }
 
   exportMealPersons(dateStr: string, meal: MealType): number {
     const m = this.exportMenus.find(m => m.date === dateStr);
     if (!m) return 0;
-    const recipe = this.exportMealRecipe(dateStr, meal);
-    if (meal === 'breakfast') return m.breakfastPersons ?? (recipe ? this.DEFAULT_PERSONS : 0);
-    if (meal === 'lunch') return m.lunchPersons ?? (recipe ? this.DEFAULT_PERSONS : 0);
-    return m.dinnerPersons ?? (recipe ? this.DEFAULT_PERSONS : 0);
+    if (meal === 'breakfast') return m.breakfastPersons ?? 0;
+    if (meal === 'lunch')     return m.lunchPersons ?? 0;
+    return m.dinnerPersons ?? 0;
   }
 
+  /** How many people will eat this meal's LEFTOVERS (from other meals referencing it) */
   exportMealLeftoverPersons(dateStr: string, meal: MealType): number {
     const ref = `${dateStr}:${meal}`;
     let total = 0;
     for (const m of this.exportMenus) {
       for (const cm of this.MEALS) {
-        const cmRef = cm === 'breakfast' ? m.breakfastLeftoversRef : cm === 'lunch' ? m.lunchLeftoversRef : m.dinnerLeftoversRef;
-        if (cmRef === ref) total += this.getStoredMealPersons(m, cm);
+        const cmRef = cm === 'breakfast' ? m.breakfastLeftoversRef
+                    : cm === 'lunch'     ? m.lunchLeftoversRef
+                    :                     m.dinnerLeftoversRef;
+        if (cmRef === ref) {
+          total += cm === 'breakfast' ? (m.breakfastPersons ?? 0)
+                 : cm === 'lunch'     ? (m.lunchPersons ?? 0)
+                 :                     (m.dinnerPersons ?? 0);
+        }
       }
     }
     return total;
   }
 
+  /** Direct attendance + people who will eat leftovers from this meal */
   exportMealEffectivePersons(dateStr: string, meal: MealType): number {
     return this.exportMealPersons(dateStr, meal) + this.exportMealLeftoverPersons(dateStr, meal);
   }
 
-  isExportSelected(dateStr: string, meal: MealType): boolean { return this.exportSelected.has(`${dateStr}:${meal}`); }
+  isExportSelected(dateStr: string, meal: MealType): boolean {
+    return this.exportSelected.has(`${dateStr}:${meal}`);
+  }
 
   toggleExportMeal(dateStr: string, meal: MealType): void {
-    if (!this.exportMealRecipe(dateStr, meal)) return;
     const key = `${dateStr}:${meal}`;
-    const selected = new Set(this.exportSelected);
-    if (selected.has(key)) selected.delete(key); else selected.add(key);
-    this.exportSelected = selected;
+    const s = new Set(this.exportSelected);
+    if (s.has(key)) s.delete(key); else s.add(key);
+    this.exportSelected = s;
   }
 
   doExport(): void {
     if (!this.exportSelected.size) return;
-    const d = new Date(`${this.exportWeekStart}T12:00:00`);
+    const d = new Date(this.exportWeekStart);
     const jan4 = new Date(d.getFullYear(), 0, 4);
     const startOfYear = jan4.getTime() - ((jan4.getDay() + 6) % 7) * 86400000;
     const week = Math.floor((d.getTime() - startOfYear) / (7 * 86400000)) + 1;
     const weekTag = `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
+    // Only export meals with effective persons > 0; use effective count for scaling
     const meals: string[] = [];
     const personCounts: Record<string, number> = {};
-
     for (const key of this.exportSelected) {
       const [dateStr, meal] = key.split(':');
-      const recipe = this.exportMealRecipe(dateStr, meal as MealType);
-      if (!recipe) continue;
+      const effective = this.exportMealEffectivePersons(dateStr, meal as MealType);
+      if (effective <= 0) continue;
       meals.push(key);
-      personCounts[key] = Math.max(
-        this.exportMealEffectivePersons(dateStr, meal as MealType),
-        recipe.baseServings ?? this.DEFAULT_PERSONS,
-      );
+      personCounts[key] = effective;
     }
-
     if (!meals.length) return;
     this.shoppingService.exportMenuplan(meals, weekTag, personCounts).subscribe(count => {
       this.exportDone = `${count} Einträge hinzugefügt.`;
@@ -374,6 +413,7 @@ export class MenuplanPage implements OnInit {
     });
   }
 
+  // ── Internal ─────────────────────────────────────────────────────────
   private loadWeek(): void {
     const weekStart = this.toIsoDate(this.weekStart);
     this.menuService.getMenus(weekStart, 7).subscribe(list => {
@@ -389,7 +429,8 @@ export class MenuplanPage implements OnInit {
     const fromStr = this.toIsoDate(from);
     const todayStr = this.toIsoDate(today);
     this.leftoverDays = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(from); d.setDate(from.getDate() + i);
+      const d = new Date(from);
+      d.setDate(from.getDate() + i);
       const dateStr = this.toIsoDate(d);
       return { date: d, dateStr, isToday: dateStr === todayStr };
     });
@@ -403,56 +444,19 @@ export class MenuplanPage implements OnInit {
     const existing = this.menus[dateStr];
     if (existing?.id) {
       this.menuService.updateMenu(existing.id, patch).subscribe(updated => {
-        this.menus = { ...this.menus, [dateStr]: this.mergeMenuResponse(updated, existing, patch) };
+        this.menus = { ...this.menus, [dateStr]: updated };
         this.cdr.detectChanges();
       });
     } else {
-      const payload: Partial<Menu> = {
-        date: dateStr,
-        breakfastPersons: this.DEFAULT_PERSONS,
-        lunchPersons: this.DEFAULT_PERSONS,
-        dinnerPersons: this.DEFAULT_PERSONS,
-        ...patch,
-      };
+      const payload: Partial<Menu> = { date: dateStr, lunchPersons: 2, dinnerPersons: 2, ...patch };
       this.menuService.createMenu(payload).subscribe(created => {
-        this.menus = { ...this.menus, [dateStr]: this.mergeMenuResponse(created, this.menus[dateStr], patch) };
+        this.menus = { ...this.menus, [dateStr]: created };
         this.cdr.detectChanges();
       });
     }
   }
 
-  private setLocalMealRecipe(dateStr: string, meal: MealType, recipe: Recipe): void {
-    const current = this.menus[dateStr] ?? ({ id: '', date: dateStr } as Menu);
-    const updated: Menu = { ...current };
-    if (meal === 'breakfast') { updated.breakfastRecipe = recipe; updated.breakfastRecipeId = recipe.id; }
-    if (meal === 'lunch') { updated.lunchRecipe = recipe; updated.lunchRecipeId = recipe.id; }
-    if (meal === 'dinner') { updated.dinnerRecipe = recipe; updated.dinnerRecipeId = recipe.id; }
-    this.menus = { ...this.menus, [dateStr]: updated };
-    this.cdr.detectChanges();
-  }
+  private toIsoDate(d: Date): string { return localIsoDate(d); }
 
-  private mergeMenuResponse(updated: Menu, previous: Menu | undefined, patch: Partial<Menu>): Menu {
-    const merged: Menu = { ...(previous ?? {} as Menu), ...updated };
-    for (const meal of this.MEALS) {
-      const recipeKey = `${meal}Recipe` as 'breakfastRecipe' | 'lunchRecipe' | 'dinnerRecipe';
-      const idKey = `${meal}RecipeId` as 'breakfastRecipeId' | 'lunchRecipeId' | 'dinnerRecipeId';
-      if (patch[idKey] === null) merged[recipeKey] = null;
-      else if (!updated[recipeKey] && previous?.[recipeKey] && updated[idKey] === previous[idKey]) merged[recipeKey] = previous[recipeKey];
-    }
-    return merged;
-  }
 
-  private getStoredMealPersons(menu: Menu, meal: MealType): number {
-    const hasRecipe = meal === 'breakfast' ? !!menu.breakfastRecipe : meal === 'lunch' ? !!menu.lunchRecipe : !!menu.dinnerRecipe;
-    if (meal === 'breakfast') return menu.breakfastPersons ?? (hasRecipe ? this.DEFAULT_PERSONS : 0);
-    if (meal === 'lunch') return menu.lunchPersons ?? (hasRecipe ? this.DEFAULT_PERSONS : 0);
-    return menu.dinnerPersons ?? (hasRecipe ? this.DEFAULT_PERSONS : 0);
-  }
-
-  private toIsoDate(d: Date): string {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
 }

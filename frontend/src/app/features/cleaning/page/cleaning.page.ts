@@ -1,3 +1,4 @@
+import { localIsoDate } from '../../../shared/date-utils';
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -168,7 +169,7 @@ export class CleaningPage implements OnInit {
   openComplete(task: CleaningTask, event: Event): void {
     event.stopPropagation();
     this.completingTask = task;
-    this.completeDate = new Date().toISOString().slice(0, 10);
+    this.completeDate = localIsoDate(new Date());
     this.completeNote = '';
     this.showCompleteModal = true;
   }

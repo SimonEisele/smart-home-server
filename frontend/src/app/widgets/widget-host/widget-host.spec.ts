@@ -14,6 +14,7 @@ describe('WidgetHost', () => {
 
     fixture = TestBed.createComponent(WidgetHost);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput("widget", { widget_type: "datetime", config: {} });
     await fixture.whenStable();
   });
 

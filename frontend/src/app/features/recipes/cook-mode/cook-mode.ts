@@ -1,3 +1,4 @@
+import { localIsoDate } from '../../../shared/date-utils';
 import { Component, Input, Output, EventEmitter, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
@@ -96,14 +97,14 @@ export class CookMode implements OnInit, OnDestroy {
         .filter(i => i.name)
         .map(i => ({
           name: i.name,
-          qty: i.quantityPerPerson ? Math.round(i.quantityPerPerson * this.portions * 100) / 100 : null,
+          qty: i.quantityPerPerson ? Math.round(i.quantityPerPerson * this.portions / (this._recipe?.baseServings || 4) * 100) / 100 : null,
           unit: i.unit ?? '',
         }));
     }
     const oldName = (s as any).ingredientName as string | undefined;
     if (oldName) {
       const oldQty = (s as any).quantityPerPerson as number | undefined;
-      return [{ name: oldName, qty: oldQty ? Math.round(oldQty * this.portions * 100) / 100 : null, unit: (s as any).unit ?? '' }];
+      return [{ name: oldName, qty: oldQty ? Math.round(oldQty * this.portions / (this._recipe?.baseServings || 4) * 100) / 100 : null, unit: (s as any).unit ?? '' }];
     }
     return [];
   }
@@ -132,7 +133,7 @@ export class CookMode implements OnInit, OnDestroy {
   }
 
   private todayIso(): string {
-    return new Date().toISOString().split('T')[0];
+    return localIsoDate(new Date());
   }
 
   private currentWeekTag(date: Date): string {
