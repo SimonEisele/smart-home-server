@@ -2,13 +2,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AfterViewInit, Component, OnDestroy, DestroyRef, inject, ChangeDetectorRef, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DailyWeather, HourlyWeather, WeatherData } from '../model/weather.model';
-import { WeatherIconPipe, WeatherLabelPipe } from '../pipes/weather.pipe';
+import { WeatherSymbol } from '../icon/weather-icon';
+import { WeatherLabelPipe } from '../pipes/weather.pipe';
 import { WeatherService } from '../service/weather.service';
 
 @Component({
   selector: 'weather-widget',
   standalone: true,
-  imports: [ CommonModule, WeatherIconPipe, WeatherLabelPipe ],
+  imports: [ CommonModule, WeatherSymbol, WeatherLabelPipe ],
   templateUrl: './weather.widget.html',
   styleUrl: './weather.widget.css',
 })

@@ -2,11 +2,11 @@
   <ng-container *ngIf="data; else loading">
     <!-- Aktuelles Wetter -->
     <div class="current-weather">
-      <div class="current-icon">{{ data.current.weatherCode | weatherIcon:data.current.isDay }}</div>
+      <div class="current-icon"><weather-symbol [code]="data.current.weatherCode" [isDay]="data.current.isDay" /></div>
       <div class="current-info">
         <div class="current-temp">{{ data.current.temperature | number:'1.0-0' }}°C</div>
         <div class="current-label">{{ data.current.weatherCode | weatherLabel }}</div>
-        <div class="current-precip">Gefühlt {{ data.current.apparentTemperature | number:'1.0-0' }}° · 💧{{ data.current.humidity }}%</div>
+        <div class="current-precip">Gefühlt {{ data.current.apparentTemperature | number:'1.0-0' }}° · Luftfeuchte {{ data.current.humidity }}%</div>
       </div>
     </div>
 
@@ -14,7 +14,7 @@
     <div class="hourly-forecast">
       <div *ngFor="let h of visibleHourlyData" class="hour">
         <div class="hour-time">{{ hourTime(h.time) }}</div>
-        <div class="hour-icon">{{ h.weatherCode | weatherIcon }}</div>
+        <div class="hour-icon"><weather-symbol [code]="h.weatherCode" /></div>
         <div class="hour-temp">{{ h.temperature | number:'1.0-0' }}°</div>
         <div class="hour-precip" *ngIf="h.precipitationProbability > 5">{{ h.precipitationProbability }}%</div>
       </div>
@@ -26,10 +26,10 @@
     <div class="daily-forecast">
       <div *ngFor="let d of visibleDailyData; let i = index" class="day">
         <div class="day-date">{{ dayName(d.date, i) }}</div>
-        <div class="day-icon">{{ d.weatherCode | weatherIcon }}</div>
+        <div class="day-icon"><weather-symbol [code]="d.weatherCode" /></div>
         <div class="day-maxTemp">{{ d.tempMax | number:'1.0-0' }}°</div>
         <div class="day-minTemp">{{ d.tempMin | number:'1.0-0' }}°</div>
-        <div class="day-precip" *ngIf="d.precipitationProbabilityMax > 5">💧{{ d.precipitationProbabilityMax }}%</div>
+        <div class="day-precip" *ngIf="d.precipitationProbabilityMax > 5">{{ d.precipitationProbabilityMax }}%</div>
       </div>
     </div>
   </ng-container>

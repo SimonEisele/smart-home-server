@@ -1,5 +1,7 @@
 <div class="login-popover-panel">
   <div class="popover-arrow" [style.left.px]="arrowLeft"></div>
+  <div class="popover-heading"><strong>Willkommen zuhause</strong></div>
+  <p class="popover-description">Melde dich an, um deinen Haushalt zu organisieren.</p>
   <!-- E-Mail Form -->
   <form class="row" id="emailForm" (ngSubmit)="checkEmail()" autocomplete="on">
     <div class="col-md-12 mb-3">
@@ -18,7 +20,7 @@
       <label class="form-label" for="inputPassword">Passwort</label>
       <div class="input-group">
         <input #passwordInput class="form-control" id="inputPassword" type="password" [(ngModel)]="password" name="password" autocomplete="current-password">
-        <div class="input-group-text" (click)="togglePassword()"><img src="{{passwordToggleIcon}}" alt="" width="20" height="20" tabindex="-1"></div>
+        <button type="button" class="input-group-text" (click)="togglePassword()" aria-label="Passwort anzeigen oder verbergen"><img src="{{passwordToggleIcon}}" alt="" width="20" height="20" tabindex="-1"></button>
       </div>
       <div class="text-danger error" *ngIf="passwordError">* Passwort falsch</div>
       <div class="mt-3 form-check">

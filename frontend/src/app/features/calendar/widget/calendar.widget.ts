@@ -1,4 +1,5 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { CalendarEvent } from '../model/calendar.model';
 import { CalendarService } from '../service/calendar.service';
@@ -19,7 +20,7 @@ interface CalendarWidgetDayGroup {
 @Component({
   selector: 'calendar-widget',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './calendar.widget.html',
   styleUrl: './calendar.widget.css',
 })

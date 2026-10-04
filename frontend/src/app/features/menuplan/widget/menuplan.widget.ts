@@ -47,8 +47,11 @@ export class MenuplanWidget implements OnInit, AfterViewInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    const weekStart = this.getWeekStartIso(new Date());
-    const weekEnd = this.getWeekEndIso(new Date());
+    const start = new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const weekStart = localIsoDate(start);
+    const weekEnd = localIsoDate(end);
     this.authService.user$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(user => {
       if (user?.active_household_id) {
         const hh = user.households.find(h => h.id === user.active_household_id);
@@ -57,7 +60,12 @@ export class MenuplanWidget implements OnInit, AfterViewInit, OnDestroy {
       this.cdr.detectChanges();
     });
     this.menuService.getMenus(weekStart, 7).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(menus => {
-      this.menus = menus;
+      this.menus = Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + index);
+        const iso = localIsoDate(date);
+        return menus.find(menu => menu.date === iso) ?? { id: `empty-${iso}`, date: iso };
+      });
       this.updateVisibleData();
       this.cdr.detectChanges();
     });
@@ -82,11 +90,7 @@ export class MenuplanWidget implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void { this.observer?.disconnect(); }
 
   updateVisibleData(): void {
-    if (!this.menus?.length) return;
-    const width = this.container.nativeElement.clientWidth;
-    if (width <= 0) return;
-    const count = Math.max(1, Math.floor((width + this.GAP) / (this.MENU_WIDTH + this.GAP)));
-    this.visibleMenus = this.menus.slice(0, count);
+    this.visibleMenus = this.menus;
   }
 
   // ── Next cook slot ──────────────────────────────────────────────────────

@@ -24,11 +24,14 @@ export class AddWidget {
     this.close.emit();
   }
 
+  @HostListener('document:keydown.escape')
+  onEscape() { this.closePopover(); }
+
   @HostListener('document:click', ['$event'])
   onOutsideClick(event: MouseEvent) {
     const target = event.target as HTMLElement;
     // Close the popover when the click is outside its bounds.
-    if (!target.closest('add-widget-popover') && !target.closest('.add-widget-button')) {
+    if (!target.closest('add-widget-popover') && !target.closest('.add-widget-fab')) {
       this.closePopover();
     }
   }
