@@ -637,6 +637,7 @@ def render_pending_changes():
         )
 
     valid_changes = []
+    has_invalid_changes = False
 
     for index, change in enumerate(
         changes
@@ -646,9 +647,9 @@ def render_pending_changes():
             change
         )
 
-        path = change.get(
-            "path",
-            "unknown",
+        path = (
+            change.get("path", "unknown")
+            if isinstance(change, dict) else "unknown"
         )
 
         with st.expander(
@@ -657,6 +658,7 @@ def render_pending_changes():
         ):
 
             if not valid:
+                has_invalid_changes = True
 
                 st.error(
                     error
@@ -670,6 +672,7 @@ def render_pending_changes():
                 )
 
             except Exception as exc:
+                has_invalid_changes = True
 
                 st.error(
                     f"Diff konnte nicht erzeugt werden: {exc}"
@@ -695,8 +698,11 @@ def render_pending_changes():
                 change
             )
 
-    if not valid_changes:
+    if not valid_changes and not has_invalid_changes:
         return
+
+    if has_invalid_changes:
+        st.error("Der gesamte Vorschlag ist blockiert, bis alle Änderungen gültig sind.")
 
     st.warning(
         "Die Dateien wurden noch nicht verändert. "
@@ -711,6 +717,7 @@ def render_pending_changes():
 
         if st.button(
             "Änderungen anwenden",
+            disabled=has_invalid_changes,
             type="primary",
             use_container_width=True,
         ):
@@ -718,7 +725,7 @@ def render_pending_changes():
             try:
 
                 written_files = apply_changes(
-                    valid_changes
+                    changes
                 )
 
             except Exception as exc:
