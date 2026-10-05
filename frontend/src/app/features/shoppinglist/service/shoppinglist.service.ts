@@ -1,6 +1,7 @@
+import { localIsoDate } from '../../../shared/date-utils';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable, map, of } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ShoppingItem } from '../model/shoppinglist.model';
 
@@ -45,9 +46,36 @@ export class ShoppinglistService {
       .pipe(map((res) => res.count));
   }
 
-  exportMenuplan(meals: string[], weekTag: string, personCounts: Record<string, number> = {}): Observable<number> {
-    return this.http
-      .post<{ count: number }>(`${environment.apiUrl}/shopping-items/export-week/`, { meals, weekTag, personCounts })
-      .pipe(map((res) => res.count));
+  previewMenuplan(payload: MenuExportRequest): Observable<MenuExportPlan> {
+    return this.http.post<MenuExportPlan>(`${environment.apiUrl}/shopping-items/export-week/`, {...payload,dryRun:true});
   }
+  applyMenuplan(payload: MenuExportRequest): Observable<number> {
+    return this.http.post<{count:number}>(`${environment.apiUrl}/shopping-items/export-week/`,payload).pipe(map(res=>res.count));
+  }
+
+  exportMenuplan(meals: string[], weekTag: string, personCounts: Record<string, number> = {}): Observable<number> {
+    if (!meals.length) return of(0);
+    const monday=new Date(meals[0].split(':')[0]+'T12:00:00');
+    monday.setDate(monday.getDate()-((monday.getDay()+6)%7));
+    // Week identifiers and attendance totals are calculated by the server.
+    return this.applyMenuplan({weekStart:localIsoDate(monday),meals,extraServings:{},strict:true,resetExisting:true});
+  }
+}
+
+export interface MenuExportPlan {
+  data: Array<{name:string;quantity:number|null;unit:string;category:string;sources:string[];quantityIncomplete:boolean}>;
+  count:number;
+  meals:Array<{key:string;recipe:string;persons:number|null;leftoverPersons:number;servings:number;servingType:string}>;
+  warnings:string[];
+  weekTag:string;
+  blocked:boolean;
+  previewToken:string;
+}
+export interface MenuExportRequest {
+  weekStart:string;
+  meals:string[];
+  extraServings:Record<string,number>;
+  strict:true;
+  resetExisting:true;
+  previewToken?:string;
 }

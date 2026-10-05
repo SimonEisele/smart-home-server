@@ -1,14 +1,16 @@
-import { finalize } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink, ActivatedRoute } from '@angular/router';
+import { finalize, forkJoin } from 'rxjs';
 import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { localIsoDate } from '../../../shared/date-utils';
-import { Component, HostListener, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, HostListener, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MenuService } from '../service/menuplan.service';
 import { Menu } from '../model/menuplan.model';
 import { RecipesService } from '../../recipes/service/recipes.service';
 import { Recipe } from '../../recipes/model/recipes.model';
-import { ShoppinglistService } from '../../shoppinglist/service/shoppinglist.service';
+import { ShoppinglistService, MenuExportPlan, MenuExportRequest } from '../../shoppinglist/service/shoppinglist.service';
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner';
 export type PickerMode = MealType | 'extra';
@@ -18,12 +20,25 @@ interface DayEntry { date: Date; dateStr: string; isToday: boolean; }
 @Component({
   selector: 'app-menuplan-page',
   standalone: true,
-  imports: [DialogDirective, CommonModule, FormsModule],
+  imports: [DialogDirective, CommonModule, FormsModule, RouterLink],
   templateUrl: './menuplan.page.html',
   styleUrl: './menuplan.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MenuplanPage implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute, {optional:true});
+  private openExportAfterLoad = false;
+  private loadRevision = 0;
+  private previewRevision = 0;
+  loading = false;
+  loadError = '';
+  preview: MenuExportPlan | null = null;
+  previewLoading = false;
+  exportError = '';
+  exportApplied = false;
+  exportStep: 'selection' | 'preview' = 'selection';
+  extraServings: Record<string, number> = {};
   weekStart!: Date;
   days: DayEntry[] = [];
   recipes: Recipe[] = [];
@@ -47,7 +62,7 @@ export class MenuplanPage implements OnInit {
   exportDone = '';
 
   readonly DAY_NAMES = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-  readonly MEAL_LABELS: Record<string, string> = { breakfast: 'Morgen', lunch: 'Mittag', dinner: 'Abend', extra: 'Extra' };
+  readonly MEAL_LABELS: Record<string, string> = { breakfast: 'Frühstück', lunch: 'Mittagessen', dinner: 'Abendessen', extra: 'Extra' };
   readonly MEALS: MealType[] = ['breakfast', 'lunch', 'dinner'];
   readonly RECIPE_CATEGORY_LABELS: Record<string, string> = {
     mahlzeit: 'Mahlzeit', dessert: 'Dessert', backen: 'Backen',
@@ -62,11 +77,10 @@ export class MenuplanPage implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.openExportAfterLoad = this.route?.snapshot?.queryParamMap?.get('export')==='true';
     this.initWeek(new Date());
     this.exportWeekStart = this.toIsoDate(this.weekStart);
-    this.recipesService.getRecipes().subscribe(r => { this.recipes = r; this.cdr.detectChanges(); });
     this.loadWeek();
-    this.loadLeftoverRange();
   }
 
   // ── Week navigation ──────────────────────────────────────────────────
@@ -84,8 +98,18 @@ export class MenuplanPage implements OnInit {
     });
   }
 
-  prevWeek(): void { const d = new Date(this.weekStart); d.setDate(d.getDate() - 7); this.initWeek(d); this.loadWeek(); }
-  nextWeek(): void { const d = new Date(this.weekStart); d.setDate(d.getDate() + 7); this.initWeek(d); this.loadWeek(); }
+  prevWeek(): void { if (this.menuSaving) return; const d = new Date(this.weekStart); d.setDate(d.getDate() - 7); this.initWeek(d); this.loadWeek(); }
+  nextWeek(): void { if (this.menuSaving) return; const d = new Date(this.weekStart); d.setDate(d.getDate() + 7); this.initWeek(d); this.loadWeek(); }
+
+  goToday(): void { if (this.menuSaving) return; this.initWeek(new Date()); this.loadWeek(); }
+  get plannedCount(): number { return this.days.reduce((n,d)=>n+this.MEALS.filter(m=>this.getMealRecipe(d.dateStr,m)||this.getMealLeftoversRef(d.dateStr,m)).length,0); }
+  get extrasCount(): number { return this.days.reduce((n,d)=>n+this.getExtras(d.dateStr).length,0); }
+  get exportExtras(): Array<{key:string;date:string;recipe:Recipe}> {
+    return this.exportMenus.filter(m=>m.date<=this.exportDays[6]?.dateStr).flatMap(m=>(m.extraRecipes??[]).map(recipe=>({key:`${m.date}:extra:${recipe.id}`,date:m.date,recipe})));
+  }
+  exportDayHasRecipes(date:string): boolean {return this.MEALS.some(m=>this.exportMealRecipe(date,m))||this.exportExtras.some(e=>e.date===date);}
+  get selectedKeys(): string[] { return [...this.exportSelected].sort(); }
+  get exportPayload(): MenuExportRequest { return {weekStart:this.exportWeekStart,meals:this.selectedKeys,extraServings:{...this.extraServings},strict:true,resetExisting:true}; }
 
   get weekRange(): string {
     if (!this.days.length) return '';
@@ -115,7 +139,7 @@ export class MenuplanPage implements OnInit {
   getMealLeftoverPersons(dateStr: string, meal: MealType): number {
     const ref = `${dateStr}:${meal}`;
     let total = 0;
-    for (const m of Object.values(this.menus)) {
+    for (const m of Object.values({...this.leftoverMenus,...this.menus})) {
       for (const cm of this.MEALS) {
         const cmRef = cm === 'breakfast' ? m.breakfastLeftoversRef
                     : cm === 'lunch'     ? m.lunchLeftoversRef
@@ -164,7 +188,7 @@ export class MenuplanPage implements OnInit {
 
   // ── Picker ───────────────────────────────────────────────────────────
   openPicker(dateStr: string, meal: PickerMode): void {
-    if (this.menuSaving) return;
+    if (this.menuSaving || this.loading || this.loadError) return;
     this.menuError = "";
     this.activePicker = { dateStr, meal };
     this.pickerTab = 'recipe';
@@ -216,7 +240,9 @@ export class MenuplanPage implements OnInit {
       const date = new Date(`${dateStr}T12:00:00`); // noon avoids timezone day-shift
       for (const meal of this.MEALS) {
         const key = `${dateStr}:${meal}`;
-        if (dateStr === cd && meal === cm) continue;
+        const order = this.MEALS.indexOf(meal), targetOrder = this.MEALS.indexOf(cm as MealType);
+        const age = (new Date(cd+'T12:00:00').getTime()-date.getTime())/86400000;
+        if (age<0 || age>7 || (dateStr===cd && order>=targetOrder)) continue;
         if (seen.has(key)) continue;
         seen.add(key);
         let recipe: Recipe | null = null;
@@ -284,7 +310,7 @@ export class MenuplanPage implements OnInit {
   // ── Export modal ─────────────────────────────────────────────────────
   get exportDays(): Array<{ date: Date; dateStr: string }> {
     if (!this.exportWeekStart) return [];
-    const d = new Date(this.exportWeekStart);
+    const d = new Date(this.exportWeekStart+'T12:00:00');
     return Array.from({ length: 7 }, (_, i) => {
       const di = new Date(d); di.setDate(d.getDate() + i);
       return { date: di, dateStr: this.toIsoDate(di) };
@@ -299,47 +325,51 @@ export class MenuplanPage implements OnInit {
   }
 
   openExportModal(): void {
+    if (this.loading || this.loadError || this.menuSaving) return;
     this.exportWeekStart = this.toIsoDate(this.weekStart);
-    this.exportDone = '';
-    this.showExportModal = true;
-    this.loadExportMenus();
-    this.cdr.detectChanges();
+    this.exportDone=''; this.exportError=''; this.exportApplied=false; this.preview=null; this.exportStep='selection';
+    this.showExportModal=true; this.loadExportMenus();
   }
-
-  closeExportModal(): void {
-    this.showExportModal = false;
-    this.cdr.detectChanges();
-  }
-
-  onExportBackdropClick(e: MouseEvent): void {
-    if (e.target === e.currentTarget) this.closeExportModal();
-  }
-
-  prevExportWeek(): void {
-    const d = new Date(this.exportWeekStart); d.setDate(d.getDate() - 7);
-    this.exportWeekStart = this.toIsoDate(d); this.loadExportMenus();
-  }
-
-  nextExportWeek(): void {
-    const d = new Date(this.exportWeekStart); d.setDate(d.getDate() + 7);
-    this.exportWeekStart = this.toIsoDate(d); this.loadExportMenus();
-  }
-
+  closeExportModal(): void { if (this.exporting) return; this.showExportModal=false; this.previewRevision++; }
+  onExportBackdropClick(e: MouseEvent): void { if (e.target===e.currentTarget) this.closeExportModal(); }
   loadExportMenus(): void {
-    this.exportLoading = true;
-    this.exportSelected = new Set();
-    this.menuService.getMenus(this.exportWeekStart, 7).subscribe(menus => {
-      this.exportMenus = menus;
-      const sel = new Set<string>();
-      for (const m of menus) {
-        if (m.breakfastRecipe) sel.add(`${m.date}:breakfast`);
-        if (m.lunchRecipe)     sel.add(`${m.date}:lunch`);
-        if (m.dinnerRecipe)    sel.add(`${m.date}:dinner`);
+    const revision=++this.previewRevision;
+    this.exportLoading=true; this.exportError=''; this.exportSelected=new Set();
+    // Fetch the following week too, so leftover portions across Sunday count.
+    this.menuService.getMenus(this.exportWeekStart,14).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:menus=>{
+      if (revision!==this.previewRevision) return;
+      this.exportMenus=menus;
+      const last=this.exportDays[6].dateStr;
+      for (const m of menus.filter(m=>m.date<=last)) {
+        for (const meal of this.MEALS) if (this.exportMealRecipe(m.date,meal) && this.exportMealEffectivePersons(m.date,meal)>0) this.exportSelected.add(`${m.date}:${meal}`);
+        for (const recipe of m.extraRecipes??[]) {
+          const key=`${m.date}:extra:${recipe.id}`; this.exportSelected.add(key); this.extraServings[key]=recipe.baseServings??4;
+        }
       }
-      this.exportSelected = sel;
-      this.exportLoading = false;
-      this.cdr.detectChanges();
-    });
+      this.exportLoading=false;this.refreshPreview();this.cdr.markForCheck();
+    },error:()=>{if(revision!==this.previewRevision)return;this.exportLoading=false;this.exportError='Der Menüplan konnte nicht geladen werden. Bitte erneut versuchen.';this.cdr.markForCheck();}});
+  }
+  refreshPreview(): void {
+    const revision=++this.previewRevision;
+    this.preview=null;this.exportDone='';this.exportError='';this.exportApplied=false;
+    if (!this.exportSelected.size) {this.previewLoading=false;return;}
+    this.previewLoading=true;
+    this.shoppingService.previewMenuplan(this.exportPayload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:plan=>{
+      if(revision!==this.previewRevision)return;this.preview=plan;this.previewLoading=false;this.cdr.markForCheck();
+    },error:()=>{if(revision!==this.previewRevision)return;this.previewLoading=false;this.exportError='Die Zutatenvorschau konnte nicht geladen werden. Bitte Auswahl und Mengen prüfen und erneut versuchen.';this.cdr.markForCheck();}});
+  }
+  toggleExportKey(key:string): void {
+    if(this.exporting)return;const selected=new Set(this.exportSelected);
+    if(selected.has(key))selected.delete(key);else selected.add(key);this.exportSelected=selected;this.refreshPreview();
+  }
+  setExtraServings(key:string,value:number): void {if(this.exporting)return;this.extraServings={...this.extraServings,[key]:value};this.refreshPreview();}
+  selectAllExport(selected:boolean): void {
+    if(this.exporting)return;this.exportSelected=new Set();
+    if(selected)for(const d of this.exportDays) {
+      for(const meal of this.MEALS)if(this.exportMealRecipe(d.dateStr,meal)&&this.exportMealEffectivePersons(d.dateStr,meal)>0)this.exportSelected.add(`${d.dateStr}:${meal}`);
+      for(const extra of this.exportExtras.filter(e=>e.date===d.dateStr))this.exportSelected.add(extra.key);
+    }
+    this.refreshPreview();
   }
 
   exportMealRecipe(dateStr: string, meal: MealType): Recipe | null {
@@ -386,63 +416,30 @@ export class MenuplanPage implements OnInit {
     return this.exportSelected.has(`${dateStr}:${meal}`);
   }
 
-  toggleExportMeal(dateStr: string, meal: MealType): void {
-    const key = `${dateStr}:${meal}`;
-    const s = new Set(this.exportSelected);
-    if (s.has(key)) s.delete(key); else s.add(key);
-    this.exportSelected = s;
-  }
-
+  toggleExportMeal(dateStr:string,meal:MealType): void {this.toggleExportKey(`${dateStr}:${meal}`);}
   doExport(): void {
-    if (!this.exportSelected.size || this.exporting) return;
-    const d = new Date(this.exportWeekStart);
-    const jan4 = new Date(d.getFullYear(), 0, 4);
-    const startOfYear = jan4.getTime() - ((jan4.getDay() + 6) % 7) * 86400000;
-    const week = Math.floor((d.getTime() - startOfYear) / (7 * 86400000)) + 1;
-    const weekTag = `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
-    // Only export meals with effective persons > 0; use effective count for scaling
-    const meals: string[] = [];
-    const personCounts: Record<string, number> = {};
-    for (const key of this.exportSelected) {
-      const [dateStr, meal] = key.split(':');
-      const effective = this.exportMealEffectivePersons(dateStr, meal as MealType);
-      if (effective <= 0) continue;
-      meals.push(key);
-      personCounts[key] = effective;
-    }
-    if (!meals.length) { this.exportDone = 'Für die ausgewählten Mahlzeiten sind keine Personen eingetragen. Bitte die Anwesenheit im Kalender prüfen.'; return; }
-    this.exporting = true;
-    this.shoppingService.exportMenuplan(meals, weekTag, personCounts).pipe(finalize(() => { this.exporting = false; this.cdr.markForCheck(); })).subscribe({ next: count => {
-      this.exportDone = `${count} Einträge hinzugefügt.`;
-      this.cdr.detectChanges();
-    }, error: () => { this.exportDone = 'Export fehlgeschlagen. Bitte erneut versuchen.'; this.cdr.markForCheck(); } });
+    if(this.exporting||this.previewLoading||!this.preview||this.preview.blocked||this.exportApplied)return;
+    const payload={...this.exportPayload,previewToken:this.preview.previewToken};
+    this.exporting=true;this.exportError='';
+    this.shoppingService.applyMenuplan(payload).pipe(takeUntilDestroyed(this.destroyRef),finalize(()=>{this.exporting=false;this.cdr.markForCheck();})).subscribe({next:count=>{
+      this.exportApplied=true;this.exportDone=`${count} Zutatenpositionen für diese Woche aktualisiert.`;
+    },error:()=>{this.exportError='Der Export wurde nicht abgeschlossen. Bitte die Vorschau neu laden und erneut versuchen.';this.preview=null;}});
   }
 
-  // ── Internal ─────────────────────────────────────────────────────────
-  private loadWeek(): void {
-    const weekStart = this.toIsoDate(this.weekStart);
-    this.menuService.getMenus(weekStart, 7).subscribe(list => {
-      this.menus = list.reduce((acc, m) => ({ ...acc, [m.date]: m }), {} as Record<string, Menu>);
-      this.cdr.detectChanges();
-    });
-  }
-
-  private loadLeftoverRange(): void {
-    const today = new Date();
-    const from = new Date(today);
-    from.setDate(today.getDate() - 6);
-    const fromStr = this.toIsoDate(from);
-    const todayStr = this.toIsoDate(today);
-    this.leftoverDays = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(from);
-      d.setDate(from.getDate() + i);
-      const dateStr = this.toIsoDate(d);
-      return { date: d, dateStr, isToday: dateStr === todayStr };
-    });
-    this.menuService.getMenus(fromStr, 7).subscribe(list => {
-      this.leftoverMenus = list.reduce((acc, m) => ({ ...acc, [m.date]: m }), {} as Record<string, Menu>);
-      this.cdr.detectChanges();
-    });
+  // Week requests are ignored after navigation to a different week.
+  loadWeek(): void {
+    const revision=++this.loadRevision;
+    this.loading=true;this.loadError='';this.menuError='';
+    const from=new Date(this.weekStart);from.setDate(from.getDate()-7);
+    forkJoin({menus:this.menuService.getMenus(this.toIsoDate(from),21),recipes:this.recipesService.getRecipes()})
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:result=>{
+        if(revision!==this.loadRevision)return;
+        this.leftoverMenus=Object.fromEntries(result.menus.map(m=>[m.date,m]));
+        this.menus=Object.fromEntries(result.menus.filter(m=>this.days.some(d=>d.dateStr===m.date)).map(m=>[m.date,m]));
+        this.recipes=result.recipes;this.loading=false;
+        if(this.openExportAfterLoad){this.openExportAfterLoad=false;this.openExportModal();}
+        this.cdr.markForCheck();
+      },error:()=>{if(revision!==this.loadRevision)return;this.loading=false;this.loadError='Der Menüplan konnte nicht geladen werden. Bitte erneut versuchen.';this.cdr.markForCheck();}});
   }
 
   private upsertMenu(dateStr: string, patch: Partial<Menu>, onSaved?: () => void): void {
@@ -451,8 +448,8 @@ export class MenuplanPage implements OnInit {
     const existing = this.menus[dateStr];
     const request = existing?.id ? this.menuService.updateMenu(existing.id, patch) : this.menuService.createMenu({ date:dateStr, ...patch });
     request.pipe(finalize(() => { this.menuSaving = false; this.cdr.markForCheck(); })).subscribe({
-      next: saved => { this.menus = { ...this.menus, [dateStr]: saved }; this.menuSaving = false; onSaved?.(); this.cdr.markForCheck(); },
-      error: () => { this.menuError = 'Die Planung konnte nicht gespeichert werden. Bitte erneut versuchen.'; this.cdr.markForCheck(); },
+      next: saved => { this.menus = { ...this.menus, [dateStr]: saved }; this.leftoverMenus = {...this.leftoverMenus,[dateStr]:saved}; this.menuSaving = false; onSaved?.(); this.cdr.markForCheck(); },
+      error: error => { const detail=error.error?.detail; this.menuError = typeof detail==='string' ? detail : Array.isArray(detail) ? detail.join(' ') : 'Die Planung konnte nicht gespeichert werden. Bitte erneut versuchen.'; this.cdr.markForCheck(); },
     });
   }
 

@@ -273,7 +273,10 @@ class MenuListCreateView(generics.ListCreateAPIView):
         return queryset.order_by('date')
 
     def perform_create(self, serializer):
-        serializer.save(household=self.request.user.active_household)
+        menu = serializer.save(household=self.request.user.active_household)
+        if not any(key in serializer.validated_data for key in ('breakfast_persons','lunch_persons','dinner_persons')):
+            recalculate_menu_persons_for_range(self.request.user.active_household, menu.date, menu.date)
+            menu.refresh_from_db()
 
     def list(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_queryset(), many=True)
@@ -507,154 +510,23 @@ class AddRecipeToShoppingListView(APIView):
 class ExportWeekToShoppingListView(APIView):
     permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
 
-    @staticmethod
-    def _get_category(name, ing_catalog, cat_display):
-        entry = ing_catalog.get(name.lower())
-        return cat_display.get(entry.category, entry.category) if entry else 'Sonstiges'
-
     def post(self, request):
-        meals_raw = request.data.get('meals')        # ["YYYY-MM-DD:lunch", ...]
-        week_tag = request.data.get('weekTag', '')
-        # person_counts: {"YYYY-MM-DD:lunch": 3, ...}  — sent by frontend from attendance data
-        person_counts: dict = request.data.get('personCounts') or {}
-
-        # Backward-compat: old format uses weekStart + days
-        if meals_raw is None:
-            week_start_raw = request.data.get('weekStart')
-            days = request.data.get('days', 7)
-            week_start = parse_date(week_start_raw) if week_start_raw else None
-            if not week_start:
-                return Response({'error': 'weekStart or meals is required'}, status=400)
-            try:
-                days = max(1, min(int(days), 31))
-            except (TypeError, ValueError):
-                days = 7
-            week_end = week_start + timedelta(days=days - 1)
-            menus_qs = Menu.objects.filter(
-                household=request.user.active_household,
-                date__gte=week_start, date__lte=week_end,
-            ).select_related('breakfast_recipe', 'lunch_recipe', 'dinner_recipe')
-            meals_raw = []
-            for m in menus_qs:
-                if m.breakfast_recipe: meals_raw.append(f'{m.date}:breakfast')
-                if m.lunch_recipe:     meals_raw.append(f'{m.date}:lunch')
-                if m.dinner_recipe:    meals_raw.append(f'{m.date}:dinner')
-            if not week_tag:
-                iso = week_start.isocalendar()
-                week_tag = f'{iso[0]}-W{iso[1]:02d}'
-
-        # Parse meal references
-        if not isinstance(meals_raw, list) or not isinstance(person_counts, dict):
-            return Response({"error": "Invalid meals or personCounts"}, status=400)
-        meal_refs = []
-        for ref in meals_raw:
-            if ':' not in str(ref):
-                continue
-            date_str, meal = str(ref).split(':', 1)
-            d = parse_date(date_str)
-            if d and meal in ('breakfast', 'lunch', 'dinner'):
-                if (d, meal) not in meal_refs:
-                    meal_refs.append((d, meal))
-
-        if not meal_refs:
-            return Response({'data': [], 'count': 0})
-
-        dates = list({d for d, _ in meal_refs})
-        menus = {m.date: m for m in Menu.objects.filter(
-            household=request.user.active_household, date__in=dates,
-        ).select_related('breakfast_recipe', 'lunch_recipe', 'dinner_recipe')}
-
-        if not week_tag:
-            iso = sorted(dates)[0].isocalendar()
-            week_tag = f'{iso[0]}-W{iso[1]:02d}'
-
-        cat_display = dict(Ingredient.CATEGORY_CHOICES)
-        ing_catalog = {i.name.lower(): i for i in Ingredient.objects.all()}
-
-        aggregate = {}
-        for d, meal in meal_refs:
-            menu = menus.get(d)
-            if not menu:
-                continue
-            ds = str(d)
-            ref_key = f'{ds}:{meal}'
-
-            # Persons: prefer frontend-provided value, then stored menu value
-            if ref_key in person_counts:
-                try:
-                    persons = int(person_counts[ref_key])
-                except (TypeError, ValueError):
-                    return Response({'error': 'Invalid person count'}, status=400)
-                if persons < 0:
-                    return Response({'error': 'Person count cannot be negative'}, status=400)
-                if persons == 0:
-                    continue
-            elif meal == 'breakfast':
-                persons = menu.breakfast_persons
-            elif meal == 'lunch':
-                persons = menu.lunch_persons
-            else:
-                persons = menu.dinner_persons
-
-            if meal == 'breakfast':
-                recipe = menu.breakfast_recipe
-            elif meal == 'lunch':
-                recipe = menu.lunch_recipe
-            else:
-                recipe = menu.dinner_recipe
-
-            if not recipe:
-                continue
-            # 0 persons = no attendance recorded → use default of 2
-            if persons <= 0:
-                persons = 2
-
-            base = recipe.base_servings or 2
-            scale = persons / base
-
-            for ing in (recipe.ingredients or []):
-                name = (ing.get('name') or '').strip()
-                if not name:
-                    continue
-                qty_raw = ing.get('quantityPerPerson') or ing.get('quantity_per_person')
-                try:
-                    qty = float(qty_raw) * scale if qty_raw is not None else 0.0
-                except (TypeError, ValueError):
-                    qty = 0.0
-                unit = (ing.get('unit') or '').strip()
-                key = f'{name.lower()}::{unit.lower()}'
-                if key in aggregate:
-                    aggregate[key]['quantity'] += qty
-                    if recipe.name not in aggregate[key]['sources']:
-                        aggregate[key]['sources'].append(recipe.name)
-                else:
-                    aggregate[key] = {
-                        'name': name, 'unit': unit, 'quantity': qty,
-                        'category': self._get_category(name, ing_catalog, cat_display),
-                        'sources': [recipe.name],
-                    }
-
-        with transaction.atomic():
-            if request.data.get('resetExisting') is True:
-                ShoppingItem.objects.filter(
-                    household=request.user.active_household,
-                    list_type='menuplan', week_tag=week_tag,
-                ).delete()
-            created_items = [
-                ShoppingItem.objects.create(
-                    household=request.user.active_household,
-                    name=val['name'],
-                    quantity=round(val['quantity'], 2) if val['quantity'] > 0 else None,
-                    unit=val['unit'],
-                    category=val['category'],
-                    suggestion=' | '.join(val['sources']),
-                    list_type='menuplan',
-                    week_tag=week_tag,
-                )
-                for val in aggregate.values()
-            ]
-
-        return Response({'data': ShoppingItemSerializer(created_items, many=True).data, 'count': len(created_items)})
+        from .menu_export import build_export, commit_export, safe_date
+        payload = request.data
+        # New weekly preview and export use current attendance, not browser-supplied totals.
+        if payload.get('strict') and payload.get('weekStart'):
+            start = safe_date(payload['weekStart'])
+            if start:
+                recalculate_menu_persons_for_range(request.user.active_household, start, start+timedelta(days=13))
+        plan = build_export(request.user.active_household, payload)
+        if payload.get('dryRun') is True:
+            return Response(plan)
+        if payload.get('previewToken') and payload['previewToken'] != plan['previewToken']:
+            return Response({'detail':'Der Menüplan oder die Anwesenheiten haben sich geändert. Bitte die Vorschau neu laden.'}, status=409)
+        if payload.get('strict') and plan['blocked']:
+            return Response({'detail':'Bitte die Hinweise in der Vorschau prüfen.', 'warnings':plan['warnings']}, status=400)
+        saved = commit_export(request.user.active_household, plan, payload.get('resetExisting') is True)
+        return Response({'data':ShoppingItemSerializer(saved,many=True).data,'count':len(saved),'weekTag':plan['weekTag'],'warnings':plan['warnings']})
 
 
 class HouseholdMemberListCreateView(generics.ListCreateAPIView):
