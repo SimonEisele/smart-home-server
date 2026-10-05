@@ -69,6 +69,9 @@ export class Calendar implements OnInit, OnDestroy {
   dragEvent:      CalendarEvent | null = null;
   dragOffsetMin   = 0;
   dropPreview:    DropPreview | null   = null;
+  sidebarDragOver = false;
+  planningPending = new Set<string>();
+  planningError = '';
   private justDragged = false;
 
   // Touch drag state (public members used by template)
@@ -418,7 +421,7 @@ export class Calendar implements OnInit, OnDestroy {
 
   evClass(ev: CalendarEvent): string {
     const type = ev.calendarType ?? 'household';
-    const todo = ev.todoRefId ? ' ev-todo' : '';
+    const todo = ev.todoRefId ? ' ev-todo' + (this.linkedTodo(ev)?.done ? ' ev-task-done' : '') : '';
     return `cal-ev ev-${type}${todo}`;
   }
 
@@ -556,7 +559,7 @@ export class Calendar implements OnInit, OnDestroy {
     const hit = document.elementFromPoint(touch.clientX, touch.clientY) as Element | null;
 
     // Check sidebar hover (for "drop to remove event" affordance)
-    const newOverSidebar = !!hit?.closest('.todo-sidebar');
+    const newOverSidebar = !!this.touchDragEvent?.todoRefId && !!hit?.closest('.todo-sidebar');
     if (this.touchOverSidebar !== newOverSidebar) {
       this.touchOverSidebar = newOverSidebar;
       if (newOverSidebar) this.dropPreview = null;
@@ -584,11 +587,7 @@ export class Calendar implements OnInit, OnDestroy {
       const durMin = Math.round((new Date(newEnd).getTime() - new Date(ev.start).getTime()) / 60000);
       this.calendarService.updateEvent(ev.id, { end: newEnd }).subscribe(updated => {
         this.events = this.events.map(e => e.id === updated.id ? updated : e);
-        if (ev.todoRefId) {
-          this.todosService.updateTodo(ev.todoRefId, { durationMinutes: durMin }).subscribe(() => {
-            this.todos = this.todos.map(t => t.id === ev.todoRefId ? { ...t, durationMinutes: durMin } : t);
-          });
-        }
+
         this.cdr.detectChanges();
       });
       this.resetTouchState();
@@ -608,10 +607,7 @@ export class Calendar implements OnInit, OnDestroy {
     // ── Drop on sidebar → delete event, keep todo ────────────────────────────
     if (this.touchOverSidebar && this.touchDragEvent) {
       const ev = this.touchDragEvent;
-      this.calendarService.deleteEvent(ev.id).subscribe(() => {
-        this.events = this.events.filter(e => e.id !== ev.id);
-        this.cdr.detectChanges();
-      });
+      this.unscheduleEvent(ev);
       this.resetTouchState();
       return;
     }
@@ -690,6 +686,38 @@ export class Calendar implements OnInit, OnDestroy {
   }
 
   // â”€â”€ Drag & drop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  linkedTodo(ev: CalendarEvent | null): Todo | undefined { return this.todos.find(t => t.id === ev?.todoRefId); }
+
+  onSidebarDragover(e: DragEvent): void {
+    if (!this.dragEvent?.todoRefId || this.resizingEvent) return;
+    e.preventDefault(); e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    this.sidebarDragOver = true; this.dropPreview = null; this.cdr.markForCheck();
+  }
+  onSidebarDragleave(e: DragEvent): void {
+    if ((e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) return;
+    this.sidebarDragOver = false; this.cdr.markForCheck();
+  }
+  onSidebarDrop(e: DragEvent): void {
+    e.preventDefault(); e.stopPropagation();
+    const ev = this.dragEvent;
+    this.onDocDragend();
+    if (ev?.todoRefId) this.unscheduleEvent(ev);
+  }
+  unscheduleEvent(ev: CalendarEvent): void {
+    if (!ev.todoRefId || this.planningPending.has(ev.id) || (this.savingEvent && this.editingEvent?.id === ev.id)) return;
+    this.planningPending.add(ev.id); this.planningError = ''; this.eventError = '';
+    this.calendarService.deleteEvent(ev.id)
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.planningPending.delete(ev.id); this.cdr.markForCheck(); }))
+      .subscribe({ next: () => {
+        this.events = this.events.filter(e => e.id !== ev.id);
+        if (this.editingEvent?.id === ev.id) this.closeModal();
+      }, error: () => {
+        this.planningError = 'Die Planung konnte nicht entfernt werden. Aufgabe und Termin bleiben erhalten.';
+        this.eventError = this.planningError;
+      } });
+  }
+
   onTodoDragstart(e: DragEvent, todo: Todo): void {
     this.dragTodo = todo; this.dragEvent = null;
     e.dataTransfer!.effectAllowed = 'copy';
@@ -749,12 +777,7 @@ export class Calendar implements OnInit, OnDestroy {
       const durMin = Math.round((new Date(newEnd).getTime() - new Date(ev.start).getTime()) / 60000);
       this.calendarService.updateEvent(ev.id, { end: newEnd }).subscribe(updated => {
         this.events = this.events.map(e => e.id === updated.id ? updated : e);
-        if (ev.todoRefId) {
-          this.todosService.updateTodo(ev.todoRefId, { durationMinutes: durMin }).subscribe(() => {
-            this.todos = this.todos.map(t => t.id === ev.todoRefId ? { ...t, durationMinutes: durMin } : t);
-            this.cdr.detectChanges();
-          });
-        }
+
         this.cdr.detectChanges();
       });
       this.resizingEvent = null; this.resizePreview = null;
@@ -784,17 +807,19 @@ export class Calendar implements OnInit, OnDestroy {
   }
 
   @HostListener('document:dragend')
-  onDocDragend(): void { this.dragTodo = null; this.dragEvent = null; this.dropPreview = null; this.resizingEvent = null; this.resizePreview = null; this.cdr.detectChanges(); }
+  onDocDragend(): void { this.sidebarDragOver = false; this.dragTodo = null; this.dragEvent = null; this.dropPreview = null; this.resizingEvent = null; this.resizePreview = null; this.cdr.detectChanges(); }
 
   private doCreateFromTodo(todo: Todo, dateStr: string, h: number, m: number, dur: number): void {
     const start = new Date(`${dateStr}T${pad(h)}:${pad(m)}:00`);
     const end   = new Date(start.getTime() + dur * 60000);
+    if (this.planningPending.has(todo.id)) return;
+    this.planningPending.add(todo.id); this.planningError = '';
     this.calendarService.createEvent({
       title: todo.title, description: todo.description,
       start: start.toISOString(), end: end.toISOString(),
-      calendarType: todo.globalTodo ? 'household' : 'private',
-      todoRefId: todo.id,
-    }).subscribe(ev => { this.events = [...this.events, ev]; this.cdr.detectChanges(); });
+      calendarType: todo.globalTodo ? 'household' : 'private', todoRefId: todo.id,
+    }).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.planningPending.delete(todo.id); this.cdr.markForCheck(); }))
+      .subscribe({ next: ev => { this.events = [...this.events, ev]; }, error: () => { this.planningError = 'Die Aufgabe konnte nicht eingeplant werden. Bitte erneut versuchen.'; } });
   }
 
   private doMoveEvent(ev: CalendarEvent, dateStr: string, h: number, m: number): void {
@@ -881,7 +906,7 @@ export class Calendar implements OnInit, OnDestroy {
   closeModal(): void { if (this.savingEvent) return; this.eventError = ""; this.showModal = false; this.editingEvent = null; }
 
   saveEvent(): void {
-    if (this.savingEvent) return;
+    if (this.savingEvent || (this.editingEvent && this.planningPending.has(this.editingEvent.id))) return;
     this.eventError = '';
     if (!this.modalForm.title.trim() || !this.modalForm.date) { this.eventError = 'Titel und Datum sind erforderlich.'; return; }
     if (!this.modalForm.allDay && (!this.modalForm.startTime || !this.modalForm.endTime || this.modalForm.endTime <= this.modalForm.startTime)) {

@@ -18,3 +18,11 @@ The calendar now separates “Termine & Aufgaben” from “Anwesenheiten & Mahl
 Requests for the same day are serialized by disabling its controls while saving. A failed save retains the previous attendance, a failed guest save retains the name, and a failed deletion retains the guest. Attendance controls stay disabled until the weekly data is loaded. Delayed responses from a previous week do not replace the displayed week's data. Name disambiguation counts distinct users instead of repeated records across days.
 
 Eight additional workflow tests cover attendance and guests. Browser checks exercise meal toggles, whole-day selection and guest add/delete failure recovery at 1280px and 390px, in addition to the existing page and dialog checks. Backend contracts and stored data are unchanged.
+
+## Linked task planning follow-up
+
+Dragging a linked task block back into the left “Noch nicht eingeplant” sidebar removes that calendar block after successful deletion. The task, its completion state, estimated duration and other planned blocks are preserved. The task returns to the sidebar when its final block in the displayed week is removed. Ordinary appointments cannot be deleted through this drop target. Touch uses the same removal method. The event dialog provides “Planung entfernen” for mobile and non-drag interaction.
+
+Task-linked events inherit title, description and visibility from the accessible task. Task edits update linked blocks atomically, retaining split labels such as “(1/2)”. The calendar dialog makes task-owned fields read-only and links to task management. Completed linked tasks are visually marked. Resizing a block only changes that block's duration, rather than overwriting the task's total estimate.
+
+Validation: 65 frontend tests and 22 Django tests passed; production build succeeds with existing size warnings. Browser fixture checks include desktop drag into the calendar and back, removal failure/retry, ordinary appointment safety and mobile dialog removal. No database migration is required.
