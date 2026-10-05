@@ -32,6 +32,7 @@ const HOUR_PX    = 64; // px per hour
 })
 export class Calendar implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
+  calendarView: 'schedule' | 'attendance' = 'schedule';
   weekStart!: Date;
   weekDays: DayEntry[] = [];
 
@@ -50,6 +51,13 @@ export class Calendar implements OnInit, OnDestroy {
   // External guest add form
   addingGuestFor: { dateStr: string; meal: 'breakfast' | 'lunch' | 'dinner' } | null = null;
   newGuestName = '';
+  attendanceLoading = false;
+  attendanceReady = false;
+  attendanceError = '';
+  attendancePending = new Set<string>();
+  guestSaving = false;
+  guestError = '';
+  guestDeleting = new Set<string>();
 
   // Filters
   showHousehold = true;
@@ -190,8 +198,7 @@ export class Calendar implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     });
     this.calendarService.getAvailabilities(start, end).subscribe(a => { this.availabilities = a; this.cdr.detectChanges(); });
-    this.calendarService.getMealAttendance(start, end).subscribe(a => { this.mealAttendances = a; this.cdr.detectChanges(); });
-    this.calendarService.getExternalGuests(start, end).subscribe(g => { this.externalGuests = g; this.cdr.detectChanges(); });
+    this.loadAttendance();
   }
 
   private rebuildTodoOcc(): void {
@@ -276,7 +283,7 @@ export class Calendar implements OnInit, OnDestroy {
   }
 
   attendanceDisplayName(a: UserMealAttendance): string {
-    const sameFirst = this.mealAttendances.filter(x => x.userFirstName === a.userFirstName).length > 1;
+    const sameFirst = new Set(this.mealAttendances.filter(x => x.userFirstName === a.userFirstName).map(x => x.userId)).size > 1;
     return sameFirst ? `${a.userFirstName} ${a.userLastName}`.trim() : a.userFirstName;
   }
 
@@ -288,18 +295,52 @@ export class Calendar implements OnInit, OnDestroy {
     return rec.dinnerPresent;
   }
 
+  loadAttendance(): void {
+    const start = this.weekDays[0]?.dateStr, end = this.weekDays[6]?.dateStr;
+    if (!start || !end) return;
+    this.attendanceLoading = true; this.attendanceReady = false; this.attendanceError = '';
+    forkJoin({ attendance: this.calendarService.getMealAttendance(start, end), guests: this.calendarService.getExternalGuests(start, end) })
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: result => {
+          if (this.weekDays[0]?.dateStr !== start) return;
+          this.mealAttendances = result.attendance; this.externalGuests = result.guests;
+          this.attendanceLoading = false; this.attendanceReady = true; this.cdr.markForCheck();
+        },
+        error: () => {
+          if (this.weekDays[0]?.dateStr !== start) return;
+          this.attendanceLoading = false;
+          this.attendanceError = 'Die Anwesenheiten konnten nicht geladen werden. Bitte erneut versuchen.';
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  mealLabel(meal: string): string { return this.MEALS.find(m => m.key === meal)?.label ?? meal; }
+  allMealsActive(date: string): boolean { return this.MEALS.every(m => this.mealIsActive(date, m.key)); }
+  toggleWholeDay(date: string): void {
+    const value = !this.allMealsActive(date);
+    this.saveAttendance(date, value, value, value);
+  }
   toggleMealAttendance(dateStr: string, meal: 'breakfast' | 'lunch' | 'dinner'): void {
     const existing = this.myAttendanceForDay(dateStr);
-    // Opt-in model: absent by default. Clicking a meal toggles only that meal; others keep their value (default false).
-    const breakfastPresent = meal === 'breakfast' ? !(existing?.breakfastPresent ?? false) : (existing?.breakfastPresent ?? false);
-    const lunchPresent = meal === 'lunch' ? !(existing?.lunchPresent ?? false) : (existing?.lunchPresent ?? false);
-    const dinnerPresent = meal === 'dinner' ? !(existing?.dinnerPresent ?? false) : (existing?.dinnerPresent ?? false);
-    this.calendarService.setMealAttendance(dateStr, breakfastPresent, lunchPresent, dinnerPresent).subscribe(updated => {
-      const idx = this.mealAttendances.findIndex(a => a.date === dateStr && a.userId === this.currentUserId);
-      if (idx >= 0) { this.mealAttendances = [...this.mealAttendances.slice(0, idx), updated, ...this.mealAttendances.slice(idx + 1)]; }
-      else { this.mealAttendances = [...this.mealAttendances, updated]; }
-      this.cdr.detectChanges();
-    });
+    this.saveAttendance(dateStr,
+      meal === 'breakfast' ? !existing?.breakfastPresent : existing?.breakfastPresent ?? false,
+      meal === 'lunch' ? !existing?.lunchPresent : existing?.lunchPresent ?? false,
+      meal === 'dinner' ? !existing?.dinnerPresent : existing?.dinnerPresent ?? false);
+  }
+  private saveAttendance(date: string, breakfast: boolean, lunch: boolean, dinner: boolean): void {
+    if (this.isHouseholdAccount || !this.currentUserId || !this.attendanceReady || this.attendanceLoading || this.attendancePending.has(date)) return;
+    this.attendancePending.add(date); this.attendanceError = '';
+    this.calendarService.setMealAttendance(date, breakfast, lunch, dinner)
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.attendancePending.delete(date); this.cdr.markForCheck(); }))
+      .subscribe({
+        next: updated => {
+          // A week switch during a request must not insert an old week's record.
+          if (!this.weekDays.some(d => d.dateStr === date)) return;
+          this.mealAttendances = [...this.mealAttendances.filter(a => !(a.date === date && a.userId === this.currentUserId)), updated];
+        },
+        error: () => { this.attendanceError = 'Die Änderung wurde nicht gespeichert. Deine bisherige Anwesenheit bleibt erhalten.'; }
+      });
   }
 
   removeMealAttendance(dateStr: string): void {
@@ -317,38 +358,35 @@ export class Calendar implements OnInit, OnDestroy {
 
   openAddGuest(dateStr: string, meal: 'breakfast' | 'lunch' | 'dinner', e: Event): void {
     e.stopPropagation();
+    if (this.guestSaving) return;
+    this.guestError = '';
     this.addingGuestFor = { dateStr, meal };
     this.newGuestName = '';
     this.cdr.detectChanges();
   }
 
-  closeAddGuest(): void { this.addingGuestFor = null; this.newGuestName = ''; }
+  closeAddGuest(): void { if (this.guestSaving) return; this.addingGuestFor = null; this.newGuestName = ''; this.guestError = ''; }
 
   submitAddGuest(): void {
-    const name = this.newGuestName.trim();
-    const target = this.addingGuestFor;
-    if (!name || !target) return;
-    this.calendarService.addExternalGuest(name, target.dateStr, target.meal).subscribe(guest => {
-      this.externalGuests = [...this.externalGuests, guest];
-      this.addingGuestFor = null;
-      this.newGuestName = '';
-      this.cdr.detectChanges();
-    });
+    const name = this.newGuestName.trim(), target = this.addingGuestFor;
+    if (!name || !target || this.guestSaving) return;
+    this.guestSaving = true; this.guestError = '';
+    this.calendarService.addExternalGuest(name, target.dateStr, target.meal)
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.guestSaving = false; this.cdr.markForCheck(); }))
+      .subscribe({ next: guest => {
+        if (this.weekDays.some(d => d.dateStr === target.dateStr)) this.externalGuests = [...this.externalGuests, guest];
+        this.addingGuestFor = null; this.newGuestName = '';
+      }, error: () => { this.guestError = 'Der Gast konnte nicht gespeichert werden. Bitte erneut versuchen.'; } });
   }
 
   removeExternalGuest(id: string, e: Event): void {
     e.stopPropagation();
-    // Optimistic: remove from UI immediately
-    this.externalGuests = this.externalGuests.filter(g => g.id !== id);
-    this.cdr.detectChanges();
-    this.calendarService.removeExternalGuest(id).subscribe({
-      error: () => {
-        // Revert on failure by reloading
-        const start = this.weekDays[0]?.dateStr;
-        const end = this.weekDays[6]?.dateStr;
-        if (start && end) this.calendarService.getExternalGuests(start, end).subscribe(g => { this.externalGuests = g; this.cdr.detectChanges(); });
-      }
-    });
+    if (this.guestDeleting.has(id)) return;
+    this.guestDeleting.add(id); this.attendanceError = '';
+    this.calendarService.removeExternalGuest(id)
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.guestDeleting.delete(id); this.cdr.markForCheck(); }))
+      .subscribe({ next: () => { this.externalGuests = this.externalGuests.filter(g => g.id !== id); },
+        error: () => { this.attendanceError = 'Der Gast konnte nicht entfernt werden. Bitte erneut versuchen.'; } });
   }
 
   eventsForDay(dateStr: string): CalendarEvent[] {

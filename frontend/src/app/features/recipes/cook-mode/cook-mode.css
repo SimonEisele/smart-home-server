@@ -48,7 +48,7 @@
   transition: color .2s, background .2s;
   flex-shrink: 0;
 }
-.back-sect-btn:hover { color: var(--color-accent); background: rgba(35,108,89,0.1); }
+.back-sect-btn:hover { color: var(--color-accent); background: rgba(130,215,187,0.1); }
 .back-sect-btn svg { width: 18px; height: 18px; }
 
 .title-stack { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -99,8 +99,8 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: rgba(35,108,89,0.05);
-  border: 1px solid rgba(35,108,89,0.12);
+  background: rgba(130,215,187,0.05);
+  border: 1px solid rgba(130,215,187,0.12);
   border-radius: 12px;
   padding: 10px 12px;
 }
@@ -147,8 +147,8 @@
   width: 100%;
 }
 .picker-card:hover {
-  background: rgba(35,108,89,0.1);
-  border-color: rgba(35,108,89,0.35);
+  background: rgba(130,215,187,0.1);
+  border-color: rgba(130,215,187,0.35);
   transform: translateX(3px);
 }
 
@@ -236,7 +236,7 @@
 .step-badge {
   width: 60px; height: 60px;
   background: var(--color-surface);
-  border: 2px solid rgba(35,108,89,0.35);
+  border: 2px solid rgba(130,215,187,0.35);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 1.55rem; font-weight: 800; color: var(--color-accent);
@@ -259,8 +259,8 @@
 
 .step-ing-card {
   display: flex; align-items: center; gap: 14px;
-  background: rgba(35,108,89,0.08);
-  border: 1px solid rgba(35,108,89,0.2);
+  background: rgba(130,215,187,0.08);
+  border: 1px solid rgba(130,215,187,0.2);
   border-radius: 14px;
   padding: 14px 20px;
   width: 100%; max-width: 380px;
@@ -307,8 +307,8 @@
   flex-shrink: 0;
 }
 .nav-btn:hover:not(:disabled) {
-  background: rgba(35,108,89,0.15);
-  border-color: rgba(35,108,89,0.4);
+  background: rgba(130,215,187,0.15);
+  border-color: rgba(130,215,187,0.4);
   color: var(--color-accent);
 }
 .nav-btn:disabled { opacity: .25; cursor: not-allowed; }
@@ -316,7 +316,7 @@
 
 .nav-btn.nav-next {
   background: var(--color-surface);
-  border-color: rgba(35,108,89,0.35);
+  border-color: rgba(130,215,187,0.35);
   color: var(--color-accent);
 }
 .nav-btn.nav-next:hover:not(:disabled) {
@@ -333,4 +333,4 @@
   cursor: pointer; transition: background .2s, transform .2s;
 }
 .dot.active { background: var(--color-accent); transform: scale(1.3); }
-.dot:hover { background: rgba(35,108,89,0.5); }
+.dot:hover { background: rgba(130,215,187,0.5); }

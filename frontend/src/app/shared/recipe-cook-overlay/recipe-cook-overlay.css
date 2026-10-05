@@ -13,7 +13,7 @@
 
 .cook-panel {
   background: var(--color-surface);
-  border: 1px solid rgba(35,108,89,0.18);
+  border: 1px solid rgba(130,215,187,0.18);
   border-radius: 20px;
   width: 1200px;
   height: 760px;
@@ -55,7 +55,7 @@
   font-size: 0.7rem;
   font-weight: 700;
   color: var(--color-accent);
-  background: rgba(35,108,89,0.12);
+  background: rgba(130,215,187,0.12);
   border-radius: 6px;
   display: inline-block;
   padding: 3px 9px;
@@ -82,10 +82,10 @@
   padding: 4px 10px;
 }
 .cook-meta-pill svg { width: 13px; height: 13px; }
-.cook-meta-persons { color: var(--color-accent); background: rgba(35,108,89,0.1); gap: 6px; }
+.cook-meta-persons { color: var(--color-accent); background: rgba(130,215,187,0.1); gap: 6px; }
 .persons-adj {
-  background: rgba(35,108,89,0.15);
-  border: 1px solid rgba(35,108,89,0.3);
+  background: rgba(130,215,187,0.15);
+  border: 1px solid rgba(130,215,187,0.3);
   color: var(--color-accent);
   border-radius: 5px;
   width: 22px; height: 22px;
@@ -98,7 +98,7 @@
   font-family: inherit;
   transition: background 0.12s;
 }
-.persons-adj:hover:not(:disabled) { background: rgba(35,108,89,0.28); }
+.persons-adj:hover:not(:disabled) { background: rgba(130,215,187,0.28); }
 .persons-adj:disabled { opacity: 0.3; cursor: not-allowed; }
 .persons-val {
   font-size: 1rem;
@@ -154,7 +154,7 @@
 .step-num {
   width: 28px;
   height: 28px;
-  background: rgba(35,108,89,0.12);
+  background: rgba(130,215,187,0.12);
   color: var(--color-accent);
   border-radius: 50%;
   display: flex;
@@ -175,7 +175,7 @@
 .step-ings { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .step-ing {
   font-size: 0.72rem;
-  background: rgba(35,108,89,0.08);
+  background: rgba(130,215,187,0.08);
   color: var(--color-accent);
   border-radius: 5px;
   padding: 2px 8px;
@@ -210,8 +210,8 @@
   flex: 1;
 }
 .cook-list-btn {
-  background: rgba(35,108,89,0.12);
-  border: 1px solid rgba(35,108,89,0.3);
+  background: rgba(130,215,187,0.12);
+  border: 1px solid rgba(130,215,187,0.3);
   color: var(--color-accent);
   border-radius: 11px;
   padding: 10px 20px;
@@ -225,7 +225,7 @@
   transition: background 0.15s;
 }
 .cook-list-btn svg { width: 15px; height: 15px; }
-.cook-list-btn:hover:not(:disabled) { background: rgba(35,108,89,0.22); }
+.cook-list-btn:hover:not(:disabled) { background: rgba(130,215,187,0.22); }
 .cook-list-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────────── */
@@ -299,7 +299,7 @@
 }
 .step-card-num {
   width: 36px; height: 36px;
-  background: rgba(35,108,89,0.14);
+  background: rgba(130,215,187,0.14);
   color: var(--color-accent);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;

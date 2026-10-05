@@ -11,16 +11,52 @@
       <button class="today-btn" (click)="goToday()">Heute</button>
     </div>
 
-    <div class="cal-filters">
+    <div class="cal-filters" [hidden]="calendarView !== 'schedule'">
       <button class="filter-btn filter-wg"      [class.active]="showHousehold" (click)="showHousehold = !showHousehold">WG</button>
       <button class="filter-btn filter-private"  [class.active]="showPrivate"   (click)="showPrivate   = !showPrivate">Privat</button>
       <button class="filter-btn filter-todos"    [class.active]="showTodos"     (click)="showTodos     = !showTodos">Aufgaben</button>
     </div>
 
-    <button class="btn-add-event" (click)="openNewEvent()">+ Termin</button>
+    <button [hidden]="calendarView !== 'schedule'" class="btn-add-event" (click)="openNewEvent()">+ Termin</button>
   </header>
 
   <p class="page-purpose">Termine, gemeinsame Mahlzeiten und Aufgaben in einer Woche. Auf dem Handy zeigt die Agenda jeden Tag als Liste.</p>
+  <div class="calendar-view-switch" role="group" aria-label="Kalenderansicht"><button [class.active]="calendarView === 'schedule'" [attr.aria-pressed]="calendarView === 'schedule'" (click)="calendarView = 'schedule'">Termine & Aufgaben</button><button [class.active]="calendarView === 'attendance'" [attr.aria-pressed]="calendarView === 'attendance'" (click)="calendarView = 'attendance'">Anwesenheiten & Mahlzeiten</button></div>
+  @if (calendarView === 'attendance') {
+  <section class="attendance-workspace" aria-labelledby="attendance-heading">
+    <header class="attendance-heading"><div><h2 id="attendance-heading">Wer isst mit?</h2><p>Trage deine Mahlzeiten ein. Die Personenzahl wird für Menüplanung und Einkauf übernommen.</p></div><span class="attendance-legend">✓ Ich esse mit · Gäste separat hinzufügen</span></header>
+    @if (isHouseholdAccount) { <p class="attendance-note">Du siehst die Planung der WG. Eigene Anwesenheiten trägst du über dein persönliches Konto ein.</p> }
+    @if (attendanceLoading) { <p role="status">Anwesenheiten werden geladen …</p> }
+    @if (attendanceError) { <div class="form-feedback" role="alert">{{ attendanceError }} <button class="btn-ghost" (click)="loadAttendance()">Neu laden</button></div> }
+    <div class="attendance-days">
+      @for (day of weekDays; track day.dateStr) {
+        <article class="attendance-day" [class.is-today]="day.isToday">
+          <header><h3>{{ day.dayName }} <span>{{ day.dayNum }}.{{ day.month }}.</span> @if (day.isToday) { <small>Heute</small> }</h3>
+          @if (!isHouseholdAccount) { <button class="attendance-day-action" [disabled]="attendanceLoading || !attendanceReady || attendancePending.has(day.dateStr)" (click)="toggleWholeDay(day.dateStr)">{{ allMealsActive(day.dateStr) ? 'Tag abmelden' : 'Ganzer Tag' }}</button> }</header>
+          @for (meal of MEALS; track meal.key) {
+            <div class="attendance-meal">
+              <div class="attendance-meal-top">
+                @if (!isHouseholdAccount) {
+                  <button class="attendance-toggle" [class.is-present]="mealIsActive(day.dateStr, meal.key)" [attr.aria-pressed]="mealIsActive(day.dateStr, meal.key)" [attr.aria-label]="meal.label + ' am ' + day.dateStr + ': ' + (mealIsActive(day.dateStr, meal.key) ? 'Ich esse mit' : 'Ich esse nicht mit')" [disabled]="attendanceLoading || !attendanceReady || attendancePending.has(day.dateStr)" (click)="toggleMealAttendance(day.dateStr, meal.key)">
+                    <span class="attendance-check" aria-hidden="true">{{ mealIsActive(day.dateStr, meal.key) ? '✓' : '–' }}</span><span>{{ meal.label }}<small>{{ mealIsActive(day.dateStr, meal.key) ? 'Ich esse mit' : 'Ich esse nicht mit' }}</small></span>
+                  </button>
+                } @else { <strong>{{ meal.label }}</strong> }
+                <span class="attendance-count">{{ mealAttendeesForDay(day.dateStr, meal.key).length + externalGuestsForMeal(day.dateStr, meal.key).length }} Pers.</span>
+              </div>
+              <div class="attendance-people">
+                @for (a of mealAttendeesForDay(day.dateStr, meal.key); track a.id) { <span class="attendance-person">{{ a.userId === currentUserId ? 'Ich' : attendanceDisplayName(a) }}</span> }
+                @for (g of externalGuestsForMeal(day.dateStr, meal.key); track g.id) { <span class="attendance-person guest">{{ g.name }} <small>Gast</small><button [disabled]="guestDeleting.has(g.id)" (click)="removeExternalGuest(g.id, $event)" [attr.aria-label]="g.name + ' entfernen'">×</button></span> }
+              </div>
+              <button class="attendance-add-guest" (click)="openAddGuest(day.dateStr, meal.key, $event)">+ Gast hinzufügen</button>
+            </div>
+          }
+          @if (attendancePending.has(day.dateStr)) { <span class="attendance-saving" role="status">Wird gespeichert …</span> }
+        </article>
+      }
+    </div>
+  </section>
+
+  } @else {
   <section class="agenda-view" aria-label="Wochenagenda">
     <div class="agenda-tasks" *ngIf="openTodos.length">
       <h2>Aufgaben einplanen</h2>
@@ -176,68 +212,8 @@
 
     </div><!-- .cal-grid-outer -->
   </div><!-- .cal-main -->
+  }
 
-  <!-- ── Attendance panel ──────────────────────────────────────────────────── -->
-  <section class="att-section">
-    <div class="att-grid">
-      <!-- Corner -->
-      <div class="att-corner">Anwesenheit</div>
-      <!-- Day headers -->
-      @for (day of weekDays; track day.dateStr) {
-        <div class="att-day-head" [class.att-today]="day.isToday">
-          <span class="att-dname">{{ day.dayName }}</span>
-          <span class="att-dnum">{{ day.dayNum }}.</span>
-        </div>
-      }
-      <!-- Meal rows (3 × 7 cells) -->
-      @for (meal of MEALS; track meal.key) {
-        <div class="att-meal-label">
-
-          <span class="att-mlabel">{{ meal.label }}</span>
-        </div>
-        @for (day of weekDays; track day.dateStr) {
-          <div class="att-cell" [class.att-cell-today]="day.isToday">
-            <!-- Own toggle – hidden for WG/household accounts -->
-            @if (!isHouseholdAccount) {
-            <button class="att-own-btn" [class.att-own-on]="mealIsActive(day.dateStr, meal.key)"
-              (click)="toggleMealAttendance(day.dateStr, meal.key)"
-              [title]="mealIsActive(day.dateStr, meal.key) ? 'Abmelden' : 'Anmelden'">
-              @if (mealIsActive(day.dateStr, meal.key)) {
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-5"/></svg>
-              } @else {
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/></svg>
-              }
-            </button>
-            }<!-- end @if (!isHouseholdAccount) -->
-            <!-- Attendees + guests -->
-            <div class="att-chips">
-              @for (a of mealAttendeesForDay(day.dateStr, meal.key); track a.id) {
-                @if (a.userId !== currentUserId) {
-                  <span class="att-chip att-chip-member">{{ attendanceDisplayName(a) }}</span>
-                }
-              }
-              @for (g of externalGuestsForMeal(day.dateStr, meal.key); track g.id) {
-                <span class="att-chip att-chip-guest">
-                  <span class="att-chip-label">{{ g.name }}</span>
-                  <button class="att-chip-del" (click)="removeExternalGuest(g.id, $event)" title="Entfernen">×</button>
-                </span>
-              }
-              @if (addingGuestFor?.dateStr === day.dateStr && addingGuestFor?.meal === meal.key) {
-                <div class="att-add-form">
-                  <input class="att-add-input" [(ngModel)]="newGuestName" placeholder="Name" autofocus
-                    (keydown.enter)="submitAddGuest()" (keydown.escape)="closeAddGuest()" />
-                  <button class="att-add-ok" (click)="submitAddGuest()">✓</button>
-                  <button class="att-add-cancel" (click)="closeAddGuest()">✗</button>
-                </div>
-              } @else {
-                <button class="att-add-btn" (click)="openAddGuest(day.dateStr, meal.key, $event)" title="Externe Person hinzufügen">+</button>
-              }
-            </div>
-          </div>
-        }
-      }
-    </div>
-  </section>
 
 </section>
 
@@ -355,4 +331,11 @@
       </div>
     </div>
   </div>
+}
+
+@if (addingGuestFor; as target) {
+  <div class="modal-backdrop" (click)="closeAddGuest()"><div class="modal-panel attendance-guest-dialog" appDialog aria-label="Gast hinzufügen" (dialogDismiss)="closeAddGuest()" (click)="$event.stopPropagation()">
+    <header class="modal-head"><div><h3>Gast hinzufügen</h3><p>{{ target.dateStr | date:'EEEE, d. MMMM' }} · {{ mealLabel(target.meal) }}</p></div><button class="modal-close" [disabled]="guestSaving" (click)="closeAddGuest()" aria-label="Schliessen">×</button></header>
+    <form (ngSubmit)="submitAddGuest()"><div class="modal-body"><p>Der Gast wird bei der Personenzahl mitgezählt.</p>@if (guestError) { <div class="form-feedback" role="alert">{{ guestError }}</div> }<label for="guest-name">Name des Gasts</label><input id="guest-name" name="guestName" [(ngModel)]="newGuestName" maxlength="100" placeholder="Zum Beispiel Alex" [disabled]="guestSaving" /></div><footer class="modal-foot"><button type="button" class="btn-ghost" [disabled]="guestSaving" (click)="closeAddGuest()">Abbrechen</button><button type="submit" class="btn-primary" [disabled]="guestSaving || !newGuestName.trim()">{{ guestSaving ? 'Wird gespeichert …' : 'Gast hinzufügen' }}</button></footer></form>
+  </div></div>
 }

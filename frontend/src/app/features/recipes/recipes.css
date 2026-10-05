@@ -26,9 +26,9 @@
 .header-left h2 { margin: 0; color: var(--color-text); font-size: 1.7rem; font-weight: 700; }
 
 .count-pill {
-  background: rgba(35,108,89,0.15);
+  background: rgba(130,215,187,0.15);
   color: var(--color-accent);
-  border: 1px solid rgba(35,108,89,0.3);
+  border: 1px solid rgba(130,215,187,0.3);
   border-radius: 20px;
   padding: 2px 10px;
   font-size: .8rem;
@@ -60,7 +60,7 @@
   outline: none;
 }
 .search-input::placeholder { color: var(--color-muted); }
-.search-input:focus { border-color: rgba(35,108,89,0.5); }
+.search-input:focus { border-color: rgba(130,215,187,0.5); }
 
 .btn-add {
   display: flex; align-items: center; gap: 7px;
@@ -91,8 +91,8 @@
 }
 .recipe-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(35,108,89,0.35);
-  background: rgba(35,108,89,0.07);
+  border-color: rgba(130,215,187,0.35);
+  background: rgba(130,215,187,0.07);
 }
 
 .card-top {
@@ -112,9 +112,9 @@
 
 .duration-badge {
   display: flex; align-items: center; gap: 5px;
-  background: rgba(35,108,89,0.12);
+  background: rgba(130,215,187,0.12);
   color: var(--color-accent);
-  border: 1px solid rgba(35,108,89,0.25);
+  border: 1px solid rgba(130,215,187,0.25);
   border-radius: 20px;
   padding: 3px 9px;
   font-size: .75rem;
@@ -243,7 +243,7 @@
   font-family: inherit;
   resize: vertical;
 }
-.field input:focus, .field textarea:focus { border-color: rgba(35,108,89,0.5); }
+.field input:focus, .field textarea:focus { border-color: rgba(130,215,187,0.5); }
 .field input::placeholder, .field textarea::placeholder { color: var(--color-muted); }
 
 .field-row { display: flex; gap: 12px; }
@@ -274,7 +274,7 @@
   border-left: 1px solid var(--color-card-border);
 }
 .serving-type-toggle button.active {
-  background: rgba(35,108,89,0.15);
+  background: rgba(130,215,187,0.15);
   color: var(--color-accent);
   font-weight: 600;
 }
@@ -294,15 +294,15 @@
 
 .btn-add-ingredient {
   display: flex; align-items: center; gap: 5px;
-  background: rgba(35,108,89,0.1);
-  border: 1px solid rgba(35,108,89,0.25);
+  background: rgba(130,215,187,0.1);
+  border: 1px solid rgba(130,215,187,0.25);
   color: var(--color-accent);
   border-radius: 8px;
   padding: 5px 12px;
   font-size: .8rem; font-weight: 600;
   cursor: pointer; transition: background .2s;
 }
-.btn-add-ingredient:hover { background: rgba(35,108,89,0.2); }
+.btn-add-ingredient:hover { background: rgba(130,215,187,0.2); }
 .btn-add-ingredient svg { width: 13px; height: 13px; }
 
 .ingredient-row {
@@ -427,7 +427,7 @@ input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.5); }
 .step-num {
   width: 28px; height: 28px;
   background: var(--color-surface);
-  border: 1.5px solid rgba(35,108,89,0.3);
+  border: 1.5px solid rgba(130,215,187,0.3);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: .8rem; font-weight: 700; color: var(--color-accent);
@@ -484,8 +484,8 @@ input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.5); }
   white-space: nowrap;
 }
 .step-ing-chip:hover {
-  background: rgba(35,108,89,0.14);
-  border-color: rgba(35,108,89,0.35);
+  background: rgba(130,215,187,0.14);
+  border-color: rgba(130,215,187,0.35);
   color: var(--color-accent);
 }
 
@@ -504,15 +504,15 @@ input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.5); }
 
 .btn-add-step-ing {
   display: flex; align-items: center; gap: 4px;
-  background: rgba(35,108,89,0.08);
-  border: 1px solid rgba(35,108,89,0.2);
+  background: rgba(130,215,187,0.08);
+  border: 1px solid rgba(130,215,187,0.2);
   color: var(--color-accent);
   border-radius: 7px;
   padding: 3px 9px;
   font-size: .75rem; font-weight: 600;
   cursor: pointer; transition: background .2s;
 }
-.btn-add-step-ing:hover { background: rgba(35,108,89,0.18); }
+.btn-add-step-ing:hover { background: rgba(130,215,187,0.18); }
 .btn-add-step-ing svg { width: 11px; height: 11px; }
 
 .step-ing-row {
@@ -563,8 +563,8 @@ input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.5); }
 
 /* ── New ingredient prompt ───────────────── */
 .new-ing-prompt {
-  background: rgba(35,108,89,0.07);
-  border: 1px solid rgba(35,108,89,0.28);
+  background: rgba(130,215,187,0.07);
+  border: 1px solid rgba(130,215,187,0.28);
   border-radius: 12px;
   padding: 14px 16px;
   display: flex;
@@ -602,7 +602,7 @@ input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.5); }
   font-family: inherit;
 }
 .new-ing-select option { background: var(--color-surface); color: var(--color-text); }
-.new-ing-select:focus { border-color: rgba(35,108,89,0.5); }
+.new-ing-select:focus { border-color: rgba(130,215,187,0.5); }
 
 .new-ing-unit-input {
   flex: 0 1 160px;
@@ -616,7 +616,7 @@ input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.5); }
   font-family: inherit;
 }
 .new-ing-unit-input::placeholder { color: var(--color-muted); }
-.new-ing-unit-input:focus { border-color: rgba(35,108,89,0.5); }
+.new-ing-unit-input:focus { border-color: rgba(130,215,187,0.5); }
 
 .new-ing-actions {
   display: flex;
