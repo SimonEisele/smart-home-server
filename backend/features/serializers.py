@@ -151,6 +151,29 @@ class MenuSerializer(serializers.ModelSerializer):
                     available = False
                 if not available:
                     raise serializers.ValidationError({'extraRecipeIds': 'Recipe is not available in this household.'})
+        if self.instance:
+            for meal in ('breakfast','lunch','dinner'):
+                if meal+'_recipe_id' in attrs and attrs[meal+'_recipe_id'] is None and getattr(self.instance,meal+'_recipe_id'):
+                    ref=f'{self.instance.date}:{meal}'
+                    if Menu.objects.filter(household=household).filter(Q(breakfast_leftovers_ref=ref)|Q(lunch_leftovers_ref=ref)|Q(dinner_leftovers_ref=ref)).exists():
+                        raise serializers.ValidationError({'detail':'Diese Mahlzeit wird noch für Reste verwendet. Entferne zuerst die zugehörigen Reste-Mahlzeiten.'})
+        for meal in ('breakfast','lunch','dinner'):
+            recipe_id = attrs.get(meal+'_recipe_id', getattr(self.instance,meal+'_recipe_id',None))
+            ref = attrs.get(meal+'_leftovers_ref', getattr(self.instance,meal+'_leftovers_ref',None))
+            if not ref: continue
+            from .menu_export import safe_date
+            parts = ref.split(':')
+            source_date = safe_date(parts[0])
+            target_date = attrs.get('date', getattr(self.instance,'date',None))
+            order = ('breakfast','lunch','dinner')
+            valid = len(parts)==2 and source_date and target_date and parts[1] in order
+            if valid:
+                valid = 0 <= (target_date-source_date).days <= 7 and (source_date<target_date or order.index(parts[1])<order.index(meal))
+            if recipe_id or not valid:
+                raise serializers.ValidationError({meal+'LeftoversRef':'Choose an earlier cooked meal within seven days.'})
+            source = Menu.objects.filter(household=household,date=source_date).first()
+            if not source or not getattr(source,parts[1]+'_recipe_id'):
+                raise serializers.ValidationError({meal+'LeftoversRef':'The original recipe is no longer planned.'})
         return attrs
 
     def create(self, validated_data):

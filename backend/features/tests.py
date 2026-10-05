@@ -215,3 +215,100 @@ class TaskCalendarLinkTests(TestCase):
         self.task.refresh_from_db()
         self.assertEqual(self.task.duration_minutes,180)
         self.assertFalse(self.task.done)
+
+
+class MenuExportWorkflowTests(TestCase):
+    def setUp(self):
+        self.household=Household.objects.create(name='Export')
+        self.user=User.objects.create_user('export@example.com','testpassword',active_household=self.household)
+        self.client=APIClient();self.client.force_authenticate(self.user)
+        self.monday=date(2026,10,5)
+        self.recipe=Recipe.objects.create(household=self.household,name='Pasta',base_servings=4,units_per_person=2,ingredients=[{'name':'Pasta','quantityPerPerson':200,'unit':'g'}])
+        self.menu=Menu.objects.create(household=self.household,date=self.monday,dinner_recipe=self.recipe)
+        UserMealAttendance.objects.create(household=self.household,user=self.user,date=self.monday,dinner_present=True)
+        self.ref=f'{self.monday}:dinner'
+        self.payload={'weekStart':str(self.monday),'meals':[self.ref],'strict':True,'resetExisting':True}
+        self.url='/api/shopping-items/export-week/'
+
+    def preview(self,payload=None):
+        return self.client.post(self.url,{**(payload or self.payload),'dryRun':True},format='json')
+
+    def test_preview_and_export_have_identical_scaled_quantities(self):
+        preview=self.preview();self.assertEqual(preview.status_code,200);self.assertEqual(preview.data['data'][0]['quantity'],100)
+        self.assertFalse(ShoppingItem.objects.exists())
+        response=self.client.post(self.url,{**self.payload,'previewToken':preview.data['previewToken']},format='json')
+        self.assertEqual(response.status_code,200);self.assertEqual(response.data['data'][0]['quantity'],100)
+
+    def test_repeated_export_updates_instead_of_duplicating_and_preserves_checked(self):
+        self.client.post(self.url,self.payload,format='json')
+        item=ShoppingItem.objects.get();item.checked=True;item.save()
+        manual=ShoppingItem.objects.create(household=self.household,name='Manual')
+        other=ShoppingItem.objects.create(household=self.household,name='Other',list_type='menuplan',week_tag='2026-W42')
+        self.client.post(self.url,self.payload,format='json');item.refresh_from_db()
+        self.assertTrue(item.checked);self.assertEqual(ShoppingItem.objects.count(),3)
+        self.recipe.ingredients=[{'name':'Pasta','quantityPerPerson':400,'unit':'g'}];self.recipe.save()
+        self.client.post(self.url,self.payload,format='json');item.refresh_from_db()
+        self.assertFalse(item.checked);self.assertEqual(item.quantity,200)
+        self.assertTrue(ShoppingItem.objects.filter(id=manual.id).exists());self.assertTrue(ShoppingItem.objects.filter(id=other.id).exists())
+
+    def test_absent_people_do_not_get_a_default_of_two(self):
+        UserMealAttendance.objects.filter(household=self.household).update(dinner_present=False)
+        preview=self.preview();self.assertTrue(preview.data['blocked']);self.assertEqual(preview.data['count'],0)
+        self.assertEqual(self.client.post(self.url,self.payload,format='json').status_code,400)
+        self.assertFalse(ShoppingItem.objects.exists())
+
+    def test_cross_week_leftovers_are_counted_on_the_original_cooking_day(self):
+        sunday=self.monday+timedelta(days=6);next_monday=sunday+timedelta(days=1)
+        Menu.objects.create(household=self.household,date=sunday,dinner_recipe=self.recipe)
+        Menu.objects.create(household=self.household,date=next_monday,lunch_leftovers_ref=f'{sunday}:dinner')
+        UserMealAttendance.objects.create(household=self.household,user=self.user,date=sunday,dinner_present=True)
+        UserMealAttendance.objects.create(household=self.household,user=self.user,date=next_monday,lunch_present=True)
+        payload={**self.payload,'meals':[f'{sunday}:dinner']};preview=self.preview(payload)
+        self.assertEqual(preview.data['data'][0]['quantity'],200);self.assertEqual(preview.data['meals'][0]['leftoverPersons'],1)
+
+    def test_extras_use_chosen_recipe_units_without_multiplying_units_per_person(self):
+        extra=Recipe.objects.create(household=self.household,name='Cookies',base_servings=12,units_per_person=3,serving_type='Stücke',ingredients=[{'name':'Flour','quantityPerPerson':120,'unit':'g'}])
+        self.menu.extra_recipe_ids=[str(extra.id)];self.menu.save()
+        ref=f'{self.monday}:extra:{extra.id}'
+        preview=self.preview({**self.payload,'meals':[ref],'extraServings':{ref:6}})
+        self.assertEqual(preview.data['data'][0]['quantity'],60)
+        self.assertEqual(preview.data['meals'][0]['servings'],6)
+
+    def test_changed_plan_rejects_stale_preview_without_changing_shopping(self):
+        preview=self.preview();self.recipe.ingredients=[{'name':'Pasta','quantityPerPerson':800,'unit':'g'}];self.recipe.save()
+        response=self.client.post(self.url,{**self.payload,'previewToken':preview.data['previewToken']},format='json')
+        self.assertEqual(response.status_code,409);self.assertFalse(ShoppingItem.objects.exists())
+
+    def test_zero_and_missing_quantities_are_distinct(self):
+        self.recipe.ingredients=[{'name':'Salt','quantityPerPerson':0,'unit':'g'},{'name':'Pepper','unit':'g'}];self.recipe.save()
+        preview=self.preview();items={i['name']:i for i in preview.data['data']}
+        self.assertEqual(items['Salt']['quantity'],0);self.assertIsNone(items['Pepper']['quantity']);self.assertTrue(items['Pepper']['quantityIncomplete'])
+
+    def test_invalid_inputs_do_not_clear_existing_export(self):
+        item=ShoppingItem.objects.create(household=self.household,name='Keep',list_type='menuplan',week_tag='2026-W41')
+        for patch in ({'meals':['2026-02-31:dinner']},{'personCounts':{self.ref:1.5}},{'personCounts':{self.ref:'NaN'}},{'weekTag':'2026-W42'}):
+            self.assertEqual(self.client.post(self.url,{**self.payload,**patch},format='json').status_code,400)
+        self.assertTrue(ShoppingItem.objects.filter(id=item.id).exists())
+
+    def test_iso_week_year_is_calculated_on_server(self):
+        monday=date(2018,12,31);Menu.objects.create(household=self.household,date=monday,dinner_recipe=self.recipe)
+        UserMealAttendance.objects.create(household=self.household,user=self.user,date=monday,dinner_present=True)
+        preview=self.preview({**self.payload,'weekStart':str(monday),'meals':[f'{monday}:dinner']})
+        self.assertEqual(preview.data['weekTag'],'2019-W01')
+
+    def test_leftovers_must_reference_an_earlier_cooked_meal(self):
+        response=self.client.patch(f'/api/menus/{self.menu.id}/',{'lunchLeftoversRef':self.ref},format='json')
+        self.assertEqual(response.status_code,400)
+        response=self.client.post('/api/menus/',{'date':str(self.monday+timedelta(days=1)),'lunchLeftoversRef':self.ref},format='json')
+        self.assertEqual(response.status_code,201)
+
+    def test_new_menu_immediately_returns_current_attendance(self):
+        UserMealAttendance.objects.create(household=self.household,user=self.user,date=self.monday+timedelta(days=2),lunch_present=True)
+        response=self.client.post('/api/menus/',{'date':str(self.monday+timedelta(days=2)),'lunchRecipeId':str(self.recipe.id)},format='json')
+        self.assertEqual(response.data['data']['lunchPersons'],1)
+
+    def test_original_cooking_meal_cannot_be_removed_while_leftovers_depend_on_it(self):
+        Menu.objects.create(household=self.household,date=self.monday+timedelta(days=1),lunch_leftovers_ref=self.ref)
+        response=self.client.patch(f'/api/menus/{self.menu.id}/',{'dinnerRecipeId':None},format='json')
+        self.assertEqual(response.status_code,400)
+        self.menu.refresh_from_db();self.assertEqual(self.menu.dinner_recipe,self.recipe)
