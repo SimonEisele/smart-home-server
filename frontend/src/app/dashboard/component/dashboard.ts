@@ -1,3 +1,4 @@
+import { DialogDirective } from '../../shared/directives/dialog.directive';
 import { Component, ElementRef, HostListener, OnInit, ViewChild, ChangeDetectorRef, DestroyRef, inject, OnDestroy } from '@angular/core';
 import { CompactType, DisplayGrid, Gridster, GridsterConfig, GridsterItem, GridsterItemConfig, GridType } from 'angular-gridster2';
 import { CommonModule } from '@angular/common';
@@ -20,7 +21,7 @@ const ARROW_WIDTH = 20;
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [ CommonModule, FormsModule, GridsterItem, Gridster, WidgetHost, Card, AddWidget ],
+  imports: [DialogDirective,  CommonModule, FormsModule, GridsterItem, Gridster, WidgetHost, Card, AddWidget ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -49,7 +50,7 @@ export class Dashboard implements OnInit, OnDestroy {
   rows = 12;
   maxColumns = 24;
   maxRows = 24;
-  navbarHeight = 128;
+  navbarHeight = 64;
 
   // Layout manager
   showLayoutPanel = false;
@@ -318,11 +319,12 @@ export class Dashboard implements OnInit, OnDestroy {
 
   private getInitialLayout(): DashboardItem[] {
     return [
-      { id: '', widget_type: 'datetime',  x: 0, y: 0, cols: 3, minItemCols: 3, rows: 4, minItemRows: 4, config: {}, title: 'Datum und Uhrzeit', icon: 'datetime.svg' },
-      { id: '', widget_type: 'menuplan',  x: 3, y: 0, cols: 9, minItemCols: 2, rows: 4, minItemRows: 4, config: {}, title: 'Menüplan',           icon: 'menuplan.svg' },
-      { id: '', widget_type: 'weather',   x: 0, y: 4, cols: 4, minItemCols: 2, rows: 8, minItemRows: 8, config: {}, title: 'Wetter',             icon: 'weather.svg'  },
-      { id: '', widget_type: 'todos',     x: 4, y: 4, cols: 4, minItemCols: 2, rows: 8, minItemRows: 4, config: {}, title: 'Aufgaben',             icon: 'todo.svg'     },
-      { id: '', widget_type: 'shoppinglist', x: 8, y: 4, cols: 4, minItemCols: 2, rows: 8, minItemRows: 4, config: {}, title: 'Einkaufsliste', icon: 'todo.svg' },
+      { id: '', widget_type: 'datetime', x: 0, y: 0, cols: 3, rows: 4, minItemCols: 2, minItemRows: 4, config: {}, title: 'Uhr & Datum', icon: 'datetime.svg' },
+      { id: '', widget_type: 'calendar', x: 3, y: 0, cols: 5, rows: 4, minItemCols: 2, minItemRows: 4, config: {}, title: 'Als Nächstes', icon: 'calendar.svg' },
+      { id: '', widget_type: 'weather', x: 8, y: 0, cols: 4, rows: 4, minItemCols: 2, minItemRows: 4, config: {}, title: 'Wetter', icon: 'weather.svg' },
+      { id: '', widget_type: 'menuplan', x: 0, y: 4, cols: 4, rows: 8, minItemCols: 2, minItemRows: 4, config: {}, title: 'Nächste Mahlzeiten', icon: 'menuplan.svg' },
+      { id: '', widget_type: 'todos', x: 4, y: 4, cols: 4, rows: 8, minItemCols: 2, minItemRows: 4, config: {}, title: 'Offene Aufgaben', icon: 'todo.svg' },
+      { id: '', widget_type: 'shoppinglist', x: 8, y: 4, cols: 4, rows: 8, minItemCols: 2, minItemRows: 4, config: {}, title: 'Einkaufsliste', icon: 'shoppinglist.svg' }
     ];
   }
 

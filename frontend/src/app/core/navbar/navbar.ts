@@ -27,17 +27,23 @@ const ARROW_WIDTH = 20;
 export class Navbar {
   private readonly destroyRef = inject(DestroyRef);
   menuOpen = false;
-  readonly navItems = [
-    { path: "/home", label: "Übersicht", icon: "datetime.svg" },
-    { path: "/calendar", label: "Kalender", icon: "calendar.svg" },
-    { path: "/menuplan", label: "Menüplan", icon: "menuplan.svg" },
-    { path: "/shoppinglist", label: "Einkauf", icon: "todo.svg" },
-    { path: "/todos", label: "Aufgaben", icon: "todo.svg" },
-    { path: "/cleaning", label: "Reinigung", icon: "todo.svg" },
-    { path: "/recipes", label: "Rezepte", icon: "menuplan.svg" },
-    { path: "/ingredients", label: "Zutaten", icon: "menuplan.svg" },
-    { path: "/weather", label: "Wetter", icon: "weather.svg" },
+  readonly navGroups = [
+    { label: 'Alltag', items: [
+      { path: '/home', label: 'Übersicht', icon: 'datetime.svg' },
+      { path: '/calendar', label: 'Kalender', icon: 'calendar.svg' },
+      { path: '/todos', label: 'Aufgaben', icon: 'todo.svg' },
+      { path: '/cleaning', label: 'Reinigung', icon: 'cleaning.svg' },
+    ] },
+    { label: 'Essen & Einkauf', items: [
+      { path: '/menuplan', label: 'Menüplan', icon: 'menuplan.svg' },
+      { path: '/shoppinglist', label: 'Einkaufsliste', icon: 'shoppinglist.svg' },
+      { path: '/recipes', label: 'Rezepte', icon: 'recipes.svg' },
+      { path: '/ingredients', label: 'Zutaten', icon: 'ingredients.svg' },
+    ] },
+    { label: 'Unterwegs', items: [{ path: '/weather', label: 'Wetter', icon: 'weather.svg' }] },
   ];
+  readonly mobileItems = [this.navGroups[0].items[0], this.navGroups[0].items[1], this.navGroups[1].items[0], this.navGroups[1].items[1]];
+  closePopovers() { this.showLogin = false; this.showAccount = false; }
   get isDashboard(): boolean { return this.router.url.split("?")[0] === "/home"; }
   @ViewChild('loginButton', { read: ElementRef }) loginBtn!: ElementRef;
   @ViewChild('accountButton', { read: ElementRef }) accountBtn!: ElementRef;
@@ -69,6 +75,7 @@ export class Navbar {
     // Close menu on route changes (robust on mobile)
     this.router.events.pipe(filter(evt => evt instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.closeMenu();
+      this.closePopovers();
     });
   }
 

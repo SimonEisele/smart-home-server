@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  color: #e2e8f0;
+  color: var(--color-text);
   padding: 2px 4px 4px 2px;
   scrollbar-width: thin;
   scrollbar-color: rgba(137, 223, 207, .25) transparent;
@@ -19,7 +19,7 @@
 }
 
 .cal-widget::-webkit-scrollbar-thumb {
-  background: rgba(137, 223, 207, .25);
+  background: rgba(35,108,89,0.25);
   border-radius: 999px;
 }
 
@@ -28,14 +28,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, .42);
+  color: var(--color-muted);
   font-size: .82rem;
   line-height: 1.45;
   text-align: center;
   padding: 20px;
-  border: 1px dashed rgba(255, 255, 255, .12);
+  border: 1px dashed var(--color-card-border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, .025);
+  background: var(--color-surface-soft);
 }
 
 .day-group {
@@ -52,16 +52,16 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: .08em;
-  color: rgba(255, 255, 255, .46);
+  color: var(--color-muted);
   padding: 0 3px 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  border-bottom: 1px solid var(--color-card-border);
 }
 
 .day-label::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, rgba(137, 223, 207, .18), transparent);
+  background: var(--color-surface);
 }
 
 .today-label {
@@ -75,7 +75,7 @@
   flex-shrink: 0;
   border-radius: 50%;
   background: var(--color-accent);
-  box-shadow: 0 0 10px rgba(137, 223, 207, .7);
+  box-shadow: none;
 }
 
 .ev-item {
@@ -85,7 +85,7 @@
   gap: 10px;
   min-height: 46px;
   padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, .07);
+  border: 1px solid var(--color-card-border);
   border-left: 3px solid transparent;
   border-radius: 11px;
   transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
@@ -93,33 +93,33 @@
 
 .ev-item:hover {
   transform: translateX(2px);
-  border-color: rgba(255, 255, 255, .14);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, .16);
+  border-color: var(--color-card-border);
+  box-shadow: none;
 }
 
 .ev-household {
-  background: linear-gradient(100deg, rgba(79, 209, 197, .16), rgba(79, 209, 197, .06));
+  background: var(--color-surface);
   border-left-color: #4fd1c5;
 }
 
 .ev-private {
-  background: linear-gradient(100deg, rgba(159, 122, 234, .17), rgba(159, 122, 234, .06));
+  background: var(--color-surface);
   border-left-color: #9f7aea;
 }
 
 .ev-todo {
-  background: linear-gradient(100deg, rgba(246, 173, 85, .16), rgba(246, 173, 85, .06));
+  background: var(--color-surface);
   border-left-color: #f6ad55 !important;
 }
 
 .ev-now {
-  border-color: rgba(137, 223, 207, .38);
-  background: linear-gradient(100deg, rgba(137, 223, 207, .18), rgba(137, 223, 207, .06));
-  box-shadow: 0 0 0 1px rgba(137, 223, 207, .14), 0 0 18px rgba(137, 223, 207, .08);
+  border-color: rgba(35,108,89,0.38);
+  background: var(--color-surface);
+  box-shadow: none;
 }
 
 .ev-cleaning-widget {
-  background: linear-gradient(100deg, rgba(125, 232, 154, .15), rgba(125, 232, 154, .05));
+  background: var(--color-surface);
   border-left-color: #7de89a;
   color: inherit;
   text-decoration: none;
@@ -130,7 +130,7 @@
 }
 
 .ev-cleaning-overdue {
-  background: linear-gradient(100deg, rgba(255, 128, 128, .17), rgba(255, 128, 128, .06));
+  background: var(--color-surface);
   border-left-color: #ff8080;
 }
 
@@ -159,14 +159,14 @@
 .ev-start {
   font-size: .8rem;
   font-weight: 800;
-  color: #f1f5f9;
+  color: var(--color-text);
   white-space: nowrap;
 }
 
 .ev-end {
   margin-top: 2px;
   font-size: .65rem;
-  color: rgba(255, 255, 255, .42);
+  color: var(--color-muted);
   white-space: nowrap;
 }
 
@@ -190,7 +190,7 @@
 
 .ev-loc {
   font-size: .66rem;
-  color: rgba(255, 255, 255, .48);
+  color: var(--color-muted);
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -204,8 +204,8 @@
   font-weight: 850;
   letter-spacing: .06em;
   color: var(--color-accent);
-  background: rgba(137, 223, 207, .14);
-  border: 1px solid rgba(137, 223, 207, .32);
+  background: rgba(35,108,89,0.14);
+  border: 1px solid rgba(35,108,89,0.32);
   border-radius: 999px;
   padding: 3px 6px;
 }
@@ -240,6 +240,6 @@
     transition: none;
   }
 }
-.ev { border-radius:10px; }
-.day-label { color:var(--color-muted); padding:8px 0; font-weight:600; }
+.ev { border-radius: 10px; }
+.day-label { color: var(--color-muted); padding:8px 0; font-weight:600; }
 .ev-title { overflow-wrap:anywhere; }

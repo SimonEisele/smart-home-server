@@ -1,10 +1,11 @@
+import { DialogDirective } from '../../shared/directives/dialog.directive';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { localIsoDate } from '../../shared/date-utils';
 import { Component, DestroyRef, inject, ChangeDetectorRef, HostListener, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 import { CalendarEvent, HouseholdMember, MemberAvailability, UserMealAttendance, ExternalMealGuest } from './model/calendar.model';
 import { CalendarService } from './service/calendar.service';
 import { TodosService } from '../todos/service/todos.service';
@@ -25,7 +26,7 @@ const HOUR_PX    = 64; // px per hour
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [DialogDirective, CommonModule, FormsModule, RouterLink],
   templateUrl: './calendar.html',
   styleUrl: './calendar.css',
 })
@@ -83,7 +84,10 @@ export class Calendar implements OnInit, OnDestroy {
   resizePreview: ResizePreview | null = null;
 
   // Event modal
-  showModal    = false;
+  showModal = false;
+  savingEvent = false;
+  eventError = '';
+
   editingEvent: CalendarEvent | null = null;
   modalForm:   EvModalForm = this.emptyForm();
 
@@ -350,15 +354,15 @@ export class Calendar implements OnInit, OnDestroy {
   eventsForDay(dateStr: string): CalendarEvent[] {
     return this.events.filter(ev => {
       if (ev.allDay) return false;
-      if (!ev.start?.startsWith(dateStr)) return false;
+      if (!ev.start || localIsoDate(new Date(ev.start)) !== dateStr) return false;
       if (ev.calendarType === 'private'   && !this.showPrivate)   return false;
       if ((ev.calendarType ?? 'household') === 'household' && !this.showHousehold) return false;
       return true;
-    });
+    }).sort((a, b) => a.start.localeCompare(b.start));
   }
 
   allDayEventsForDay(dateStr: string): CalendarEvent[] {
-    return this.events.filter(ev => ev.allDay && ev.start?.startsWith(dateStr));
+    return this.events.filter(ev => ev.allDay && ev.start && localIsoDate(new Date(ev.start)) === dateStr && (ev.calendarType === 'private' ? this.showPrivate : this.showHousehold));
   }
 
   evTop(ev: CalendarEvent): number {
@@ -382,7 +386,7 @@ export class Calendar implements OnInit, OnDestroy {
 
   evColor(ev: CalendarEvent): string { return ev.color ?? ''; }
 
-  formatDuration(min?: number): string {
+  formatDuration(min?: number | null): string {
     if (!min) return '';
     const h = Math.floor(min / 60), m = min % 60;
     return m ? `${h}h${m}` : `${h}h`;
@@ -836,17 +840,22 @@ export class Calendar implements OnInit, OnDestroy {
     this.showModal = true; this.cdr.detectChanges();
   }
 
-  closeModal(): void { this.showModal = false; this.editingEvent = null; }
+  closeModal(): void { if (this.savingEvent) return; this.eventError = ""; this.showModal = false; this.editingEvent = null; }
 
   saveEvent(): void {
-    if (!this.modalForm.title.trim()) return;
+    if (this.savingEvent) return;
+    this.eventError = '';
+    if (!this.modalForm.title.trim() || !this.modalForm.date) { this.eventError = 'Titel und Datum sind erforderlich.'; return; }
+    if (!this.modalForm.allDay && (!this.modalForm.startTime || !this.modalForm.endTime || this.modalForm.endTime <= this.modalForm.startTime)) {
+      this.eventError = 'Die Endzeit muss nach der Startzeit liegen.'; return;
+    }
     let payload: Partial<CalendarEvent>;
     if (this.modalForm.allDay) {
       payload = {
         title: this.modalForm.title.trim(), description: this.modalForm.description,
         location: this.modalForm.location, calendarType: this.modalForm.calendarType as any,
         color: this.modalForm.color, allDay: true,
-        start: new Date(this.modalForm.date).toISOString(),
+        start: new Date(this.modalForm.date + 'T00:00:00').toISOString(),
       };
     } else {
       const s = new Date(`${this.modalForm.date}T${this.modalForm.startTime}:00`);
@@ -859,15 +868,15 @@ export class Calendar implements OnInit, OnDestroy {
         start: s.toISOString(), end: en.toISOString(),
       };
     }
-    if (this.editingEvent) {
-      this.calendarService.updateEvent(this.editingEvent.id, payload).subscribe(ev => {
-        this.events = this.events.map(e => e.id === ev.id ? ev : e); this.closeModal(); this.cdr.detectChanges();
-      });
-    } else {
-      this.calendarService.createEvent(payload).subscribe(ev => {
-        this.events = [...this.events, ev]; this.closeModal(); this.cdr.detectChanges();
-      });
-    }
+    this.savingEvent = true;
+    const request = this.editingEvent ? this.calendarService.updateEvent(this.editingEvent.id, payload) : this.calendarService.createEvent(payload);
+    request.pipe(finalize(() => { this.savingEvent = false; this.cdr.markForCheck(); })).subscribe({
+      next: ev => {
+        this.events = this.editingEvent ? this.events.map(e => e.id === ev.id ? ev : e) : [...this.events, ev];
+        this.savingEvent = false; this.closeModal(); this.cdr.markForCheck();
+      },
+      error: () => { this.eventError = 'Speichern fehlgeschlagen. Deine Eingaben bleiben erhalten.'; this.cdr.markForCheck(); },
+    });
   }
 
   deleteEvent(): void {

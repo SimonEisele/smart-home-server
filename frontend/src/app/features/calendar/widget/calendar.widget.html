@@ -18,7 +18,7 @@
           <div class="ev-body">
             <span class="ev-title">{{ ev.title }}</span>
             @if (ev.location) {
-              <span class="ev-loc">📍 {{ ev.location }}</span>
+              <span class="ev-loc"> {{ ev.location }}</span>
             }
           </div>
           @if (isNow(ev)) {
@@ -30,7 +30,7 @@
       @for (cleaning of group.cleaningTasks; track cleaning.task.id) {
         <a class="ev-item ev-cleaning-widget" [class.ev-cleaning-overdue]="cleaning.overdue" routerLink="/cleaning">
           <div class="ev-time-col">
-            <span class="cleaning-icon">🧹</span>
+            <span class="cleaning-icon"></span>
           </div>
           <div class="ev-body">
             <span class="ev-title">{{ cleaning.task.name }}</span>

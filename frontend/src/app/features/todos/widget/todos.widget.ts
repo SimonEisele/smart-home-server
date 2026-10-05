@@ -70,6 +70,12 @@ export class TodosWidget implements OnInit, AfterViewInit, OnDestroy {
     this.openTodos = this.openTodos.filter(t => t.id !== todo.id);
     this.updateVisibleTodos();
     this.todosService.updateTodo(todo.id, { done: true }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: updated => {
+        if (!updated.done) {
+          this.openTodos = [updated, ...this.openTodos].sort((a, b) => (a.dueDate ? new Date(a.dueDate).getTime() : Infinity) - (b.dueDate ? new Date(b.dueDate).getTime() : Infinity));
+          this.updateVisibleTodos();
+        }
+      },
       error: () => {
         // Revert on failure
         this.openTodos = [todo, ...this.openTodos].sort(

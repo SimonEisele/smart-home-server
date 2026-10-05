@@ -1,3 +1,4 @@
+import { WeatherSymbol } from '../icon/weather-icon';
 import { localIsoDate, dateTimeInZone } from '../../../shared/date-utils';
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
@@ -15,7 +16,7 @@ const ARC_LEN = Math.PI * SUN_R; // ~282.74
 @Component({
   selector: 'weather-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, WeatherSymbol],
   templateUrl: './weather.page.html',
   styleUrl: './weather.page.css',
 })
@@ -198,11 +199,11 @@ export class WeatherPage implements OnInit, OnDestroy {
   }
 
   uvColor(uv: number): string {
-    if (uv < 3)  return '#68d391';
-    if (uv < 6)  return '#f6e05e';
-    if (uv < 8)  return '#f6ad55';
-    if (uv < 11) return '#fc8181';
-    return '#b794f4';
+    if (uv < 3)  return '#287a48';
+    if (uv < 6)  return '#8a6b12';
+    if (uv < 8)  return '#a15b16';
+    if (uv < 11) return '#b23d3d';
+    return '#7751a0';
   }
 
   precipColor(prob: number): string {
@@ -213,12 +214,12 @@ export class WeatherPage implements OnInit, OnDestroy {
   }
 
   tempColor(t: number): string {
-    if (t <= 0)  return '#90cdf4';
-    if (t <= 10) return '#b2f5ea';
-    if (t <= 18) return '#9ae6b4';
-    if (t <= 25) return '#f6e05e';
-    if (t <= 30) return '#f6ad55';
-    return '#fc8181';
+    if (t <= 0)  return '#386ca3';
+    if (t <= 10) return '#267c7b';
+    if (t <= 18) return '#287a48';
+    if (t <= 25) return '#8a6b12';
+    if (t <= 30) return '#a15b16';
+    return '#b23d3d';
   }
 
   heroGradient(): string {
@@ -226,7 +227,7 @@ export class WeatherPage implements OnInit, OnDestroy {
     if (!w) return '';
     const code = w.current.weatherCode;
     const isDay = w.current.isDay;
-    if (!isDay) return 'linear-gradient(145deg,#0f172a 0%,#1e293b 60%,#0f172a 100%)';
+    if (!isDay) return 'linear-gradient(145deg,#e5eaf2 0%,#edf1f6 60%,#e5eaf2 100%)';
     if (code === 0) return 'linear-gradient(145deg,rgba(251,191,36,0.15),rgba(251,146,60,0.08))';
     if (code <= 2)  return 'linear-gradient(145deg,rgba(147,197,253,0.12),rgba(196,181,253,0.06))';
     if (code <= 3)  return 'linear-gradient(145deg,rgba(100,116,139,0.15),rgba(51,65,85,0.1))';

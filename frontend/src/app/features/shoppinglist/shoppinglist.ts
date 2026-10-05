@@ -1,3 +1,4 @@
+import { DialogDirective } from '../../shared/directives/dialog.directive';
 import { localIsoDate } from '../../shared/date-utils';
 import { Component, ChangeDetectorRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -31,7 +32,7 @@ const CAT_MAP: Record<string, string> = {
 @Component({
   selector: 'app-shoppinglist',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [DialogDirective, CommonModule, FormsModule],
   templateUrl: './shoppinglist.html',
   styleUrl: './shoppinglist.css',
 })
@@ -94,11 +95,11 @@ export class Shoppinglist implements OnInit {
 
   // ── Computed ──
   get allGroups(): ShoppingGroup[] {
-    return this.buildGroups(this.consolidateItems(this.items.filter(i => !i.checked)));
+    return this.buildGroups(this.items.filter(i => !i.checked));
   }
 
   get manualGroups(): ShoppingGroup[] {
-    return this.buildGroups(this.consolidateItems(this.items.filter(i => !i.checked && i.listType !== 'menuplan')));
+    return this.buildGroups(this.items.filter(i => !i.checked && i.listType !== 'menuplan'));
   }
 
   get menuplanGroups(): MenuplanGroup[] {
@@ -155,23 +156,6 @@ export class Shoppinglist implements OnInit {
       .map(([category, its]) => ({ category, items: its }));
   }
 
-  /** Merge items with same name+unit, summing quantities. The first item's id/properties are kept for display. */
-  private consolidateItems(items: ShoppingItem[]): ShoppingItem[] {
-    const map = new Map<string, ShoppingItem>();
-    for (const item of items) {
-      const key = `${item.name.toLowerCase().trim()}::${(item.unit || '').toLowerCase().trim()}`;
-      if (map.has(key)) {
-        const existing = map.get(key)!;
-        if (existing.quantity != null && item.quantity != null) {
-          map.set(key, { ...existing, quantity: Math.round((existing.quantity + item.quantity) * 100) / 100 });
-        }
-      } else {
-        map.set(key, item);
-      }
-    }
-    return [...map.values()];
-  }
-
   private weekTagLabel(tag: string): string {
     const m = tag.match(/^(\d{4})-W(\d{2})$/);
     return m ? `KW ${m[2]}, ${m[1]}` : tag;
@@ -189,8 +173,9 @@ export class Shoppinglist implements OnInit {
 
   clearChecked(): void {
     const ids = this.checkedItems.map(i => i.id);
-    for (const id of ids) this.service.deleteItem(id).subscribe();
-    this.items = this.items.filter(i => !i.checked);
+    for (const id of ids) this.service.deleteItem(id).subscribe({ next: () => {
+      this.items = this.items.filter(item => item.id !== id); this.cdr.markForCheck();
+    }, error: () => { this.cdr.markForCheck(); } });
   }
 
   // ── Add form ──

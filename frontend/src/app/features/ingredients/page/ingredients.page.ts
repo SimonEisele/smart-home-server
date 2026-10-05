@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RecipesService } from '../../recipes/service/recipes.service';
@@ -36,10 +36,10 @@ export class IngredientsPage implements OnInit {
     { value: 'sonstiges',      label: 'Sonstiges' },
   ];
 
-  constructor(private service: RecipesService) {}
+  constructor(private service: RecipesService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
-    this.service.getIngredients().subscribe(list => { this.ingredients = list; });
+    this.service.getIngredients().subscribe(list => { this.ingredients = list; this.cdr.markForCheck(); });
   }
 
   get filtered(): Ingredient[] {
@@ -87,9 +87,9 @@ export class IngredientsPage implements OnInit {
         this.ingredients = [...this.ingredients, ing]
           .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
         this.showAddForm = false;
-        this.savingAdd = false;
+        this.savingAdd = false; this.cdr.markForCheck();
       },
-      error: () => { this.savingAdd = false; },
+      error: () => { this.savingAdd = false; this.cdr.markForCheck(); },
     });
   }
 
@@ -112,7 +112,7 @@ export class IngredientsPage implements OnInit {
     }).subscribe({
       next: updated => {
         this.ingredients = this.ingredients.map(i => i.id === updated.id ? updated : i);
-        this.editId = null;
+        this.editId = null; this.cdr.markForCheck();
       },
     });
   }
@@ -124,7 +124,7 @@ export class IngredientsPage implements OnInit {
     this.service.deleteIngredient(id).subscribe({
       next: () => {
         this.ingredients = this.ingredients.filter(i => i.id !== id);
-        this.confirmDeleteId = null;
+        this.confirmDeleteId = null; this.cdr.markForCheck();
       },
     });
   }

@@ -1,4 +1,6 @@
-﻿import {
+import { finalize } from 'rxjs';
+import { DialogDirective } from '../../shared/directives/dialog.directive';
+import {
   Component, HostListener, OnInit, DoCheck,
   ChangeDetectorRef, ChangeDetectionStrategy,
 } from '@angular/core';
@@ -21,7 +23,7 @@ type GroupedStep = Array<{ section: RecipeSection | null; items: Array<{ step: R
 @Component({
   selector: 'app-recipes',
   standalone: true,
-  imports: [CommonModule, FormsModule, CookMode],
+  imports: [DialogDirective, CommonModule, FormsModule, CookMode],
   templateUrl: './recipes.html',
   styleUrl: './recipes.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,6 +33,10 @@ export class Recipes implements OnInit, DoCheck {
   ingredientCatalog: Ingredient[] = [];
   search = '';
   showModal = false;
+  saving = false;
+  formError = '';
+  loading = false;
+  loadError = '';
   modalMode: 'add' | 'edit' = 'add';
   form: RecipeForm = this.emptyForm();
   cookingRecipe: Recipe | null = null;
@@ -92,8 +98,12 @@ export class Recipes implements OnInit, DoCheck {
     }
   }
 
-  private loadData(): void {
-    this.service.getRecipes().subscribe(r => { this.recipes = r; this.cdr.detectChanges(); });
+  loadData(): void {
+    this.loading = true; this.loadError = '';
+    this.service.getRecipes().pipe(finalize(() => { this.loading = false; this.cdr.markForCheck(); })).subscribe({
+      next: recipes => { this.recipes = recipes; this.cdr.markForCheck(); },
+      error: () => { this.loadError = 'Rezepte konnten nicht geladen werden.'; this.cdr.markForCheck(); },
+    });
     this.service.getIngredients().subscribe(i => { this.ingredientCatalog = i; this.cdr.detectChanges(); });
   }
 
@@ -398,7 +408,9 @@ export class Recipes implements OnInit, DoCheck {
   }
 
   closeModal(): void {
+    if (this.saving) return;
     this.showModal = false;
+    this.formError = "";
     this.form = this.emptyForm();
     this.newIngredientPrompt = null;
   }
@@ -416,7 +428,9 @@ export class Recipes implements OnInit, DoCheck {
   }
 
   save(): void {
-    if (!this.form.name?.trim()) return;
+    if (this.saving) return;
+    if (!this.form.name?.trim()) { this.formError = "Bitte einen Namen angeben."; return; }
+    if (!Number.isInteger(this.form.baseServings) || this.form.baseServings! < 1) { this.formError = "Bitte mindestens eine Basisportion angeben."; return; }
     this.syncStepIngredientsToRecipe();
     const payload: Partial<Recipe> = {
       ...this.form,
@@ -432,19 +446,25 @@ export class Recipes implements OnInit, DoCheck {
     };
     const mode = this.modalMode;
     const id = (this.form as any).id as string;
-    this.closeModal();
-    if (mode === 'add') {
-      this.service.createRecipe(payload).subscribe({ next: () => this.loadData(), error: () => this.loadData() });
-    } else {
-      this.service.updateRecipe(id, payload).subscribe({ next: () => this.loadData(), error: () => this.loadData() });
-    }
+    this.saving = true; this.formError = '';
+    const request = mode === 'add' ? this.service.createRecipe(payload) : this.service.updateRecipe(id, payload);
+    request.pipe(finalize(() => { this.saving = false; this.cdr.markForCheck(); })).subscribe({
+      next: recipe => {
+        this.recipes = mode === 'add' ? [...this.recipes, recipe] : this.recipes.map(r => r.id === recipe.id ? recipe : r);
+        this.saving = false; this.closeModal(); this.cdr.markForCheck();
+      },
+      error: () => { this.formError = 'Speichern fehlgeschlagen. Deine Eingaben bleiben erhalten. Bitte erneut versuchen.'; this.cdr.markForCheck(); },
+    });
   }
 
   delete(): void {
     const id = (this.form as any).id as string;
-    if (!id) return;
-    this.closeModal();
-    this.service.deleteRecipe(id).subscribe({ next: () => this.loadData(), error: () => this.loadData() });
+    if (!id || this.saving) return;
+    this.saving = true; this.formError = '';
+    this.service.deleteRecipe(id).pipe(finalize(() => { this.saving = false; this.cdr.markForCheck(); })).subscribe({
+      next: () => { this.recipes = this.recipes.filter(r => r.id !== id); this.saving = false; this.closeModal(); this.cdr.markForCheck(); },
+      error: () => { this.formError = 'Löschen fehlgeschlagen. Bitte erneut versuchen.'; this.cdr.markForCheck(); },
+    });
   }
 
   private syncStepIngredientsToRecipe(): void {

@@ -27,7 +27,7 @@ Grundlagen auf.
 
 See [the October 2026 review](review-2026-10-04.md) for tested fixes, deployment notes, and remaining findings.
 
-![Tablet dashboard with sample data](screenshots/dashboard-tablet.png)
+See [the household workspace rework](workspace-rework-2026-10-05.md) for the current interface and validation. Older screenshots show the previous design.
 
 ## 🛠️ Development
 

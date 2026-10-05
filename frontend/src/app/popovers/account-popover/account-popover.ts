@@ -1,3 +1,4 @@
+import { DialogDirective } from '../../shared/directives/dialog.directive';
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -9,7 +10,7 @@ import { User, Household } from '../../core/auth/model/auth.model';
 @Component({
   selector: 'account-popover',
   standalone: true,
-  imports: [ CommonModule, RouterLink ],
+  imports: [DialogDirective,  CommonModule, RouterLink ],
   templateUrl: './account-popover.html',
   styleUrl: './account-popover.css',
 })

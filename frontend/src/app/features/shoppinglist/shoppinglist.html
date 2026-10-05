@@ -72,6 +72,7 @@
     </div>
   </div>
 
+  <p class="page-purpose">Artikel direkt hinzufügen oder Zutaten aus Rezepten und Menüplan übernehmen. Jeder Eintrag lässt sich einzeln abhaken.</p>
   <!-- Tab bar -->
   <div class="tab-bar">
     <button class="tab-btn" [class.active]="activeTab === 'all'" (click)="activeTab = 'all'">Alle</button>
@@ -174,7 +175,7 @@
      Recipe Picker Modal
 ════════════════════════════════════════════════ -->
 <div class="modal-backdrop" *ngIf="showRecipePicker" (click)="closeRecipePicker()">
-  <div class="modal-panel recipe-panel" (click)="$event.stopPropagation()">
+  <div class="modal-panel recipe-panel" (click)="$event.stopPropagation()" aria-label="Einkauf" appDialog (dialogDismiss)="closeRecipePicker()">
     <div class="modal-header">
       <h3>Rezept hinzufügen</h3>
       <button class="btn-close" (click)="closeRecipePicker()">
@@ -216,7 +217,7 @@
      Menuplan Export Modal
 ════════════════════════════════════════════════ -->
 <div class="modal-backdrop" *ngIf="showExportModal" (click)="closeExportModal()">
-  <div class="modal-panel export-panel" (click)="$event.stopPropagation()">
+  <div class="modal-panel export-panel" (click)="$event.stopPropagation()" aria-label="Einkauf" appDialog (dialogDismiss)="closeExportModal()">
     <div class="modal-header">
       <h3>Aus Menüplan exportieren</h3>
       <button class="btn-close" (click)="closeExportModal()">

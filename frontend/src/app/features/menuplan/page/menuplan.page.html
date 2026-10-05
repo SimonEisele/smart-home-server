@@ -22,6 +22,7 @@
     </div>
   </div>
 
+  <p class="page-purpose">Mahlzeiten für die Woche planen. Wähle Rezepte oder Reste und übertrage die benötigten Zutaten in die Einkaufsliste.</p>
   <!-- No more exportMessage – moved into modal -->
 
   <!-- ── 7-day grid ────────────────────────────────────────────── -->
@@ -40,7 +41,7 @@
            *ngFor="let meal of MEALS"
            [class.filled]="getMealRecipe(d.dateStr, meal)"
            [class.is-leftovers]="getMealLeftoversRef(d.dateStr, meal)"
-           [class.no-persons]="getMealRecipe(d.dateStr, meal) && getMealEffectivePersons(d.dateStr, meal) === 0"
+           role="button" tabindex="0" [attr.aria-label]="MEAL_LABELS[meal] + ' am ' + d.dateStr + ' planen'" (keydown.enter)="$event.target === $event.currentTarget && openPicker(d.dateStr, meal)" (keydown.space)="$event.preventDefault(); $event.target === $event.currentTarget && openPicker(d.dateStr, meal)" [class.no-persons]="getMealRecipe(d.dateStr, meal) && getMealEffectivePersons(d.dateStr, meal) === 0"
            (click)="openPicker(d.dateStr, meal)">
 
         <span class="meal-label">{{ MEAL_LABELS[meal] }}</span>
@@ -94,7 +95,7 @@
 
   <!-- ── Picker modal ──────────────────────────────────────────── -->
   <div class="picker-backdrop" *ngIf="activePicker" (click)="onPickerBackdropClick($event)">
-    <div class="picker-panel">
+    <div class="picker-panel" aria-label="Mahlzeit planen" appDialog (dialogDismiss)="closePicker()">
 
       <!-- Header -->
       <div class="picker-head">
@@ -125,8 +126,9 @@
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input class="picker-search" [(ngModel)]="pickerSearch" placeholder="Rezept suchen…" />
         </div>
+        <div class="form-feedback" *ngIf="menuError" role="alert">{{ menuError }}</div>
         <div class="recipe-list">
-          <button class="recipe-item" type="button" *ngFor="let r of filteredRecipes" (click)="selectRecipe(r)">
+          <button class="recipe-item" type="button" [disabled]="menuSaving" *ngFor="let r of filteredRecipes" (click)="selectRecipe(r)">
             <div class="ri-name">{{ r.name }}</div>
             <div class="ri-desc" *ngIf="r.description">{{ r.description }}</div>
             <div class="ri-badges">
@@ -168,7 +170,7 @@
 
   <!-- ── Export modal ──────────────────────────────────────────── -->
   <div class="picker-backdrop" *ngIf="showExportModal" (click)="onExportBackdropClick($event)">
-    <div class="picker-panel export-panel-wide">
+    <div class="picker-panel export-panel-wide" aria-label="Mahlzeit planen" appDialog (dialogDismiss)="closeExportModal()">
       <div class="picker-head">
         <div class="picker-head-info">
           <span class="picker-meal-name">Einkaufsliste exportieren</span>
@@ -231,7 +233,7 @@
       <div class="export-footer">
         <span class="ex-count">{{ exportSelected.size }} Mahlzeiten gewählt</span>
         <button class="btn-picker-cancel" type="button" (click)="closeExportModal()">Abbrechen</button>
-        <button class="btn-picker-action" type="button" [disabled]="!exportSelected.size" (click)="doExport()">
+        <button class="btn-picker-action" type="button" [disabled]="!exportSelected.size || exporting" (click)="doExport()">
           Exportieren
         </button>
       </div>

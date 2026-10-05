@@ -18,7 +18,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('app-navbar')?.textContent).toContain('Smart Home');
+    expect(compiled.querySelector('app-navbar')?.textContent).toContain('Zuhause');
     expect(compiled.querySelector('main#main-content')).toBeTruthy();
   });
 });

@@ -1,3 +1,4 @@
+import math
 from datetime import date, timedelta
 
 from django.db import transaction
@@ -452,8 +453,14 @@ class AddRecipeToShoppingListView(APIView):
         except Recipe.DoesNotExist:
             return Response({'error': 'Recipe not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        try:
+            units_per_person = float(request.data.get('unitsPerPerson', 1))
+        except (TypeError, ValueError):
+            return Response({'error': 'Portionen pro Person müssen eine positive Zahl sein.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not math.isfinite(units_per_person) or units_per_person <= 0:
+            return Response({'error': 'Portionen pro Person müssen eine positive Zahl sein.'}, status=status.HTTP_400_BAD_REQUEST)
         base_servings = recipe.base_servings or persons or 2
-        scale = persons / base_servings
+        scale = persons * units_per_person / base_servings
 
         cat_display = dict(Ingredient.CATEGORY_CHOICES)
         ing_catalog = {i.name.lower(): i for i in Ingredient.objects.all()}
@@ -464,7 +471,7 @@ class AddRecipeToShoppingListView(APIView):
                 name = (ing.get('name') or '').strip()
                 if not name:
                     continue
-                qty_raw = ing.get('quantityPerPerson') or ing.get('quantity_per_person')
+                qty_raw = ing.get('quantityPerPerson', ing.get('quantity_per_person'))
                 try:
                     qty = float(qty_raw) * scale if qty_raw is not None else None
                 except (TypeError, ValueError):
@@ -475,7 +482,7 @@ class AddRecipeToShoppingListView(APIView):
                 item = ShoppingItem.objects.create(
                     household=request.user.active_household,
                     name=name,
-                    quantity=round(qty, 2) if qty else None,
+                    quantity=round(qty, 2) if qty is not None else None,
                     unit=unit,
                     category=category,
                     suggestion=recipe.name,

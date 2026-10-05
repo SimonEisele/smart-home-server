@@ -37,7 +37,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     defaultCols: 4,
     defaultRows: 8,
     minCols: 2,
-    minRows: 8,
+    minRows: 4,
   },
   {
     type: 'datetime',
@@ -72,7 +72,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   {
     type: 'shoppinglist',
     title: 'Einkaufsliste',
-    icon: 'todo.svg',
+    icon: 'shoppinglist.svg',
     component: ShoppinglistWidget,
     defaultCols: 3,
     defaultRows: 8,

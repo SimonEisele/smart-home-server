@@ -19,6 +19,7 @@
   </div>
 
   <!-- Filter -->
+  <p class="page-purpose">Regelmässige Arbeiten, letzte Erledigung und nächste Fälligkeit. Mit „Erledigt“ wird der nächste Termin berechnet.</p><div *ngIf="loadError" class="form-feedback" role="alert">{{ loadError }} <button (click)="load()">Erneut versuchen</button></div><p *ngIf="loading" role="status">Reinigungsplan wird geladen…</p>
   <div class="filter-bar">
     <button class="chip" [class.active]="filter === 'all'" (click)="filter = 'all'">Alle</button>
     <button class="chip chip-danger" [class.active]="filter === 'overdue'" (click)="filter = 'overdue'">Überfällig</button>
@@ -36,7 +37,7 @@
       <!-- Main row -->
       <div class="task-main">
         <div class="task-icon" [style.background]="task.color || null">
-          {{ categoryIcons[task.category] }}
+          {{ categoryLabels[task.category].charAt(0) }}
         </div>
         <div class="task-info">
           <div class="task-name">{{ task.name }}</div>
@@ -115,13 +116,13 @@
   </div>
 
   <p class="empty-hint" *ngIf="filtered.length === 0 && tasks.length > 0">Keine Aufgaben für diesen Filter.</p>
-  <p class="empty-hint" *ngIf="tasks.length === 0">Noch keine Reinigungsaufgaben. Lege jetzt eine an!</p>
+  <p class="empty-hint" *ngIf="!loading && !loadError && tasks.length === 0">Noch keine Reinigungsaufgaben. Lege jetzt eine an!</p>
 
 </div>
 
 <!-- Task Modal -->
 <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
-  <div class="modal-panel">
+  <div class="modal-panel" aria-label="Reinigung" appDialog (dialogDismiss)="closeModal()">
     <div class="modal-header">
       <h3>{{ modalMode === 'add' ? 'Neue Aufgabe' : 'Aufgabe bearbeiten' }}</h3>
       <button class="modal-close" (click)="closeModal()">
@@ -130,7 +131,7 @@
         </svg>
       </button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body"><div class="form-feedback" role="alert" *ngIf="formError">{{ formError }}</div>
 
       <div class="field">
         <label>Name *</label>
@@ -168,7 +169,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="closeModal()">Abbrechen</button>
-      <button class="btn-primary" (click)="submitTask()">
+      <button class="btn-primary" (click)="submitTask()" [disabled]="saving">
         {{ modalMode === 'add' ? 'Erstellen' : 'Speichern' }}
       </button>
     </div>
@@ -177,7 +178,7 @@
 
 <!-- Complete Modal -->
 <div class="modal-backdrop" *ngIf="showCompleteModal" (click)="onBackdropClick($event)">
-  <div class="modal-panel modal-sm">
+  <div class="modal-panel modal-sm" aria-label="Reinigung" appDialog (dialogDismiss)="closeModal()">
     <div class="modal-header">
       <h3>{{ completingTask?.name }} erledigt</h3>
       <button class="modal-close" (click)="closeModal()">
@@ -186,7 +187,7 @@
         </svg>
       </button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body"><div class="form-feedback" role="alert" *ngIf="formError">{{ formError }}</div>
       <div class="field">
         <label>Datum</label>
         <input type="date" [(ngModel)]="completeDate" />
@@ -198,7 +199,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="closeModal()">Abbrechen</button>
-      <button class="btn-primary" (click)="submitComplete()">Speichern</button>
+      <button class="btn-primary" (click)="submitComplete()" [disabled]="saving">Speichern</button>
     </div>
   </div>
 </div>

@@ -3,7 +3,7 @@
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(7, 15, 30, 0.88);
+  background: var(--color-surface);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
@@ -12,8 +12,8 @@
 }
 
 .cook-panel {
-  background: linear-gradient(160deg, #0e1c36 0%, #07111e 100%);
-  border: 1px solid rgba(137, 223, 207, 0.18);
+  background: var(--color-surface);
+  border: 1px solid rgba(35,108,89,0.18);
   border-radius: 20px;
   width: 1200px;
   height: 760px;
@@ -23,14 +23,14 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(137, 223, 207,0.06);
+  box-shadow: none;
 }
 
 .cook-close {
   position: absolute;
   top: 16px;
   right: 16px;
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--color-surface-soft);
   border: none;
   border-radius: 10px;
   width: 36px;
@@ -39,23 +39,23 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--color-muted);
   transition: background 0.15s, color 0.15s;
   z-index: 2;
 }
 .cook-close svg { width: 16px; height: 16px; }
-.cook-close:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.cook-close:hover { background: var(--color-surface-soft); color: var(--color-text); }
 
 /* Header */
 .cook-panel-header {
   padding: 28px 32px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--color-card-border);
 }
 .cook-panel-badge {
   font-size: 0.7rem;
   font-weight: 700;
   color: var(--color-accent);
-  background: rgba(137, 223, 207, 0.12);
+  background: rgba(35,108,89,0.12);
   border-radius: 6px;
   display: inline-block;
   padding: 3px 9px;
@@ -66,7 +66,7 @@
 .cook-panel-title {
   font-size: 1.6rem;
   font-weight: 800;
-  color: #e6f0ff;
+  color: var(--color-text);
   margin: 0 0 12px;
   line-height: 1.2;
 }
@@ -76,16 +76,16 @@
   align-items: center;
   gap: 5px;
   font-size: 0.78rem;
-  color: rgba(174, 193, 222, 0.6);
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-muted);
+  background: var(--color-surface-soft);
   border-radius: 8px;
   padding: 4px 10px;
 }
 .cook-meta-pill svg { width: 13px; height: 13px; }
-.cook-meta-persons { color: var(--color-accent); background: rgba(137, 223, 207, 0.1); gap: 6px; }
+.cook-meta-persons { color: var(--color-accent); background: rgba(35,108,89,0.1); gap: 6px; }
 .persons-adj {
-  background: rgba(137, 223, 207,0.15);
-  border: 1px solid rgba(137, 223, 207,0.3);
+  background: rgba(35,108,89,0.15);
+  border: 1px solid rgba(35,108,89,0.3);
   color: var(--color-accent);
   border-radius: 5px;
   width: 22px; height: 22px;
@@ -98,7 +98,7 @@
   font-family: inherit;
   transition: background 0.12s;
 }
-.persons-adj:hover:not(:disabled) { background: rgba(137, 223, 207,0.28); }
+.persons-adj:hover:not(:disabled) { background: rgba(35,108,89,0.28); }
 .persons-adj:disabled { opacity: 0.3; cursor: not-allowed; }
 .persons-val {
   font-size: 1rem;
@@ -120,7 +120,7 @@
 .cook-section-title {
   font-size: 0.72rem;
   font-weight: 700;
-  color: rgba(174, 193, 222, 0.45);
+  color: var(--color-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin: 0 0 12px;
@@ -133,7 +133,7 @@
   align-items: baseline;
   gap: 12px;
   padding: 7px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--color-card-border);
 }
 .ingredient-row:last-child { border-bottom: none; }
 .ing-qty {
@@ -145,7 +145,7 @@
 }
 .ing-name {
   font-size: 0.95rem;
-  color: #e2e8f0;
+  color: var(--color-text);
 }
 
 /* Steps */
@@ -154,7 +154,7 @@
 .step-num {
   width: 28px;
   height: 28px;
-  background: rgba(137, 223, 207, 0.12);
+  background: rgba(35,108,89,0.12);
   color: var(--color-accent);
   border-radius: 50%;
   display: flex;
@@ -169,13 +169,13 @@
 .step-desc {
   margin: 0;
   font-size: 0.92rem;
-  color: #e2e8f0;
+  color: var(--color-text);
   line-height: 1.6;
 }
 .step-ings { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .step-ing {
   font-size: 0.72rem;
-  background: rgba(137, 223, 207, 0.08);
+  background: rgba(35,108,89,0.08);
   color: var(--color-accent);
   border-radius: 5px;
   padding: 2px 8px;
@@ -187,18 +187,18 @@
 .note-label {
   font-size: 0.78rem;
   font-weight: 700;
-  color: rgba(174, 193, 222, 0.5);
+  color: var(--color-muted);
   min-width: 90px;
   flex-shrink: 0;
 }
-.note-val { font-size: 0.88rem; color: #e2e8f0; }
+.note-val { font-size: 0.88rem; color: var(--color-text); }
 
-.cook-empty { font-size: 0.85rem; color: rgba(174, 193, 222, 0.4); margin: 0; }
+.cook-empty { font-size: 0.85rem; color: var(--color-muted); margin: 0; }
 
 /* Footer */
 .cook-panel-footer {
   padding: 16px 32px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--color-card-border);
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -210,8 +210,8 @@
   flex: 1;
 }
 .cook-list-btn {
-  background: rgba(137, 223, 207, 0.12);
-  border: 1px solid rgba(137, 223, 207, 0.3);
+  background: rgba(35,108,89,0.12);
+  border: 1px solid rgba(35,108,89,0.3);
   color: var(--color-accent);
   border-radius: 11px;
   padding: 10px 20px;
@@ -225,7 +225,7 @@
   transition: background 0.15s;
 }
 .cook-list-btn svg { width: 15px; height: 15px; }
-.cook-list-btn:hover:not(:disabled) { background: rgba(137, 223, 207, 0.22); }
+.cook-list-btn:hover:not(:disabled) { background: rgba(35,108,89,0.22); }
 .cook-list-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────────── */
@@ -233,15 +233,15 @@
   display: flex;
   gap: 4px;
   padding: 0 32px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid var(--color-card-border);
   flex-shrink: 0;
-  background: rgba(0,0,0,0.08);
+  background: var(--color-surface);
 }
 .cook-tab {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  color: rgba(174,193,222,0.5);
+  color: var(--color-muted);
   font-size: 0.82rem;
   font-weight: 700;
   font-family: inherit;
@@ -252,7 +252,7 @@
   transition: color 0.15s, border-color 0.15s;
   margin-bottom: -1px;
 }
-.cook-tab:hover { color: rgba(174,193,222,0.85); }
+.cook-tab:hover { color: var(--color-text); }
 .cook-tab-active { color: var(--color-accent) !important; border-bottom-color: var(--color-accent); }
 .cook-tab:disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -265,9 +265,9 @@
   padding: 20px 0 8px;
 }
 .step-nav-btn {
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: #e2e8f0;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-card-border);
+  color: var(--color-text);
   border-radius: 10px;
   width: 40px; height: 40px;
   font-size: 1.4rem;
@@ -276,19 +276,19 @@
   display: flex; align-items: center; justify-content: center;
   transition: background 0.15s;
 }
-.step-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,0.13); }
+.step-nav-btn:hover:not(:disabled) { background: var(--color-surface-soft); }
 .step-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .step-nav-label {
   font-size: 0.82rem;
   font-weight: 700;
-  color: rgba(174,193,222,0.5);
+  color: var(--color-muted);
   letter-spacing: 0.04em;
   min-width: 110px;
   text-align: center;
 }
 .step-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-card-border);
   border-radius: 14px;
   padding: 28px 32px;
   margin: 0 0 20px;
@@ -299,7 +299,7 @@
 }
 .step-card-num {
   width: 36px; height: 36px;
-  background: rgba(137, 223, 207,0.14);
+  background: rgba(35,108,89,0.14);
   color: var(--color-accent);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -309,13 +309,13 @@
 .step-card-desc {
   margin: 0;
   font-size: 1.05rem;
-  color: #e6f0ff;
+  color: var(--color-text);
   line-height: 1.7;
 }
 .step-card-ings { display: flex; flex-wrap: wrap; gap: 5px; }
 .step-card-ing-label {
   font-size: 0.72rem;
-  color: rgba(174,193,222,0.45);
+  color: var(--color-muted);
   display: block;
   width: 100%;
   margin-bottom: 4px;

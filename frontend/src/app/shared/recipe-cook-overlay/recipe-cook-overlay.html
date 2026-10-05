@@ -1,6 +1,6 @@
 @if (slot) {
 <div class="cook-overlay" (click)="onBackdropClick($event)">
-  <div class="cook-panel">
+  <div class="cook-panel" aria-label="Kochen" appDialog (dialogDismiss)="close()">
     <button class="cook-close" (click)="close()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
@@ -116,9 +116,9 @@
 
     <div class="cook-panel-footer">
       <span class="cook-added-msg" *ngIf="addedMessage">{{ addedMessage }}</span>
-      <button class="cook-list-btn" [disabled]="addingToShoppingList" (click)="addToShoppingList(slot)">
+      <button class="cook-list-btn" [disabled]="addingToShoppingList || ingredientsAdded" (click)="addToShoppingList(slot)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        {{ addingToShoppingList ? 'Füge hinzu…' : 'Zur Einkaufsliste' }}
+        {{ addingToShoppingList ? 'Füge hinzu…' : ingredientsAdded ? 'Zutaten hinzugefügt' : 'Zutaten zur Einkaufsliste' }}
       </button>
     </div>
 

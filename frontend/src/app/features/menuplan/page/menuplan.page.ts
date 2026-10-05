@@ -1,3 +1,5 @@
+import { finalize } from 'rxjs';
+import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { localIsoDate } from '../../../shared/date-utils';
 import { Component, HostListener, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -16,7 +18,7 @@ interface DayEntry { date: Date; dateStr: string; isToday: boolean; }
 @Component({
   selector: 'app-menuplan-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [DialogDirective, CommonModule, FormsModule],
   templateUrl: './menuplan.page.html',
   styleUrl: './menuplan.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,6 +37,9 @@ export class MenuplanPage implements OnInit {
 
   // ── Export modal state ──────────────────────────────────────────────
   showExportModal = false;
+  menuSaving = false;
+  menuError = '';
+  exporting = false;
   exportWeekStart = '';
   exportMenus: Menu[] = [];
   exportSelected = new Set<string>();
@@ -159,12 +164,14 @@ export class MenuplanPage implements OnInit {
 
   // ── Picker ───────────────────────────────────────────────────────────
   openPicker(dateStr: string, meal: PickerMode): void {
+    if (this.menuSaving) return;
+    this.menuError = "";
     this.activePicker = { dateStr, meal };
     this.pickerTab = 'recipe';
     this.pickerSearch = '';
   }
 
-  closePicker(): void { this.activePicker = null; }
+  closePicker(): void { if (this.menuSaving) return; this.activePicker = null; }
 
   onPickerBackdropClick(e: MouseEvent): void { if (e.target === e.currentTarget) this.closePicker(); }
 
@@ -233,18 +240,16 @@ export class MenuplanPage implements OnInit {
     if (!this.activePicker) return;
     const { dateStr, meal } = this.activePicker;
     if (meal === 'extra') {
-      this.addExtra(dateStr, recipe.id);
+      this.addExtra(dateStr, recipe.id, () => this.closePicker());
     } else {
-      this.upsertMenu(dateStr, this.mealPatch(meal as MealType, recipe.id, null));
+      this.upsertMenu(dateStr, this.mealPatch(meal as MealType, recipe.id, null), () => this.closePicker());
     }
-    this.closePicker();
   }
 
   selectLeftovers(ref: string): void {
     if (!this.activePicker) return;
     const { dateStr, meal } = this.activePicker;
-    this.upsertMenu(dateStr, this.mealPatch(meal as MealType, null, ref));
-    this.closePicker();
+    this.upsertMenu(dateStr, this.mealPatch(meal as MealType, null, ref), () => this.closePicker());
   }
 
   clearMeal(dateStr: string, meal: MealType, e: MouseEvent): void {
@@ -258,10 +263,10 @@ export class MenuplanPage implements OnInit {
     return this.menus[dateStr]?.extraRecipes ?? [];
   }
 
-  addExtra(dateStr: string, recipeId: string): void {
+  addExtra(dateStr: string, recipeId: string, onSaved?: () => void): void {
     const ids = [...(this.menus[dateStr]?.extraRecipeIds ?? [])].filter(id => id !== recipeId);
     ids.push(recipeId);
-    this.upsertMenu(dateStr, { extraRecipeIds: ids });
+    this.upsertMenu(dateStr, { extraRecipeIds: ids }, onSaved);
   }
 
   removeExtra(dateStr: string, recipeId: string, e: MouseEvent): void {
@@ -389,7 +394,7 @@ export class MenuplanPage implements OnInit {
   }
 
   doExport(): void {
-    if (!this.exportSelected.size) return;
+    if (!this.exportSelected.size || this.exporting) return;
     const d = new Date(this.exportWeekStart);
     const jan4 = new Date(d.getFullYear(), 0, 4);
     const startOfYear = jan4.getTime() - ((jan4.getDay() + 6) % 7) * 86400000;
@@ -405,12 +410,12 @@ export class MenuplanPage implements OnInit {
       meals.push(key);
       personCounts[key] = effective;
     }
-    if (!meals.length) return;
-    this.shoppingService.exportMenuplan(meals, weekTag, personCounts).subscribe(count => {
+    if (!meals.length) { this.exportDone = 'Für die ausgewählten Mahlzeiten sind keine Personen eingetragen. Bitte die Anwesenheit im Kalender prüfen.'; return; }
+    this.exporting = true;
+    this.shoppingService.exportMenuplan(meals, weekTag, personCounts).pipe(finalize(() => { this.exporting = false; this.cdr.markForCheck(); })).subscribe({ next: count => {
       this.exportDone = `${count} Einträge hinzugefügt.`;
       this.cdr.detectChanges();
-      setTimeout(() => { this.exportDone = ''; this.showExportModal = false; this.cdr.detectChanges(); }, 2500);
-    });
+    }, error: () => { this.exportDone = 'Export fehlgeschlagen. Bitte erneut versuchen.'; this.cdr.markForCheck(); } });
   }
 
   // ── Internal ─────────────────────────────────────────────────────────
@@ -440,20 +445,15 @@ export class MenuplanPage implements OnInit {
     });
   }
 
-  private upsertMenu(dateStr: string, patch: Partial<Menu>): void {
+  private upsertMenu(dateStr: string, patch: Partial<Menu>, onSaved?: () => void): void {
+    if (this.menuSaving) return;
+    this.menuSaving = true; this.menuError = '';
     const existing = this.menus[dateStr];
-    if (existing?.id) {
-      this.menuService.updateMenu(existing.id, patch).subscribe(updated => {
-        this.menus = { ...this.menus, [dateStr]: updated };
-        this.cdr.detectChanges();
-      });
-    } else {
-      const payload: Partial<Menu> = { date: dateStr, lunchPersons: 2, dinnerPersons: 2, ...patch };
-      this.menuService.createMenu(payload).subscribe(created => {
-        this.menus = { ...this.menus, [dateStr]: created };
-        this.cdr.detectChanges();
-      });
-    }
+    const request = existing?.id ? this.menuService.updateMenu(existing.id, patch) : this.menuService.createMenu({ date:dateStr, ...patch });
+    request.pipe(finalize(() => { this.menuSaving = false; this.cdr.markForCheck(); })).subscribe({
+      next: saved => { this.menus = { ...this.menus, [dateStr]: saved }; this.menuSaving = false; onSaved?.(); this.cdr.markForCheck(); },
+      error: () => { this.menuError = 'Die Planung konnte nicht gespeichert werden. Bitte erneut versuchen.'; this.cdr.markForCheck(); },
+    });
   }
 
   private toIsoDate(d: Date): string { return localIsoDate(d); }
