@@ -20,9 +20,12 @@
     </div>
   </div>
 
+  <p class="page-purpose">Rezepte sammeln und direkt kochen. Die Basisportionen bestimmen die Mengen im Menüplan und in der Einkaufsliste.</p>
+  <div class="form-feedback" role="alert" *ngIf="loadError">{{ loadError }} <button (click)="loadData()">Erneut versuchen</button></div>
+  <p *ngIf="loading" role="status">Rezepte werden geladen…</p>
   <!-- Cards -->
   <div class="recipes-grid" *ngIf="filtered.length > 0">
-    <div class="recipe-card" *ngFor="let recipe of filtered; trackBy: trackByRecipe" (click)="openEdit(recipe)">
+    <div class="recipe-card" *ngFor="let recipe of filtered; trackBy: trackByRecipe" >
       <div class="card-top">
         <span class="card-name">{{ recipe.name }}</span>
         <span class="duration-badge" *ngIf="recipe.durationMinutes">
@@ -44,6 +47,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           {{ recipe.baseServings }}&nbsp;{{ recipe.servingType === 'Stücke' ? 'Stk.' : 'Port.' }}
         </span>
+        <button class="btn-ghost" (click)="openEdit(recipe)">Bearbeiten</button>
         <button class="btn-cook" (click)="startCooking(recipe, $event)" title="Rezept starten">
           <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Kochen
@@ -52,7 +56,7 @@
     </div>
   </div>
 
-  <p class="empty-hint" *ngIf="recipes.length === 0">Noch keine Rezepte. Erstelle dein erstes!</p>
+  <p class="empty-hint" *ngIf="!loading && !loadError && recipes.length === 0">Noch keine Rezepte. Erstelle dein erstes!</p>
   <p class="empty-hint" *ngIf="recipes.length > 0 && filtered.length === 0">Keine Treffer für „{{ search }}".</p>
 
 </div>
@@ -68,16 +72,17 @@
 
 <!-- Modal -->
 <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
-  <div class="modal-panel">
+  <div class="modal-panel" aria-label="Rezept bearbeiten" appDialog (dialogDismiss)="closeModal()">
 
     <div class="modal-header">
       <h3>{{ modalMode === 'add' ? 'Neues Rezept' : 'Rezept bearbeiten' }}</h3>
-      <button type="button" class="modal-close" (click)="closeModal()">
+      <button type="button" class="modal-close" (click)="closeModal()" [disabled]="saving">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
 
     <div class="modal-body">
+      <div class="form-feedback" role="alert" *ngIf="formError">{{ formError }}</div>
 
       <div class="field">
         <label>Kategorie</label>
@@ -320,15 +325,15 @@
     </div>
 
     <div class="modal-footer">
-      <button type="button" class="btn-ghost btn-delete" *ngIf="modalMode === 'edit'" (click)="delete()">
+      <button type="button" class="btn-ghost btn-delete" *ngIf="modalMode === 'edit'" (click)="delete()" [disabled]="saving">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
         </svg>
         Löschen
       </button>
       <div class="footer-right">
-        <button type="button" class="btn-ghost" (click)="closeModal()">Abbrechen</button>
-        <button type="button" class="btn-primary" [class.btn-disabled]="!form.name?.trim()" (click)="save()">
+        <button type="button" class="btn-ghost" (click)="closeModal()" [disabled]="saving">Abbrechen</button>
+        <button type="button" class="btn-primary" [class.btn-disabled]="!form.name?.trim()" (click)="save()" [disabled]="saving">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
           Speichern
         </button>

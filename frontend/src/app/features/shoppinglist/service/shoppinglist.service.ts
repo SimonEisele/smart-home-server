@@ -39,9 +39,9 @@ export class ShoppinglistService {
       .pipe(map((res) => res.data));
   }
 
-  addRecipe(recipeId: string, persons: number): Observable<number> {
+  addRecipe(recipeId: string, persons: number, unitsPerPerson: number = 1): Observable<number> {
     return this.http
-      .post<{ count: number }>(`${environment.apiUrl}/shopping-items/add-recipe/`, { recipeId, persons })
+      .post<{ count: number }>(`${environment.apiUrl}/shopping-items/add-recipe/`, { recipeId, persons, unitsPerPerson })
       .pipe(map((res) => res.count));
   }
 

@@ -4,10 +4,10 @@ export interface Todo {
   description?: string;
   priority?: 'low' | 'medium' | 'high';
   done: boolean;
-  startDate?: string;
-  dueDate?: string;
+  startDate?: string | null;
+  dueDate?: string | null;
   progress?: number;
-  durationMinutes?: number;
+  durationMinutes?: number | null;
   recurrence?: '' | 'daily' | 'weekly' | 'monthly';
   recurrenceInterval?: number;
   globalTodo?: boolean;

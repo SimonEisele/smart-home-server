@@ -15,7 +15,7 @@
       <span class="loc-updated">Aktualisiert {{ weather.updatedAt | date:'HH:mm' }}</span>
     }
     <div class="loc-actions">
-      <button class="icon-btn" (click)="showSearch = !showSearch" title="Ort ändern">📍</button>
+      <button class="icon-btn" (click)="showSearch = !showSearch" title="Ort ändern">Ort ändern</button>
       @if (weather) {
         <button class="icon-btn" (click)="refresh()" title="Aktualisieren">↻</button>
       }
@@ -34,10 +34,10 @@
       @if (cityResults.length) {
         <div class="search-results">
           @for (r of cityResults; track r.id) {
-            <div class="search-result" (click)="selectCity(r)">
+            <button type="button" class="search-result" (click)="selectCity(r)">
               <span class="sr-name">{{ r.name }}</span>
               <span class="sr-sub">{{ r.admin1 ? r.admin1 + ', ' : '' }}{{ r.country }}</span>
-            </div>
+            </button>
           }
         </div>
       }
@@ -63,15 +63,15 @@
     <div class="state-card error">
       <span>⚠️</span>
       <p>{{ error }}</p>
-      <button class="btn-ghost" (click)="useGeolocation()">📍 Standort erneut ermitteln</button>
+      <button class="btn-ghost" (click)="useGeolocation()"> Standort erneut ermitteln</button>
     </div>
   }
 
   @if (!weather && !loading && !locating && !error) {
     <div class="state-card">
       <p>Kein Standort gespeichert</p>
-      <button class="btn-primary" (click)="useGeolocation()">📍 Meinen Standort verwenden</button>
-      <button class="btn-ghost" (click)="showSearch = true">🔍 Stadt suchen</button>
+      <button class="btn-primary" (click)="useGeolocation()"> Meinen Standort verwenden</button>
+      <button class="btn-ghost" (click)="showSearch = true"> Stadt suchen</button>
     </div>
   }
 
@@ -81,7 +81,7 @@
     <!-- Hero: current conditions -->
     <div class="current-hero" [style.background]="heroGradient()">
       <div class="hero-main">
-        <div class="hero-icon">{{ icon(weather.current.weatherCode, weather.current.isDay) }}</div>
+        <div class="hero-icon"><weather-symbol [code]="weather.current.weatherCode" [isDay]="weather.current.isDay"/></div>
         <div class="hero-temp">
           {{ weather.current.temperature | number:'1.0-0' }}<span class="deg">°C</span>
         </div>
@@ -102,22 +102,22 @@
     <!-- Quick stats strip -->
     <div class="quick-stats">
       <div class="stat">
-        <span class="stat-ic">💧</span>
+        <span class="stat-ic"></span>
         <span class="stat-val">{{ weather.current.humidity }}%</span>
         <span class="stat-lbl">Luftfeuchte</span>
       </div>
       <div class="stat">
-        <span class="stat-ic">💨</span>
+        <span class="stat-ic"></span>
         <span class="stat-val">{{ weather.current.windSpeed | number:'1.0-0' }} km/h</span>
         <span class="stat-lbl">Wind {{ windDir(weather.current.windDirection) }}</span>
       </div>
       <div class="stat">
-        <span class="stat-ic">🌧️</span>
+        <span class="stat-ic"></span>
         <span class="stat-val">{{ weather.current.precipitation | number:'1.1-1' }} mm</span>
         <span class="stat-lbl">Niederschlag</span>
       </div>
       <div class="stat" [style.color]="uvColor(weather.current.uvIndex)">
-        <span class="stat-ic">🔆</span>
+        <span class="stat-ic"></span>
         <span class="stat-val">{{ weather.current.uvIndex | number:'1.0-0' }}</span>
         <span class="stat-lbl">UV ({{ uvLabel(weather.current.uvIndex) }})</span>
       </div>
@@ -135,7 +135,7 @@
         @for (h of next24Hours; track h.time) {
           <div class="hour-card" [class.current-hour]="$first">
             <div class="h-time">{{ hourLabel(h.time) }}</div>
-            <div class="h-icon">{{ icon(h.weatherCode) }}</div>
+            <div class="h-icon"><weather-symbol [code]="h.weatherCode"/></div>
             <div class="h-temp" [style.color]="tempColor(h.temperature)">
               {{ h.temperature | number:'1.0-0' }}°
             </div>
@@ -162,15 +162,15 @@
 
     <!-- 7-day forecast -->
     <div class="section-card">
-      <h3 class="section-title">📅 7-Tage-Vorhersage</h3>
+      <h3 class="section-title"> 7-Tage-Vorhersage</h3>
       <div class="daily-list">
         @for (day of weather.daily; track day.date; let i = $index) {
           <div class="day-row">
             <span class="day-name">{{ dayName(day.date, i) }}</span>
-            <span class="day-icon">{{ icon(day.weatherCode) }}</span>
+            <span class="day-icon"><weather-symbol [code]="day.weatherCode"/></span>
             <div class="day-precip-badge"
                  [class.visible]="day.precipitationProbabilityMax > 10">
-              💧{{ day.precipitationProbabilityMax }}%
+              {{ day.precipitationProbabilityMax }}%
             </div>
             <div class="day-temp-bar">
               <div class="dtb-track">
@@ -195,7 +195,7 @@
 
       <!-- UV Index -->
       <div class="detail-card">
-        <div class="dc-label">🔆 UV-Index</div>
+        <div class="dc-label"> UV-Index</div>
         @if (todayForecast) {
           <div class="uv-value" [style.color]="uvColor(todayForecast.uvIndexMax)">
             {{ todayForecast.uvIndexMax | number:'1.0-0' }}
@@ -213,7 +213,7 @@
 
       <!-- Wind -->
       <div class="detail-card">
-        <div class="dc-label">💨 Wind</div>
+        <div class="dc-label"> Wind</div>
         <div class="compass-wrap">
           <div class="compass-ring">N<br/><span class="c-e">O</span><span class="c-w">W</span><br/>S</div>
           <div class="compass-arrow"
@@ -228,7 +228,7 @@
 
       <!-- Sunrise / Sunset -->
       <div class="detail-card sun-card">
-        <div class="dc-label">🌅 Sonnenauf- & -untergang</div>
+        <div class="dc-label"> Sonnenauf- & -untergang</div>
         @if (todayForecast) {
           <svg class="sun-arc-svg" viewBox="0 0 200 110">
             <defs>
@@ -258,13 +258,13 @@
           </svg>
           <div class="sun-times">
             <div class="sun-time">
-              <span class="st-ic">🌅</span>
+              <span class="st-ic"></span>
               <span>{{ formatTime(todayForecast.sunrise) }}</span>
             </div>
             <div class="sun-day-len">☀️ {{ dayLength }}</div>
             <div class="sun-time">
               <span>{{ formatTime(todayForecast.sunset) }}</span>
-              <span class="st-ic">🌇</span>
+              <span class="st-ic"></span>
             </div>
           </div>
         }
@@ -272,7 +272,7 @@
 
       <!-- Humidity & Dew point -->
       <div class="detail-card">
-        <div class="dc-label">💧 Luftfeuchte</div>
+        <div class="dc-label"> Luftfeuchte</div>
         <div class="humidity-ring">
           <svg viewBox="0 0 80 80" width="80" height="80">
             <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
@@ -289,7 +289,7 @@
 
       <!-- Pressure -->
       <div class="detail-card">
-        <div class="dc-label">🌡 Luftdruck</div>
+        <div class="dc-label"> Luftdruck</div>
         <div class="big-num">{{ weather.current.pressure | number:'1.0-0' }}</div>
         <div class="big-unit">hPa</div>
         <div class="dc-sub">
@@ -301,7 +301,7 @@
 
       <!-- Visibility -->
       <div class="detail-card">
-        <div class="dc-label">👁 Sichtweite</div>
+        <div class="dc-label"> Sichtweite</div>
         @if (next24Hours.length) {
           <div class="big-num">{{ next24Hours[0].visibility | number:'1.0-0' }}</div>
           <div class="big-unit">km</div>
@@ -319,7 +319,7 @@
     <!-- ── Niederschlagsradar ───────────────────────────────────────── -->
     <div class="section-card map-section">
       <div class="map-header">
-        <h3 class="section-title">🛰 Wetterkarte</h3>
+        <h3 class="section-title"> Wetterkarte</h3>
         <div class="map-tabs">
           @for (l of RADAR_LAYERS; track l.key) {
             <button class="map-tab" [class.active]="radarLayer === l.key"
@@ -337,7 +337,7 @@
     <!-- ── Europakarte ──────────────────────────────────────────────── -->
     <div class="section-card map-section">
       <div class="map-header">
-        <h3 class="section-title">🌍 Europa-Wetterlage</h3>
+        <h3 class="section-title"> Europa-Wetterlage</h3>
         <div class="map-tabs">
           @for (l of EUROPE_LAYERS; track l.key) {
             <button class="map-tab" [class.active]="europeLayer === l.key"

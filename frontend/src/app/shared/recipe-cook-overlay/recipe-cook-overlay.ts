@@ -1,13 +1,14 @@
+import { DialogDirective } from '../directives/dialog.directive';
 import { Component, ChangeDetectorRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RecipeCookService, CookSlot } from '../services/recipe-cook.service';
-import { MenuService } from '../../features/menuplan/service/menuplan.service';
+import { ShoppinglistService } from '../../features/shoppinglist/service/shoppinglist.service';
 import { Recipe, RecipeIngredient } from '../../features/recipes/model/recipes.model';
 
 @Component({
   selector: 'recipe-cook-overlay',
   standalone: true,
-  imports: [CommonModule],
+  imports: [DialogDirective, CommonModule],
   templateUrl: './recipe-cook-overlay.html',
   styleUrl: './recipe-cook-overlay.css',
 })
@@ -15,6 +16,7 @@ export class RecipeCookOverlay implements OnInit {
   slot: CookSlot | null = null;
   addingToShoppingList = false;
   addedMessage = '';
+  private addedKey = '';
   activeTab: 'full' | 'steps' = 'full';
   currentStep = 0;
   localPersons = 1;
@@ -24,7 +26,7 @@ export class RecipeCookOverlay implements OnInit {
 
   constructor(
     private cookService: RecipeCookService,
-    private menuService: MenuService,
+    private shoppingService: ShoppinglistService,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -32,16 +34,12 @@ export class RecipeCookOverlay implements OnInit {
     this.cookService.slot$.subscribe(slot => {
       this.slot = slot;
       this.addedMessage = '';
+      this.addedKey = '';
       this.addingToShoppingList = false;
       this.activeTab = 'full';
       this.currentStep = 0;
       this.localPersons = slot ? slot.persons : 1;
       this.localUnitsPerPerson = slot ? (slot.recipe.unitsPerPerson ?? 1) : 1;
-      if (slot) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = '';
-      }
       this.cdr.detectChanges();
     });
   }
@@ -79,16 +77,22 @@ export class RecipeCookOverlay implements OnInit {
     this.localUnitsPerPerson = Math.max(0.5, Math.round((this.localUnitsPerPerson + delta) * 2) / 2);
   }
 
+  get ingredientsAdded(): boolean {
+    return !!this.slot && this.addedKey === `${this.slot.recipe.id}:${this.localPersons}:${this.localUnitsPerPerson}`;
+  }
+
   addToShoppingList(slot: CookSlot): void {
-    if (this.addingToShoppingList) return;
+    if (this.addingToShoppingList || this.ingredientsAdded) return;
+    const key = `${slot.recipe.id}:${this.localPersons}:${this.localUnitsPerPerson}`;
     this.addingToShoppingList = true;
-    this.menuService.exportMeal(slot.date, slot.meal, slot.weekTag).subscribe({
+    this.shoppingService.addRecipe(slot.recipe.id, this.localPersons, this.localUnitsPerPerson).subscribe({
       next: count => {
         this.addingToShoppingList = false;
+        this.addedKey = key;
         this.addedMessage = count > 0 ? `${count} Zutaten hinzugefügt!` : 'Bereits vorhanden.';
         this.cdr.detectChanges();
       },
-      error: () => { this.addingToShoppingList = false; this.cdr.detectChanges(); }
+      error: () => { this.addingToShoppingList = false; this.addedMessage = 'Zutaten konnten nicht hinzugefügt werden. Bitte erneut versuchen.'; this.cdr.markForCheck(); }
     });
   }
 }

@@ -3,7 +3,7 @@
   <!-- Header -->
   <div class="todo-header">
     <div class="header-left">
-      <h2>Todos</h2>
+      <h2>Aufgaben</h2>
       <div class="header-stats">
         <span class="stat-pill open">{{ openCount }} offen</span>
         <span class="stat-pill wg" *ngIf="globalCount > 0">{{ globalCount }} WG</span>
@@ -14,11 +14,14 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <path d="M12 5v14M5 12h14"/>
       </svg>
-      Neues Todo
+      Neue Aufgabe
     </button>
   </div>
 
   <!-- Filter Chips -->
+  <p class="page-purpose">Was ansteht, wem es gehört und wann es fällig ist. Erledige Aufgaben direkt in der Liste.</p>
+  <div class="form-feedback" *ngIf="loadError" role="alert">{{ loadError }} <button (click)="loadData()">Erneut versuchen</button></div>
+  <p *ngIf="loading" role="status">Aufgaben werden geladen…</p>
   <div class="filter-bar">
     <button class="chip" [class.active]="filter === 'all'" (click)="filter = 'all'">Alle</button>
     <button class="chip" [class.active]="filter === 'open'" (click)="filter = 'open'">Offen</button>
@@ -45,15 +48,15 @@
       <div class="todo-card" *ngFor="let todo of openTodos"
            [class.overdue]="isOverdue(todo)"
            [class.due-soon]="isDueSoon(todo)"
-           (click)="openEdit(todo)">
+           >
         <div class="card-top">
-          <button class="check-btn" (click)="toggleDone(todo, $event)" [attr.aria-label]="'Erledigt markieren'">
+          <button class="check-btn" (click)="toggleDone(todo, $event)" [attr.aria-label]="todo.title + ' erledigen'" [disabled]="pendingIds.has(todo.id)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
             </svg>
           </button>
           <div class="card-title-block">
-            <span class="card-title">{{ todo.title }}</span>
+            <button class="task-title-button" (click)="openEdit(todo)" [attr.aria-label]="todo.title + ' bearbeiten'">{{ todo.title }}</button>
             <span class="card-desc" *ngIf="todo.description">{{ todo.description }}</span>
           </div>
           <span class="priority-badge priority-{{ todo.priority ?? 'medium' }}">{{ priorityLabel(todo.priority) }}</span>
@@ -82,7 +85,7 @@
         </div>
       </div>
     </div>
-    <p class="empty-hint" *ngIf="openTodos.length === 0 && (filter === 'open' || filter === 'overdue')">Keine Todos gefunden.</p>
+    <p class="empty-hint" *ngIf="openTodos.length === 0 && (filter === 'open' || filter === 'overdue')">Keine Aufgaben gefunden.</p>
   </ng-container>
 
   <!-- Done todos -->
@@ -92,7 +95,7 @@
       <span class="section-count">{{ doneTodos.length }}</span>
     </div>
     <div class="todo-grid dimmed">
-      <div class="todo-card done-card" *ngFor="let todo of doneTodos" (click)="openEdit(todo)">
+      <div class="todo-card done-card" *ngFor="let todo of doneTodos" >
         <div class="card-top">
           <button class="check-btn done" (click)="toggleDone(todo, $event)" aria-label="Als unerledigt markieren">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -115,17 +118,17 @@
     </div>
   </ng-container>
 
-  <p class="empty-hint full" *ngIf="todos.length === 0">Noch keine Todos. Leg los!</p>
+  <p class="empty-hint full" *ngIf="!loading && !loadError && todos.length === 0">Noch keine Aufgaben. Leg los!</p>
 
 </div>
 
 <!-- Modal Backdrop + Panel -->
 <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
-  <div class="modal-panel">
+  <div class="modal-panel" aria-label="Aufgabe" appDialog (dialogDismiss)="closeModal()">
 
     <div class="modal-header">
-      <h3>{{ modalMode === 'add' ? 'Neues Todo' : 'Todo bearbeiten' }}</h3>
-      <button class="modal-close" (click)="closeModal()" aria-label="Schließen">
+      <h3>{{ modalMode === 'add' ? 'Neue Aufgabe' : 'Aufgabe bearbeiten' }}</h3>
+      <button class="modal-close" (click)="closeModal()" aria-label="Schließen" [disabled]="saving">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <path d="M18 6L6 18M6 6l12 12"/>
         </svg>
@@ -133,6 +136,7 @@
     </div>
 
     <div class="modal-body">
+      <div class="form-feedback" role="alert" *ngIf="formError">{{ formError }}</div>
 
       <!-- Title -->
       <div class="field">
@@ -207,20 +211,20 @@
 
       <!-- WG toggle -->
       <div class="toggle-row">
-        <label class="toggle-label" (click)="form.globalTodo = !form.globalTodo">
+        <label class="toggle-label"><input type="checkbox" [(ngModel)]="form.globalTodo" aria-label="Für alle im Haushalt"/>
           <div class="toggle" [class.on]="form.globalTodo">
             <div class="toggle-knob"></div>
           </div>
           <div class="toggle-text">
             <span class="toggle-title">Für alle in der WG</span>
-            <span class="toggle-sub">{{ form.globalTodo ? 'Alle WG-Mitglieder sehen dieses Todo' : 'Nur du siehst dieses Todo' }}</span>
+            <span class="toggle-sub">{{ form.globalTodo ? 'Alle WG-Mitglieder sehen diese Aufgabe' : 'Nur du siehst diese Aufgabe' }}</span>
           </div>
         </label>
       </div>
 
       <!-- Done (edit only) -->
       <div class="toggle-row" *ngIf="modalMode === 'edit'">
-        <label class="toggle-label" (click)="form.done = !form.done">
+        <label class="toggle-label"><input type="checkbox" [(ngModel)]="form.done" aria-label="Erledigt"/>
           <div class="toggle" [class.on]="form.done">
             <div class="toggle-knob"></div>
           </div>
@@ -231,15 +235,15 @@
     </div>
 
     <div class="modal-footer">
-      <button class="btn-ghost btn-delete" *ngIf="modalMode === 'edit'" (click)="deleteTodo()">
+      <button class="btn-ghost btn-delete" *ngIf="modalMode === 'edit'" (click)="deleteTodo()" [disabled]="saving">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
         </svg>
         Löschen
       </button>
       <div class="footer-right">
-        <button class="btn-ghost" (click)="closeModal()">Abbrechen</button>
-        <button type="button" class="btn-primary" [class.btn-disabled]="!form.title?.trim()" (click)="save()">
+        <button class="btn-ghost" (click)="closeModal()" [disabled]="saving">Abbrechen</button>
+        <button type="button" class="btn-primary" [class.btn-disabled]="!form.title?.trim()" (click)="save()" [disabled]="saving">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
             <path d="M20 6L9 17l-5-5"/>
           </svg>

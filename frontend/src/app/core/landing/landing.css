@@ -9,12 +9,12 @@
 .landing-card {
   width: 100%;
   max-width: 380px;
-  background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
-  border: 1px solid rgba(174,193,222,.2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
   border-radius: 24px;
   padding: 2.5rem 2rem;
   backdrop-filter: blur(16px);
-  box-shadow: 0 8px 40px rgba(0,0,0,.35);
+  box-shadow: none;
 }
 
 /* Brand */
@@ -37,7 +37,7 @@
   margin: 0;
   font-size: 1.6rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--color-text);
   letter-spacing: -0.03em;
 }
 
@@ -51,7 +51,7 @@
 .login-hint {
   margin: 0 0 0.25rem;
   font-size: 0.87rem;
-  color: rgba(255,255,255,.5);
+  color: var(--color-muted);
   text-align: center;
 }
 
@@ -64,16 +64,16 @@
 .field-label {
   font-size: 0.78rem;
   font-weight: 600;
-  color: rgba(255,255,255,.5);
+  color: var(--color-muted);
   letter-spacing: .04em;
   text-transform: uppercase;
 }
 
 .glass-input {
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(174,193,222,.18);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-card-border);
   border-radius: 10px;
-  color: #edf4ff;
+  color: var(--color-text);
   font-size: 0.95rem;
   padding: 0.65rem 0.9rem;
   width: 100%;
@@ -83,7 +83,7 @@
 }
 .glass-input:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(137, 223, 207,.15);
+  box-shadow: none;
 }
 
 .field-group.has-error .glass-input {
@@ -106,10 +106,10 @@
 }
 
 .btn-icon-sm {
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(174,193,222,.18);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-card-border);
   border-radius: 8px;
-  color: rgba(255,255,255,.6);
+  color: var(--color-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -118,7 +118,7 @@
   flex-shrink: 0;
   transition: background .2s;
 }
-.btn-icon-sm:hover { background: rgba(255,255,255,.12); }
+.btn-icon-sm:hover { background: var(--color-surface-soft); }
 
 .icon-sm { width: 18px; height: 18px; }
 
@@ -127,13 +127,13 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.85rem;
-  color: rgba(255,255,255,.55);
+  color: var(--color-muted);
   cursor: pointer;
 }
 .remember-row input { cursor: pointer; accent-color: var(--color-accent); }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
+  background: var(--color-surface);
   border: none;
   border-radius: 10px;
   color: #08101d;

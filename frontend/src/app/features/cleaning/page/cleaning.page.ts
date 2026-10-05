@@ -1,3 +1,4 @@
+import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { localIsoDate } from '../../../shared/date-utils';
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -5,7 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { CleaningService } from '../service/cleaning.service';
 import { CleaningTask, CleaningCategory } from '../model/cleaning.model';
 import { AuthService } from '../../../core/auth/service/auth.service';
-import { switchMap, catchError, of } from 'rxjs';
+import { finalize, switchMap } from 'rxjs';
 
 type FilterMode = 'all' | 'overdue' | 'upcoming';
 
@@ -38,7 +39,7 @@ const CATEGORY_ICONS: Record<CleaningCategory, string> = {
 @Component({
   selector: 'cleaning-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [DialogDirective, CommonModule, FormsModule],
   templateUrl: './cleaning.page.html',
   styleUrl: './cleaning.page.css',
 })
@@ -48,6 +49,10 @@ export class CleaningPage implements OnInit {
   expandedTaskId: string | null = null;
 
   showModal = false;
+  saving = false;
+  formError = '';
+  loadError = '';
+  loading = false;
   modalMode: 'add' | 'edit' = 'add';
   editingTaskId: string | null = null;
   form: TaskForm = this.emptyForm();
@@ -73,13 +78,15 @@ export class CleaningPage implements OnInit {
     this.load();
   }
 
-  private load(): void {
-    this.auth.ensureAccessToken()
-      .pipe(
-        switchMap(() => this.cleaningService.getTasks()),
-        catchError(() => of([] as CleaningTask[]))
-      )
-      .subscribe(tasks => { this.tasks = tasks; this.cdr.detectChanges(); });
+  load(): void {
+    this.loading = true; this.loadError = '';
+    this.auth.ensureAccessToken().pipe(
+      switchMap(() => this.cleaningService.getTasks()),
+      finalize(() => { this.loading = false; this.cdr.markForCheck(); })
+    ).subscribe({
+      next: tasks => { this.tasks = tasks; this.cdr.markForCheck(); },
+      error: () => { this.loadError = 'Reinigungsplan konnte nicht geladen werden.'; this.cdr.markForCheck(); },
+    });
   }
 
   // ── Filtering ────────────────────────────────────────────────────────────────
@@ -171,22 +178,26 @@ export class CleaningPage implements OnInit {
     this.completingTask = task;
     this.completeDate = localIsoDate(new Date());
     this.completeNote = '';
+    this.formError = '';
     this.showCompleteModal = true;
   }
 
   submitComplete(): void {
-    if (!this.completingTask) return;
-    this.cleaningService
-      .logCompletion(this.completingTask.id, this.completeDate, this.completeNote)
-      .subscribe(log => {
-        const task = this.tasks.find(t => t.id === this.completingTask!.id);
-        if (task) {
-          task.logs = [log, ...(task.logs ?? [])];
-          task.lastDoneAt = log.doneAt;
-        }
-        this.showCompleteModal = false;
-        this.cdr.detectChanges();
-      });
+    if (!this.completingTask || this.saving) return;
+    if (!this.completeDate || this.completeDate > localIsoDate(new Date())) {
+      this.formError = 'Bitte ein Datum bis heute angeben.'; return;
+    }
+    const taskId = this.completingTask.id;
+    this.saving = true; this.formError = '';
+    this.cleaningService.logCompletion(taskId, this.completeDate, this.completeNote).pipe(finalize(() => {
+      this.saving = false; this.cdr.markForCheck();
+    })).subscribe({
+      next: log => {
+        this.tasks = this.tasks.map(task => task.id === taskId ? { ...task, logs: [log, ...(task.logs ?? [])], lastDoneAt: task.lastDoneAt && task.lastDoneAt > log.doneAt ? task.lastDoneAt : log.doneAt } : task);
+        this.saving = false; this.closeModal(); this.cdr.markForCheck();
+      },
+      error: () => { this.formError = 'Erledigung konnte nicht gespeichert werden. Bitte erneut versuchen.'; this.cdr.markForCheck(); },
+    });
   }
 
   deleteLog(taskId: string, logId: string, event: Event): void {
@@ -209,6 +220,7 @@ export class CleaningPage implements OnInit {
     this.editingTaskId = null;
     this.form = this.emptyForm();
     this.errors = {};
+    this.formError = "";
     this.showModal = true;
   }
 
@@ -224,10 +236,12 @@ export class CleaningPage implements OnInit {
       color: task.color ?? '',
     };
     this.errors = {};
+    this.formError = "";
     this.showModal = true;
   }
 
   closeModal(): void {
+    if (this.saving) return;
     this.showModal = false;
     this.showCompleteModal = false;
   }
@@ -239,12 +253,14 @@ export class CleaningPage implements OnInit {
   }
 
   submitTask(): void {
+    if (this.saving) return;
     this.errors = {};
+    this.formError = "";
     if (!this.form.name.trim()) {
       this.errors['name'] = 'Pflichtfeld';
       return;
     }
-    if (this.form.intervalDays < 1) {
+    if (!Number.isInteger(this.form.intervalDays) || this.form.intervalDays < 1) {
       this.errors['intervalDays'] = 'Mindestens 1 Tag';
       return;
     }
@@ -257,19 +273,15 @@ export class CleaningPage implements OnInit {
       color: this.form.color,
     };
 
-    if (this.modalMode === 'add') {
-      this.cleaningService.createTask(payload).subscribe(task => {
-        this.tasks = [...this.tasks, task].sort((a, b) => a.name.localeCompare(b.name));
-        this.closeModal();
-        this.cdr.detectChanges();
-      });
-    } else {
-      this.cleaningService.updateTask(this.editingTaskId!, payload).subscribe(updated => {
-        this.tasks = this.tasks.map(t => t.id === updated.id ? { ...t, ...updated } : t);
-        this.closeModal();
-        this.cdr.detectChanges();
-      });
-    }
+    this.saving = true; this.formError = '';
+    const request = this.modalMode === 'add' ? this.cleaningService.createTask(payload) : this.cleaningService.updateTask(this.editingTaskId!, payload);
+    request.pipe(finalize(() => { this.saving = false; this.cdr.markForCheck(); })).subscribe({
+      next: task => {
+        this.tasks = this.modalMode === 'add' ? [...this.tasks, task] : this.tasks.map(t => t.id === task.id ? { ...t, ...task } : t);
+        this.saving = false; this.closeModal(); this.cdr.markForCheck();
+      },
+      error: () => { this.formError = 'Speichern fehlgeschlagen. Deine Eingaben bleiben erhalten.'; this.cdr.markForCheck(); },
+    });
   }
 
   deleteTask(task: CleaningTask, event: Event): void {

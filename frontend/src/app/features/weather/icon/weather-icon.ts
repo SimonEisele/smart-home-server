@@ -20,7 +20,7 @@ import { wmoLabel } from '../pipes/weather.pipe';
       <path *ngIf="code >= 71 && code <= 77 || code >= 85 && code <= 86" d="M16 38v6m-3-3h6m12-3v6m-3-3h6"/>
       <path *ngIf="code >= 95" d="M26 34l-5 7h6l-4 6" class="sun"/>
     </svg>`,
-  styles: [`:host { display:inline-flex; width:1em; height:1em; vertical-align:middle; } svg { width:100%; height:100%; } .sun { color:#f5ce79; } .cloud { fill:var(--color-surface-soft); color:#c4d6e9; } .rain { color:#8fbfe9; }`],
+  styles: [`:host { display:inline-flex; width:1em; height:1em; vertical-align:middle; } svg { width:100%; height:100%; } .sun { color:#d8a438; } .cloud { fill:var(--color-surface-soft); color:#667970; } .rain { color:#467fab; }`],
 })
 export class WeatherSymbol {
   @Input() code = 0;

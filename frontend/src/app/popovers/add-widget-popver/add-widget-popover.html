@@ -1,4 +1,4 @@
-<div class="add-widget-popover-panel">
+<div class="add-widget-popover-panel" aria-label="Widget hinzufügen" appDialog (dialogDismiss)="closePopover()">
   <div class="popover-arrow" [style.left.px]="arrowLeft"></div>
   <div class="popover-heading"><strong>Widget hinzufügen</strong><button (click)="closePopover()" aria-label="Schliessen">×</button></div>
   <p class="popover-description">Wähle, was du im Blick behalten möchtest.</p>

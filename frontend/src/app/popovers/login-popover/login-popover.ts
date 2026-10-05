@@ -1,3 +1,4 @@
+import { DialogDirective } from '../../shared/directives/dialog.directive';
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
 import { AuthService } from '../../core/auth/service/auth.service';
 import { CommonModule } from '@angular/common';
@@ -7,7 +8,7 @@ import { RouterLink } from '@angular/router';
 @Component({
   selector: 'login-popover',
   standalone: true,
-  imports: [ CommonModule, FormsModule, RouterLink ],
+  imports: [DialogDirective,  CommonModule, FormsModule, RouterLink ],
   templateUrl: './login-popover.html',
   styleUrl: './login-popover.css',
 })

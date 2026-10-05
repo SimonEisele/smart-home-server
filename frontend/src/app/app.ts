@@ -1,4 +1,5 @@
 import { Component, signal, inject } from '@angular/core';
+import { AsyncPipe } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { Navbar } from './core/navbar/navbar';
 import { AuthService } from './core/auth/service/auth.service';
@@ -8,7 +9,7 @@ import { RecipeCookOverlay } from './shared/recipe-cook-overlay/recipe-cook-over
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [Navbar, RouterOutlet, RecipeCookOverlay],
+  imports: [AsyncPipe, Navbar, RouterOutlet, RecipeCookOverlay],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
@@ -16,7 +17,7 @@ export class App {
   readonly errorNotice = inject(ErrorNoticeService);
   protected readonly title = signal('SmartHome Server');
 
-  constructor(private auth: AuthService) {
+  constructor(public auth: AuthService) {
   if (localStorage.getItem('access') || sessionStorage.getItem('access') ||
       localStorage.getItem('refresh') || sessionStorage.getItem('refresh')) {
     this.auth.ensureAccessToken().subscribe(token => {

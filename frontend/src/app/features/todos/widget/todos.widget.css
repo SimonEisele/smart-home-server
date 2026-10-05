@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  color: #edf4ff;
+  color: var(--color-text);
 }
 
 .todo-widget-list {
@@ -18,13 +18,13 @@
 .todo-widget-list li {
   border-radius: 10px;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(174, 193, 222, 0.12);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-card-border);
   transition: border-color 0.15s;
 }
 
 .todo-widget-list li:hover {
-  border-color: rgba(137, 223, 207, 0.25);
+  border-color: rgba(35,108,89,0.25);
 }
 
 .todo-row {
@@ -41,7 +41,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  color: rgba(137, 223, 207, 0.45);
+  color: rgba(35,108,89,0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -66,7 +66,7 @@
 .todo-title {
   font-size: 0.85rem;
   font-weight: 500;
-  color: #edf4ff;
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -74,7 +74,7 @@
 
 .todo-date {
   font-size: 0.70rem;
-  color: #a9b8cd;
+  color: var(--color-text);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -90,20 +90,20 @@
 .progress-track {
   height: 3px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-soft);
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   border-radius: 3px;
-  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-strong));
+  background: var(--color-surface);
 }
 
 .all-done {
   text-align: center;
   font-size: 0.88rem;
-  color: #a9b8cd;
+  color: var(--color-text);
   padding: 16px 0;
 }
 
@@ -160,9 +160,9 @@
   padding: 12px 0;
 }
 .todo-widget-list { display:grid; gap:8px; }
-.todo-widget-list li { border:1px solid var(--color-card-border); border-radius:12px; padding:10px; background:var(--color-surface-soft); margin:0; }
-.todo-widget-list li.overdue { border-left:3px solid #f59c91; }
-.todo-widget-list li.due-today { border-left:3px solid var(--color-accent); }
-.complete-btn { min-width:36px; min-height:36px; padding:7px; border-radius:8px; }
+.todo-widget-list li { border: 1px solid var(--color-card-border); border-radius: 12px; padding:10px; background: var(--color-surface-soft); margin:0; }
+.todo-widget-list li.overdue { border-left: 3px solid #f59c91; }
+.todo-widget-list li.due-today { border-left: 3px solid var(--color-accent); }
+.complete-btn { min-width:36px; min-height:36px; padding:7px; border-radius: 8px; }
 .todo-title { font-size:.9rem; font-weight:550; overflow-wrap:anywhere; }
-.todo-date { font-size:.75rem; color:var(--color-muted); }
+.todo-date { font-size:.75rem; color: var(--color-muted); }

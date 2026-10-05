@@ -11,14 +11,14 @@
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
     </svg>
     <span>Bearbeitungsmodus — Widgets verschieben &amp; Grösse anpassen</span>
-    <button class="btn-layouts" (click)="openLayoutPanel()">📋 Layouts</button>
+    <button class="btn-layouts" (click)="openLayoutPanel()">Layouts</button>
     <button class="btn-edit-done" (click)="dashboardService.setEditMode(false)">Fertig</button>
   </div>
 
   <!-- Layout manager panel -->
   <ng-container *ngIf="showLayoutPanel">
     <div class="layout-overlay" (click)="closeLayoutPanel()"></div>
-    <div class="layout-panel" role="dialog" aria-modal="true" aria-label="Layouts verwalten">
+    <div class="layout-panel"   aria-label="Layouts verwalten" appDialog (dialogDismiss)="closeLayoutPanel()">
       <div class="layout-panel-header">
         <span>Layouts verwalten</span>
         <button class="layout-close-btn" (click)="closeLayoutPanel()" aria-label="Schliessen">✕</button>
@@ -40,7 +40,7 @@
           </div>
           <div class="layout-actions">
             <button class="btn-layout-load" (click)="applyLayout(layout)" [disabled]="layoutApplying">Laden</button>
-            <button class="btn-layout-del" (click)="deleteLayout(layout, $event)">🗑</button>
+            <button class="btn-layout-del" (click)="deleteLayout(layout, $event)" aria-label="Layout löschen">×</button>
           </div>
         </li>
       </ul>

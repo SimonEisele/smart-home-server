@@ -121,3 +121,52 @@ class FeatureRegressionTests(TestCase):
         self.member.save(update_fields=['active_household'])
         for endpoint in ('todos', 'recipes', 'menus', 'shopping-items', 'calendar-events', 'cleaning-tasks'):
             self.assertEqual(self.client.post(f'/api/{endpoint}/', {}, format='json').status_code, 403)
+
+
+class TaskInputTests(TestCase):
+    def setUp(self):
+        household = Household.objects.create(name='Test')
+        user = User.objects.create_user('task@example.com', 'testpassword', active_household=household)
+        self.client = APIClient()
+        self.client.force_authenticate(user)
+        self.task = Todo.objects.create(household=household, created_by=user, title='Task', global_todo=True, duration_minutes=90,
+                                        start_date=timezone.now(), due_date=timezone.now() + timedelta(days=2))
+        self.url = f'/api/todos/{self.task.id}/'
+
+    def test_dates_and_duration_can_be_cleared(self):
+        response = self.client.patch(self.url, {'startDate': None, 'dueDate': None, 'durationMinutes': None}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.task.refresh_from_db()
+        self.assertIsNone(self.task.start_date)
+        self.assertIsNone(self.task.due_date)
+        self.assertIsNone(self.task.duration_minutes)
+
+    def test_partial_update_cannot_reverse_existing_dates(self):
+        response = self.client.patch(self.url, {'startDate': (timezone.now() + timedelta(days=3)).isoformat()}, format='json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_invalid_numeric_and_recurrence_values_are_rejected(self):
+        for patch in [{'durationMinutes': -1}, {'progress': 101}, {'recurrenceInterval': 0}, {'recurrence': 'hourly'}]:
+            with self.subTest(patch=patch):
+                self.assertEqual(self.client.patch(self.url, patch, format='json').status_code, 400)
+
+
+class RecipeShoppingTests(TestCase):
+    def setUp(self):
+        self.household = Household.objects.create(name='Cooking')
+        user = User.objects.create_user('cook@example.com', 'testpassword', active_household=self.household)
+        self.client = APIClient()
+        self.client.force_authenticate(user)
+        self.recipe = Recipe.objects.create(household=self.household, name='Recipe', base_servings=2,
+            ingredients=[{'name': 'Pasta', 'quantityPerPerson': 200, 'unit': 'g'}, {'name': 'Optional', 'quantityPerPerson': 0, 'unit': 'g'}])
+
+    def test_unplanned_recipe_exports_the_visible_portions(self):
+        response = self.client.post('/api/shopping-items/add-recipe/', {'recipeId': str(self.recipe.id), 'persons': 3, 'unitsPerPerson': 1.5}, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(ShoppingItem.objects.get(name='Pasta').quantity, 450)
+        self.assertEqual(ShoppingItem.objects.get(name='Optional').quantity, 0)
+
+    def test_invalid_portions_do_not_create_items(self):
+        response = self.client.post('/api/shopping-items/add-recipe/', {'recipeId': str(self.recipe.id), 'persons': 3, 'unitsPerPerson': -1}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(ShoppingItem.objects.count(), 0)

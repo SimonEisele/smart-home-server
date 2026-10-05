@@ -47,6 +47,25 @@ class TodoSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'createdBy', 'doneByName', 'created_at', 'updated_at']
 
+    def validate(self, attrs):
+        start = attrs.get('start_date', getattr(self.instance, 'start_date', None))
+        due = attrs.get('due_date', getattr(self.instance, 'due_date', None))
+        if start and due and start > due:
+            raise serializers.ValidationError({'dueDate': 'Startdatum darf nicht nach der Fälligkeit liegen.'})
+        duration = attrs.get('duration_minutes')
+        if duration is not None and duration < 0:
+            raise serializers.ValidationError({'durationMinutes': 'Dauer darf nicht negativ sein.'})
+        progress = attrs.get('progress')
+        if progress is not None and not 0 <= progress <= 100:
+            raise serializers.ValidationError({'progress': 'Fortschritt muss zwischen 0 und 100 liegen.'})
+        interval = attrs.get('recurrence_interval', getattr(self.instance, 'recurrence_interval', 1))
+        if interval < 1:
+            raise serializers.ValidationError({'recurrenceInterval': 'Intervall muss mindestens 1 sein.'})
+        recurrence = attrs.get('recurrence', getattr(self.instance, 'recurrence', ''))
+        if recurrence not in ('', 'daily', 'weekly', 'monthly'):
+            raise serializers.ValidationError({'recurrence': 'Unbekannte Wiederholung.'})
+        return attrs
+
     def get_doneByName(self, obj):
         if obj.done_by:
             return obj.done_by.first_name or obj.done_by.email

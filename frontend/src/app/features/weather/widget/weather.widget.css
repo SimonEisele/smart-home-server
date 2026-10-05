@@ -12,7 +12,7 @@
   align-items: center;
   gap: 15px;
   margin-bottom: 15px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-soft);
   border-radius: 12px;
   padding: 10px;
 }
@@ -54,7 +54,7 @@
   flex-direction: column;
   align-items: center;
   min-width: 72px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-soft);
   padding: 6px;
   border-radius: 8px;
   font-size: 0.8rem;
@@ -93,7 +93,7 @@
   flex-direction: column;
   align-items: center;
   min-width: 72px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-soft);
   padding: 6px;
   border-radius: 8px;
   font-size: 0.8rem;
@@ -130,13 +130,13 @@
 .divider {
   width: 100%;
   height: 1px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-surface-soft);
   margin: 30px 0;
-}.current-weather { background:linear-gradient(120deg,#89dfcf12,#89dfcf04); border:1px solid #89dfcf25; border-radius:14px; padding:16px; gap:16px; margin-bottom:16px; }
+}.current-weather { background: var(--color-surface); border: 1px solid #89dfcf25; border-radius: 14px; padding:16px; gap:16px; margin-bottom:16px; }
 .current-temp { font-size:2.6rem; letter-spacing:-.05em; font-weight:600; line-height:1.2; }
-.current-label { color:var(--color-text); font-size:.9rem; }
-.current-precip { color:var(--color-muted); font-size:.75rem; margin-top:6px; }
+.current-label { color: var(--color-text); font-size:.9rem; }
+.current-precip { color: var(--color-muted); font-size:.75rem; margin-top:6px; }
 .hourly-forecast,.daily-forecast { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(54px,1fr); gap:6px; overflow-x:auto; padding-bottom:6px; }
-.hour,.day { width:auto; min-width:0; background:var(--color-surface-soft); padding:10px 4px; border-radius:10px; flex:none; text-align:center; }
-.hour-time,.day-date,.day-minTemp { color:var(--color-muted); font-size:.75rem; }
-.divider { margin:14px 0; border-color:var(--color-card-border); }
+.hour,.day { width:auto; min-width:0; background: var(--color-surface-soft); padding:10px 4px; border-radius: 10px; flex:none; text-align:center; }
+.hour-time,.day-date,.day-minTemp { color: var(--color-muted); font-size:.75rem; }
+.divider { margin:14px 0; border-color: var(--color-card-border); }

@@ -1,3 +1,4 @@
+import { DialogDirective } from '../../shared/directives/dialog.directive';
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { WidgetDefinition } from '../../widgets/widgets.registry';
@@ -5,7 +6,7 @@ import { WidgetDefinition } from '../../widgets/widgets.registry';
 @Component({
   selector: 'add-widget-popover',
   standalone: true,
-  imports: [ CommonModule ],
+  imports: [DialogDirective,  CommonModule ],
   templateUrl: './add-widget-popover.html',
   styleUrl: './add-widget-popover.css',
 })
