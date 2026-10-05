@@ -1,4 +1,5 @@
 import math
+import re
 from datetime import date, timedelta
 
 from django.db import transaction
@@ -180,7 +181,16 @@ class TodoDetailView(generics.RetrieveUpdateDestroyAPIView):
         done = serializer.validated_data.get('done', instance.done)
         done_by = (request.user if not instance.done else instance.done_by) if done else None
         # Validate the entire update before recording who completed it.
-        serializer.save(done_by=done_by)
+        with transaction.atomic():
+            todo = serializer.save(done_by=done_by)
+            for event in CalendarEvent.objects.filter(household=todo.household, todo_ref_id=todo.id):
+                suffix = re.search(r' \(\d+/\d+\)$', event.title)
+                event.title = todo.title + (suffix.group() if suffix else '')
+                event.description = todo.description
+                event.calendar_type = 'household' if todo.global_todo else 'private'
+                if not todo.global_todo:
+                    event.created_by = todo.created_by
+                event.save(update_fields=['title', 'description', 'calendar_type', 'created_by', 'updated_at'])
         return Response({"data": serializer.data})
 
     def destroy(self, request, *args, **kwargs):

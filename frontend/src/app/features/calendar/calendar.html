@@ -21,6 +21,7 @@
   </header>
 
   <p class="page-purpose">Termine, gemeinsame Mahlzeiten und Aufgaben in einer Woche. Auf dem Handy zeigt die Agenda jeden Tag als Liste.</p>
+  @if (planningError) { <div class="form-feedback" role="alert">{{ planningError }}</div> }
   <div class="calendar-view-switch" role="group" aria-label="Kalenderansicht"><button [class.active]="calendarView === 'schedule'" [attr.aria-pressed]="calendarView === 'schedule'" (click)="calendarView = 'schedule'">Termine & Aufgaben</button><button [class.active]="calendarView === 'attendance'" [attr.aria-pressed]="calendarView === 'attendance'" (click)="calendarView = 'attendance'">Anwesenheiten & Mahlzeiten</button></div>
   @if (calendarView === 'attendance') {
   <section class="attendance-workspace" aria-labelledby="attendance-heading">
@@ -75,16 +76,16 @@
   <div class="cal-main">
 
     <!-- Todo sidebar -->
-    <aside class="todo-sidebar" [class.sidebar-drop-target]="touchOverSidebar && !!touchDragEvent">
-      <div class="sidebar-title">Offene Aufgaben</div>
-      @if (touchOverSidebar && touchDragEvent) {
+    <aside class="todo-sidebar" [class.sidebar-drop-target]="sidebarDragOver || (touchOverSidebar && !!touchDragEvent?.todoRefId)" (dragover)="onSidebarDragover($event)" (dragleave)="onSidebarDragleave($event)" (drop)="onSidebarDrop($event)">
+      <div class="sidebar-title">Noch nicht eingeplant</div><p class="sidebar-planning-help">Aufgabe in den Kalender ziehen. Zum Entfernen der Planung den Aufgabenblock hierher zurückziehen.</p>
+      @if (sidebarDragOver || (touchOverSidebar && touchDragEvent?.todoRefId)) {
         <div class="sidebar-delete-hint">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;flex-shrink:0"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          Termin entfernen
+          Planung entfernen · Aufgabe behalten
         </div>
       }
       @if (openTodos.length === 0) {
-        <div class="sidebar-empty">Keine offenen Aufgaben</div>
+        <div class="sidebar-empty">Alle offenen Aufgaben dieser Woche sind eingeplant.</div>
       }
       @for (todo of openTodos; track todo.id) {
         <div class="todo-drag-item"
@@ -177,7 +178,7 @@
                        (click)="onEvClick(ev, $event)">
                     <span class="ev-time">{{ ev.start | date:'HH:mm' }}</span>
                     <span class="ev-title">{{ ev.title }}</span>
-                    @if (ev.todoRefId) { <span class="ev-todo-badge">✓</span> }
+                    @if (ev.todoRefId) { <span class="ev-todo-badge">{{ linkedTodo(ev)?.done ? 'Erledigt' : 'Aufgabe' }}</span> }
                     @if (ev.location) { <span class="ev-location"> {{ ev.location }}</span> }
                     <div class="resize-handle"
                          draggable="true"
@@ -228,7 +229,8 @@
 
       <div class="modal-body">
       <div class="form-feedback" role="alert" *ngIf="eventError">{{ eventError }}</div>
-        <input class="glass-input" [(ngModel)]="modalForm.title" placeholder="Titel *" autofocus />
+        @if (editingEvent?.todoRefId) { <div class="linked-task-note"><strong>Mit einer Aufgabe verknüpft</strong><p>Titel, Beschreibung und Sichtbarkeit kommen aus der Aufgabe. Hier bearbeitest du ihren Zeitblock. Weitere Zeitblöcke bleiben beim Entfernen dieser Planung erhalten.</p><a routerLink="/todos" (click)="closeModal()">Aufgaben verwalten →</a>@if (linkedTodo(editingEvent)?.done) { <span> · Bereits erledigt</span> }</div> }
+        <input class="glass-input" [readonly]="!!editingEvent?.todoRefId" [(ngModel)]="modalForm.title" placeholder="Titel *" autofocus />
 
         <div class="form-row">
           <label>Datum</label>
@@ -257,7 +259,7 @@
 
         <div class="form-row">
           <label>Kalender</label>
-          <select class="glass-input" [(ngModel)]="modalForm.calendarType">
+          <select class="glass-input" [disabled]="!!editingEvent?.todoRefId" [(ngModel)]="modalForm.calendarType">
             <option value="household">WG-Kalender</option>
             <option value="private">Privat</option>
           </select>
@@ -270,7 +272,7 @@
 
         <div class="form-row">
           <label>Beschreibung</label>
-          <textarea class="glass-input" [(ngModel)]="modalForm.description" placeholder="Notizen…" rows="2"></textarea>
+          <textarea class="glass-input" [readonly]="!!editingEvent?.todoRefId" [(ngModel)]="modalForm.description" placeholder="Notizen…" rows="2"></textarea>
         </div>
 
         <div class="form-row color-row">
@@ -284,10 +286,10 @@
 
       <div class="modal-foot">
         @if (editingEvent) {
-          <button class="btn-danger" (click)="deleteEvent()">Löschen</button>
+          <button class="btn-danger" (click)="editingEvent?.todoRefId ? unscheduleEvent(editingEvent!) : deleteEvent()" [disabled]="savingEvent || (editingEvent && planningPending.has(editingEvent.id))">{{ editingEvent?.todoRefId ? 'Planung entfernen' : 'Löschen' }}</button>
         }
         <button class="btn-ghost" (click)="closeModal()" [disabled]="savingEvent">Abbrechen</button>
-        <button class="btn-primary" (click)="saveEvent()" [disabled]="savingEvent">Speichern</button>
+        <button class="btn-primary" (click)="saveEvent()" [disabled]="savingEvent || (editingEvent && planningPending.has(editingEvent.id))">Speichern</button>
       </div>
     </div>
   </div>

@@ -1,3 +1,5 @@
+import re
+from django.db.models import Q
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from .models import (
@@ -222,6 +224,22 @@ class CalendarEventSerializer(serializers.ModelSerializer):
         end = attrs.get('end', getattr(self.instance, 'end', None))
         if start and end and end < start:
             raise serializers.ValidationError({'end': 'End must not precede start.'})
+        todo_id = attrs.get('todo_ref_id', getattr(self.instance, 'todo_ref_id', None))
+        if todo_id:
+            user = self.context['request'].user
+            todo = Todo.objects.filter(id=todo_id, household=user.active_household).filter(
+                Q(global_todo=True) | Q(created_by=user)
+            ).first()
+            if not todo:
+                raise serializers.ValidationError({'todoRefId': 'Task is unavailable in this household.'})
+            title = attrs.get('title', getattr(self.instance, 'title', ''))
+            suffix = re.search(r' \(\d+/\d+\)$', title)
+            attrs['title'] = todo.title + (suffix.group() if suffix else '')
+            attrs['description'] = todo.description
+            attrs['calendar_type'] = 'household' if todo.global_todo else 'private'
+            # Private blocks belong to the same person as the private task.
+            if not todo.global_todo:
+                attrs['created_by'] = todo.created_by
         return attrs
 
 

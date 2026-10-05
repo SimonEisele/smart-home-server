@@ -737,3 +737,5 @@ details[open] .avail-summary::before { content: '▼ '; }
 @media(max-width:699px) { .attendance-days { grid-template-columns:1fr; }.attendance-legend { display:none; } }
 
 .calendar-view-switch { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }.calendar-view-switch button { border:1px solid var(--color-card-border); padding:10px 16px; border-radius:10px; background:var(--color-surface); color:var(--color-muted); font-size:.82rem; }.calendar-view-switch button.active { color:var(--color-accent); background:var(--color-surface-soft); border-color:var(--color-accent); }
+
+.sidebar-planning-help { font-size:.7rem; color:var(--color-muted); padding:0 12px; line-height:1.5; }.todo-sidebar.sidebar-drop-target { outline:2px dashed var(--color-accent); outline-offset:-4px; background:var(--color-surface-soft); }.linked-task-note { padding:14px; border:1px solid var(--color-card-border); border-radius:10px; background:var(--color-surface-soft); margin-bottom:14px; font-size:.8rem; }.linked-task-note p { color:var(--color-muted); margin:6px 0; }.ev-task-done .ev-title { text-decoration:line-through; opacity:.65; }.ev-todo-badge { font-size:.6rem; }

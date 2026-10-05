@@ -170,3 +170,48 @@ class RecipeShoppingTests(TestCase):
         response = self.client.post('/api/shopping-items/add-recipe/', {'recipeId': str(self.recipe.id), 'persons': 3, 'unitsPerPerson': -1}, format='json')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(ShoppingItem.objects.count(), 0)
+
+
+class TaskCalendarLinkTests(TestCase):
+    def setUp(self):
+        self.household = Household.objects.create(name='Tasks')
+        self.other_household = Household.objects.create(name='Other')
+        self.member = User.objects.create_user('planner@example.com','testpassword',active_household=self.household)
+        self.owner = User.objects.create_user('other@example.com','testpassword',active_household=self.household)
+        self.client = APIClient()
+        self.client.force_authenticate(self.member)
+        self.task = Todo.objects.create(household=self.household, created_by=self.member, title='Plan task', description='Task details', duration_minutes=180)
+        self.start = timezone.now()
+
+    def payload(self, todo_id=None):
+        return {'title':'Stale title','start':self.start.isoformat(),'end':(self.start+timedelta(hours=1)).isoformat(),'calendarType':'household','todoRefId':str(todo_id or self.task.id)}
+
+    def test_task_controls_title_description_and_visibility(self):
+        response = self.client.post('/api/calendar-events/',self.payload(),format='json')
+        self.assertEqual(response.status_code,201)
+        self.assertEqual(response.data['data']['title'],self.task.title)
+        self.assertEqual(response.data['data']['description'],self.task.description)
+        self.assertEqual(response.data['data']['calendarType'],'private')
+
+    def test_cannot_link_inaccessible_tasks(self):
+        private = Todo.objects.create(household=self.household,created_by=self.owner,title='Private')
+        foreign = Todo.objects.create(household=self.other_household,created_by=self.member,title='Foreign',global_todo=True)
+        for task in (private,foreign):
+            self.assertEqual(self.client.post('/api/calendar-events/',self.payload(task.id),format='json').status_code,400)
+
+    def test_task_edit_updates_all_blocks_preserving_split_labels(self):
+        event = CalendarEvent.objects.create(household=self.household,created_by=self.member,title='Plan task (1/2)',start=self.start,todo_ref_id=self.task.id)
+        self.client.patch(f'/api/todos/{self.task.id}/',{'title':'Updated task','description':'New details'},format='json')
+        event.refresh_from_db()
+        self.assertEqual(event.title,'Updated task (1/2)')
+        self.assertEqual(event.description,'New details')
+        self.assertEqual(event.calendar_type,'private')
+
+    def test_removing_one_block_keeps_task_and_other_block(self):
+        ids = [self.client.post('/api/calendar-events/',self.payload(),format='json').data['data']['id'] for _ in range(2)]
+        self.assertEqual(self.client.delete(f'/api/calendar-events/{ids[0]}/').status_code,200)
+        self.assertTrue(Todo.objects.filter(id=self.task.id).exists())
+        self.assertTrue(CalendarEvent.objects.filter(id=ids[1]).exists())
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.duration_minutes,180)
+        self.assertFalse(self.task.done)
