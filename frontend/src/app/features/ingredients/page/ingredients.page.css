@@ -25,9 +25,9 @@
 }
 
 .count-pill {
-  background: rgba(35,108,89,0.15);
+  background: rgba(130,215,187,0.15);
   color: var(--color-accent);
-  border: 1px solid rgba(35,108,89,0.3);
+  border: 1px solid rgba(130,215,187,0.3);
   border-radius: 20px;
   padding: 2px 10px;
   font-size: .8rem;
@@ -59,7 +59,7 @@
   transition: border-color .2s;
 }
 .search-input::placeholder { color: var(--color-muted); }
-.search-input:focus { border-color: rgba(35,108,89,0.5); }
+.search-input:focus { border-color: rgba(130,215,187,0.5); }
 
 .btn-add {
   display: flex; align-items: center; gap: 7px;
@@ -74,8 +74,8 @@
 
 /* ── Add form panel ─────────────────────── */
 .add-form-panel {
-  background: rgba(35,108,89,0.06);
-  border: 1px solid rgba(35,108,89,0.22);
+  background: rgba(130,215,187,0.06);
+  border: 1px solid rgba(130,215,187,0.22);
   border-radius: 16px;
   padding: 20px 24px;
   display: flex;
@@ -135,7 +135,7 @@
 }
 .add-field input::placeholder { color: var(--color-muted); }
 .add-field input:focus,
-.add-field select:focus { border-color: rgba(35,108,89,0.5); }
+.add-field select:focus { border-color: rgba(130,215,187,0.5); }
 .add-field select option { background: var(--color-surface); }
 
 .add-form-actions {
@@ -188,8 +188,8 @@
 }
 
 .category-count {
-  background: rgba(35,108,89,0.1);
-  color: rgba(35,108,89,0.7);
+  background: rgba(130,215,187,0.1);
+  color: rgba(130,215,187,0.7);
   border-radius: 20px;
   padding: 1px 8px;
   font-size: .74rem;
@@ -213,7 +213,7 @@
 }
 .ingredient-row:last-child { border-bottom: none; }
 .ingredient-row:hover { background: var(--color-surface-soft); }
-.ingredient-row.editing { background: rgba(35,108,89,0.04); border-radius: 8px; }
+.ingredient-row.editing { background: rgba(130,215,187,0.04); border-radius: 8px; }
 
 .ing-name {
   font-size: .92rem;
@@ -259,7 +259,7 @@
   transition: border-color .2s;
   min-width: 0;
 }
-.ing-input:focus { border-color: rgba(35,108,89,0.5); }
+.ing-input:focus { border-color: rgba(130,215,187,0.5); }
 .ing-input::placeholder { color: var(--color-muted); }
 .ing-input.flex-3 { flex: 3; }
 .ing-input.flex-2 { flex: 2; }
@@ -278,7 +278,7 @@
   min-width: 0;
   transition: border-color .2s;
 }
-.ing-select:focus { border-color: rgba(35,108,89,0.5); }
+.ing-select:focus { border-color: rgba(130,215,187,0.5); }
 .ing-select option { background: var(--color-surface); }
 
 /* Action buttons */
@@ -307,10 +307,10 @@
 .btn-icon svg { width: 14px; height: 14px; }
 
 .btn-ok {
-  border: 1px solid rgba(35,108,89,0.25);
+  border: 1px solid rgba(130,215,187,0.25);
   color: var(--color-accent);
 }
-.btn-ok:hover { background: rgba(35,108,89,0.15); border-color: rgba(35,108,89,0.5); }
+.btn-ok:hover { background: rgba(130,215,187,0.15); border-color: rgba(130,215,187,0.5); }
 
 .btn-cancel-icon {
   border: 1px solid var(--color-card-border);

@@ -24,7 +24,7 @@
 }
 
 .todo-widget-list li:hover {
-  border-color: rgba(35,108,89,0.25);
+  border-color: rgba(130,215,187,0.25);
 }
 
 .todo-row {
@@ -41,7 +41,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  color: rgba(35,108,89,0.45);
+  color: rgba(130,215,187,0.45);
   display: flex;
   align-items: center;
   justify-content: center;
