@@ -1,214 +1,366 @@
-<ng-template #itemRow let-item="item">
-  <div class="item-row" [class.row-editing]="editId === item.id">
-    <button class="check-btn" [class.done]="item.checked" (click)="toggleChecked(item)" title="{{ item.checked ? 'Abhaken rückgängig' : 'Abgehakt' }}">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-        <ng-container *ngIf="item.checked">
-          <polyline points="4,10 8,14 16,6"></polyline>
-        </ng-container>
-        <ng-container *ngIf="!item.checked">
-          <circle cx="10" cy="10" r="8" stroke-width="1.5"></circle>
-        </ng-container>
-      </svg>
-    </button>
-
-    <div class="item-thumb" *ngIf="item.imageUrl && editId !== item.id">
-      <img [src]="item.imageUrl" [alt]="item.name" (error)="item.imageUrl = ''" />
+<ng-template #itemRow let-item="item"
+  ><article class="item-row" [class.checked]="item.checked">
+    <button
+      class="check-btn"
+      [attr.aria-label]="item.name + (item.checked ? ' wieder öffnen' : ' abhaken')"
+      [attr.aria-pressed]="item.checked"
+      [disabled]="busy || pending.has(item.id)"
+      (click)="toggleChecked(item)"
+    >
+      {{ item.checked ? '✓' : '' }}</button
+    ><img
+      *ngIf="item.imageUrl"
+      class="item-thumb"
+      [src]="item.imageUrl"
+      alt=""
+      (error)="item.imageUrl = ''"
+    />
+    <div class="item-body">
+      <strong>{{ item.name }}</strong
+      ><small
+        >{{ sourceLabel(item) }}<span *ngIf="item.suggestion"> · {{ item.suggestion }}</span></small
+      >
     </div>
-
-    <ng-container *ngIf="editId !== item.id">
-      <div class="item-body" [class.struck]="item.checked">
-        <span class="item-name">{{ item.name }}</span>
-        <span class="item-qty" *ngIf="item.quantity">{{ item.quantity }} {{ item.unit }}</span>
-        <span class="item-source" *ngIf="item.suggestion">{{ item.suggestion }}</span>
-      </div>
-      <div class="item-actions">
-        <button class="btn-icon-sm" (click)="startEdit(item)" title="Bearbeiten">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M14.3 3.7a1.4 1.4 0 0 1 2 2L5.7 16.3l-3 .7.7-3Z"/></svg>
-        </button>
-        <button class="btn-icon-sm btn-del" (click)="remove(item)" title="Entfernen">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h12M8 5V3h4v2M7 5l.5 10M13 5l-.5 10"/></svg>
-        </button>
-      </div>
-    </ng-container>
-
-    <ng-container *ngIf="editId === item.id">
-      <div class="item-edit-row">
-        <span class="item-name-static">{{ item.name }}</span>
-        <input type="number" min="0" step="0.1" [(ngModel)]="editQty" placeholder="Menge" class="edit-qty" />
-        <input type="text" [(ngModel)]="editUnit" placeholder="Einheit" class="edit-unit" />
-        <input type="url" [(ngModel)]="editImage" placeholder="Bild-URL" class="edit-img" />
-        <button class="btn-save-edit" (click)="saveEdit()">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="4,10 8,14 16,6"></polyline></svg>
-        </button>
-        <button class="btn-cancel-edit" (click)="cancelEdit()">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></svg>
-        </button>
-      </div>
-    </ng-container>
-  </div>
-</ng-template>
-
+    <span class="item-qty"
+      >{{ quantityLabel(item.quantity, item.unit)
+      }}<small *ngIf="item.quantityIncomplete && item.quantity != null">+ nach Bedarf</small></span
+    >
+    <div class="item-actions">
+      <button
+        [disabled]="busy || pending.has(item.id)"
+        (click)="startEdit(item)"
+        [attr.aria-label]="item.name + ' bearbeiten'"
+      >
+        Bearbeiten</button
+      ><button
+        class="delete"
+        [disabled]="busy || pending.has(item.id)"
+        (click)="remove(item)"
+        [attr.aria-label]="item.name + ' entfernen'"
+      >
+        ×
+      </button>
+    </div>
+  </article></ng-template
+>
 <div class="shopping-page app-page">
-
-  <!-- Header -->
-  <div class="page-header">
-    <div class="header-left">
-      <h2 class="page-title">Einkaufsliste</h2>
-      <span class="count-pill" *ngIf="uncheckedCount > 0">{{ uncheckedCount }}</span>
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">HAUSHALT · EINKAUF</span>
+      <h1>Einkaufsliste</h1>
+      <p>Alles für den nächsten Einkauf. Nach Warengruppen sortiert, mit Mengen und Herkunft.</p>
     </div>
-    <div class="header-right">
-      <button class="btn-action" [class.btn-active]="showAddForm" (click)="openAdd()">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="4" x2="10" y2="16"/><line x1="4" y1="10" x2="16" y2="10"/></svg>
-        Artikel
-      </button>
-      <button class="btn-action" (click)="openRecipePicker()">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 2h8a2 2 0 0 1 2 2v14l-6-3-6 3V4a2 2 0 0 1 2-2z"/></svg>
-        Rezept
-      </button>
-      <button class="btn-action btn-action-menuplan" aria-label="Einkauf aus Menüplan vorbereiten" routerLink="/menuplan" [queryParams]="{export: true}">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="4" width="16" height="14" rx="2"/><line x1="2" y1="8" x2="18" y2="8"/><line x1="6" y1="2" x2="6" y2="6"/><line x1="14" y1="2" x2="14" y2="6"/></svg>
-        Menüplan
+    <div class="header-actions">
+      <button class="primary" [disabled]="loading || loadFailed || busy" (click)="openAdd()">
+        + Artikel</button
+      ><button [disabled]="loading || loadFailed || busy" (click)="openRecipePicker()">
+        Aus Rezept</button
+      ><a routerLink="/menuplan" [queryParams]="{ export: true }">Aus Menüplan</a>
+    </div>
+  </header>
+  <section class="toolbar" aria-label="Einkauf filtern">
+    <div class="tabs">
+      <button
+        *ngFor="let tab of ['all', 'manual', 'menuplan']"
+        [class.active]="activeTab === tab"
+        [attr.aria-pressed]="activeTab === tab"
+        (click)="activeTab = $any(tab); weekFilter = ''; confirmClear = false"
+      >
+        {{ tab === 'all' ? 'Alles' : tab === 'manual' ? 'Artikel & Rezepte' : 'Menüplan' }}
       </button>
     </div>
+    <label class="search"
+      ><span class="sr-only">Artikel oder Rezept suchen</span
+      ><input
+        type="search"
+        [(ngModel)]="search"
+        (ngModelChange)="confirmClear = false"
+        placeholder="Artikel oder Rezept suchen…" /></label
+    ><label *ngIf="activeTab !== 'manual' && weeks.length"
+      ><span class="sr-only">Kalenderwoche</span
+      ><select [(ngModel)]="weekFilter" (ngModelChange)="confirmClear = false">
+        <option value="">Alle Wochen</option>
+        <option *ngFor="let week of weeks" [value]="week">{{ weekTagLabel(week) }}</option>
+      </select></label
+    >
+  </section>
+  <div class="progress-panel">
+    <strong>{{ uncheckedCount }} offen</strong>
+    <div
+      class="progress-track"
+      role="progressbar"
+      aria-label="Einkaufsfortschritt"
+      [attr.aria-valuenow]="progress"
+      aria-valuemin="0"
+      aria-valuemax="100"
+    >
+      <span [style.width.%]="progress"></span>
+    </div>
+    <span>{{ completedCount }} abgehakt</span>
   </div>
-
-  <p class="page-purpose">Artikel direkt hinzufügen oder Zutaten aus Rezepten und Menüplan übernehmen. Jeder Eintrag lässt sich einzeln abhaken.</p>
-  <!-- Tab bar -->
-  <div class="tab-bar">
-    <button class="tab-btn" [class.active]="activeTab === 'all'" (click)="activeTab = 'all'">Alle</button>
-    <button class="tab-btn" [class.active]="activeTab === 'manual'" (click)="activeTab = 'manual'">Manuell</button>
-    <button class="tab-btn" [class.active]="activeTab === 'menuplan'" (click)="activeTab = 'menuplan'">Menüplan</button>
+  <div class="error" *ngIf="error" role="alert">
+    {{ error }}<button *ngIf="loadFailed" (click)="reload()">Erneut laden</button>
   </div>
-
-  <!-- Add form panel -->
-  <div class="add-form-panel" *ngIf="showAddForm">
-    <div class="add-form-grid">
-      <div class="add-field-name">
-        <input type="text" [(ngModel)]="addName" (ngModelChange)="onAddNameInput()" placeholder="Artikelname" list="ing-catalog" class="form-input" autofocus />
-        <datalist id="ing-catalog">
-          <option *ngFor="let i of ingredients" [value]="i.name"></option>
-        </datalist>
-        <div class="suggestions-drop" *ngIf="addSuggestions.length">
-          <button class="sugg-item" *ngFor="let s of addSuggestions" (click)="applySuggestion(s)">
-            <span class="sugg-name">{{ s.name }}</span>
-            <span class="sugg-meta" *ngIf="s.category">{{ s.category }}</span>
+  <p class="empty" *ngIf="loading" role="status">Einkaufsliste wird geladen…</p>
+  <div class="shopping-layout" *ngIf="!loading && !loadFailed">
+    <main class="shopping-main">
+      <ng-container *ngIf="activeTab !== 'menuplan'"
+        ><section class="category-card" *ngFor="let group of allGroups">
+          <h2>
+            {{ group.category }} <span>{{ group.items.length }}</span>
+          </h2>
+          <ng-container *ngFor="let item of group.items"
+            ><ng-container *ngTemplateOutlet="itemRow; context: { item: item }"></ng-container
+          ></ng-container></section></ng-container
+      ><ng-container *ngIf="activeTab === 'menuplan'"
+        ><section class="week-group" *ngFor="let week of menuplanGroups">
+          <h2 class="week-title">{{ week.weekLabel }}</h2>
+          <section class="category-card" *ngFor="let group of week.groups">
+            <h3>
+              {{ group.category }} <span>{{ group.items.length }}</span>
+            </h3>
+            <ng-container *ngFor="let item of group.items"
+              ><ng-container *ngTemplateOutlet="itemRow; context: { item: item }"></ng-container
+            ></ng-container>
+          </section></section
+      ></ng-container>
+      <section class="empty" *ngIf="!uncheckedCount">
+        <strong>{{ completedCount ? 'Alles abgehakt' : 'Keine offenen Artikel' }}</strong>
+        <p>
+          {{
+            search || weekFilter
+              ? 'Für diese Filter gibt es keine offenen Artikel.'
+              : 'Füge Artikel hinzu oder übernimm Zutaten aus einem Rezept oder Menüplan.'
+          }}
+        </p>
+      </section>
+      <details class="completed" *ngIf="completedCount">
+        <summary>
+          Abgehakt <span>{{ completedCount }}</span>
+        </summary>
+        <div class="completed-toolbar">
+          <span>Jeder Artikel lässt sich wieder öffnen.</span
+          ><button [disabled]="busy || !!pending.size" (click)="confirmClear = true">
+            Abgehakte entfernen
           </button>
         </div>
+        <ng-container *ngFor="let item of checkedItems"
+          ><ng-container *ngTemplateOutlet="itemRow; context: { item: item }"></ng-container
+        ></ng-container>
+      </details>
+    </main>
+    <aside class="summary-panel" *ngIf="purchaseSummary.length">
+      <span class="eyebrow">MENGENÜBERSICHT</span>
+      <h2>Was du brauchst</h2>
+      <p>
+        Gleiche Artikel mit gleicher Einheit werden hier addiert. Die einzelnen Artikel kannst du
+        weiterhin getrennt abhaken.
+      </p>
+      <div class="summary-row" *ngFor="let row of purchaseSummary">
+        <div>
+          <strong>{{ row.name }}</strong
+          ><small *ngIf="row.count > 1">{{ row.count }} Einträge</small>
+        </div>
+        <span
+          >{{ quantityLabel(row.quantity, row.unit)
+          }}<small *ngIf="row.incomplete && row.quantity !== null">+ nach Bedarf</small></span
+        >
       </div>
-      <input type="number" min="0" step="0.1" [(ngModel)]="addQty" placeholder="Menge" class="form-input" />
-      <input type="text" [(ngModel)]="addUnit" placeholder="Einheit" class="form-input" />
-      <input type="text" [(ngModel)]="addCategory" placeholder="Kategorie" class="form-input" list="cat-list" />
-      <datalist id="cat-list">
-        <option value="Gemüse"></option><option value="Obst"></option>
-        <option value="Fleisch & Fisch"></option><option value="Milchprodukte"></option>
-        <option value="Getreide & Backwaren"></option><option value="Hülsenfrüchte"></option>
-        <option value="Gewürze & Kräuter"></option><option value="Öle & Fette"></option>
-        <option value="Saucen & Konserven"></option><option value="Sonstiges"></option>
-      </datalist>
-      <input type="url" [(ngModel)]="addImageUrl" placeholder="Bild-URL (optional)" class="form-input add-img-url" />
-    </div>
-    <div class="add-form-actions">
-      <button class="btn-primary" (click)="saveAdd()" [disabled]="!addName.trim()">Hinzufügen</button>
-      <button class="btn-ghost" (click)="cancelAdd()">Abbrechen</button>
-    </div>
+    </aside>
   </div>
-
-  <!-- ── Alle Tab ── -->
-  <ng-container *ngIf="activeTab === 'all'">
-    <ng-container *ngFor="let g of allGroups">
-      <div class="cat-head">{{ g.category }}</div>
-      <ng-container *ngFor="let item of g.items">
-        <ng-container *ngTemplateOutlet="itemRow; context:{item: item}"></ng-container>
-      </ng-container>
-    </ng-container>
-    <p class="empty-hint" *ngIf="!allGroups.length && !checkedItems.length">
-      Die Einkaufsliste ist leer — füge Artikel, Rezepte oder Menüplan-Zutaten hinzu.
-    </p>
-  </ng-container>
-
-  <!-- ── Manuell Tab ── -->
-  <ng-container *ngIf="activeTab === 'manual'">
-    <ng-container *ngFor="let g of manualGroups">
-      <div class="cat-head">{{ g.category }}</div>
-      <ng-container *ngFor="let item of g.items">
-        <ng-container *ngTemplateOutlet="itemRow; context:{item: item}"></ng-container>
-      </ng-container>
-    </ng-container>
-    <p class="empty-hint" *ngIf="!manualGroups.length">
-      Keine manuell hinzugefügten Artikel.
-    </p>
-  </ng-container>
-
-  <!-- ── Menüplan Tab ── -->
-  <ng-container *ngIf="activeTab === 'menuplan'">
-    <ng-container *ngFor="let wg of menuplanGroups">
-      <div class="week-head">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="4" width="16" height="14" rx="2"/><line x1="2" y1="8" x2="18" y2="8"/></svg>
-        {{ wg.weekLabel }}
-      </div>
-      <ng-container *ngFor="let g of wg.groups">
-        <div class="cat-head cat-sub">{{ g.category }}</div>
-        <ng-container *ngFor="let item of g.items">
-          <ng-container *ngTemplateOutlet="itemRow; context:{item: item}"></ng-container>
-        </ng-container>
-      </ng-container>
-    </ng-container>
-    <p class="empty-hint" *ngIf="!menuplanGroups.length">
-      Noch keine Menüplan-Zutaten exportiert. Nutze „Menüplan" oben.
-    </p>
-  </ng-container>
-
-  <!-- ── Checked items ── -->
-  <details class="checked-section" *ngIf="checkedItems.length">
-    <summary>
-      <span class="checked-label">Abgehakt ({{ checkedItems.length }})</span>
-      <button class="btn-clear" (click)="clearChecked(); $event.preventDefault(); $event.stopPropagation()">Alle löschen</button>
-    </summary>
-    <ng-container *ngFor="let item of checkedItems">
-      <ng-container *ngTemplateOutlet="itemRow; context:{item: item}"></ng-container>
-    </ng-container>
-  </details>
-
 </div>
-
-<!-- ════════════════════════════════════════════════
-     Recipe Picker Modal
-════════════════════════════════════════════════ -->
-<div class="modal-backdrop" *ngIf="showRecipePicker" (click)="closeRecipePicker()">
-  <div class="modal-panel recipe-panel" (click)="$event.stopPropagation()" aria-label="Einkauf" appDialog (dialogDismiss)="closeRecipePicker()">
-    <div class="modal-header">
-      <h3>Rezept hinzufügen</h3>
-      <button class="btn-close" (click)="closeRecipePicker()">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></svg>
-      </button>
-    </div>
-
-    <div class="modal-body">
-      <input type="search" [(ngModel)]="recipeSearch" placeholder="Rezept suchen…" class="form-input search-input" />
-
-      <div class="recipe-list">
-        <button class="recipe-pick-row" *ngFor="let r of filteredPickerRecipes"
-                [class.selected]="pickerRecipe?.id === r.id"
-                (click)="selectRecipe(r)">
-          <span class="rp-name">{{ r.name }}</span>
+<div class="modal-backdrop" *ngIf="showAddForm" (click)="cancelAdd()">
+  <section
+    class="modal-panel"
+    appDialog
+    aria-label="Artikel bearbeiten"
+    (dialogDismiss)="cancelAdd()"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="modal-header">
+      <div>
+        <span class="eyebrow">EINKAUFSLISTE</span>
+        <h2>{{ editId ? 'Artikel bearbeiten' : 'Artikel hinzufügen' }}</h2>
+      </div>
+      <button aria-label="Schließen" [disabled]="busy" (click)="cancelAdd()">×</button>
+    </header>
+    <form (ngSubmit)="saveAdd()">
+      <fieldset [disabled]="busy" class="modal-body">
+        <label
+          >Artikelname<input
+            name="article"
+            [(ngModel)]="addName"
+            (ngModelChange)="onAddNameInput()"
+            (blur)="applyCatalog()"
+            list="ingredient-catalog"
+            required
+            maxlength="200"
+            autocomplete="off"
+            placeholder="Zum Beispiel Milch" /></label
+        ><datalist id="ingredient-catalog">
+          <option *ngFor="let i of ingredients" [value]="i.name"></option>
+        </datalist>
+        <div class="suggestions" *ngIf="addSuggestions.length">
+          <span>Schon einmal eingekauft</span
+          ><button type="button" *ngFor="let s of addSuggestions" (click)="applySuggestion(s)">
+            {{ s.name }} <small>{{ s.unit }}</small>
+          </button>
+        </div>
+        <div class="field-grid">
+          <label
+            >Menge<input
+              name="quantity"
+              aria-label="Menge"
+              aria-describedby="quantity-hint"
+              type="number"
+              min="0"
+              step="any"
+              [(ngModel)]="addQty"
+              placeholder="Nach Bedarf"
+            /><small id="quantity-hint">Leer lassen, wenn die Menge offen ist.</small></label
+          ><label
+            >Einheit<input
+              name="unit"
+              [(ngModel)]="addUnit"
+              maxlength="32"
+              list="shopping-units"
+              placeholder="z. B. g, ml, Stück"
+          /></label>
+        </div>
+        <label class="checkbox-label" *ngIf="addQty !== null"
+          ><input type="checkbox" name="incomplete" [(ngModel)]="addIncomplete" />Zusätzlich wird
+          eine Menge nach Bedarf benötigt</label
+        ><datalist id="shopping-units">
+          <option
+            *ngFor="let u of ['g', 'kg', 'ml', 'l', 'Stück', 'EL', 'TL', 'Packung']"
+            [value]="u"
+          ></option></datalist
+        ><label
+          >Warengruppe<input
+            name="category"
+            [(ngModel)]="addCategory"
+            maxlength="80"
+            list="shopping-categories"
+            placeholder="Sonstiges" /></label
+        ><datalist id="shopping-categories">
+          <option *ngFor="let category of categories" [value]="category"></option>
+        </datalist>
+        <details>
+          <summary>Optionales Artikelbild</summary>
+          <label
+            >Bild-URL<input
+              name="image"
+              type="url"
+              [(ngModel)]="addImageUrl"
+              placeholder="https://…"
+          /></label>
+        </details>
+        <p class="error" role="alert" *ngIf="error">{{ error }}</p>
+      </fieldset>
+      <footer class="modal-footer">
+        <button type="button" [disabled]="busy" (click)="cancelAdd()">Abbrechen</button
+        ><button type="submit" class="primary" [disabled]="busy || !addName.trim()">
+          {{ busy ? 'Wird gespeichert…' : editId ? 'Änderungen speichern' : 'Hinzufügen' }}
         </button>
-        <p class="empty-hint" *ngIf="!filteredPickerRecipes.length">Keine Rezepte gefunden.</p>
+      </footer>
+    </form>
+  </section>
+</div>
+<div class="modal-backdrop" *ngIf="showRecipePicker" (click)="closeRecipePicker()">
+  <section
+    class="modal-panel recipe-panel"
+    appDialog
+    aria-label="Rezept zur Einkaufsliste hinzufügen"
+    (dialogDismiss)="closeRecipePicker()"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="modal-header">
+      <div>
+        <span class="eyebrow">ZUTATEN ÜBERNEHMEN</span>
+        <h2>Aus einem Rezept</h2>
       </div>
-
-      <div class="persons-row" *ngIf="pickerRecipe">
-        <label class="persons-label">Portionen für:</label>
-        <button class="qty-btn" (click)="pickerPersons = pickerPersons > 1 ? pickerPersons - 1 : 1">−</button>
-        <input type="number" min="1" max="99" [(ngModel)]="pickerPersons" class="persons-input" />
-        <button class="qty-btn" (click)="pickerPersons = pickerPersons + 1">+</button>
-        <span class="persons-hint">Personen</span>
+      <button aria-label="Schließen" [disabled]="busy" (click)="closeRecipePicker()">×</button>
+    </header>
+    <div class="modal-body">
+      <label
+        >Rezept suchen<input
+          type="search"
+          [(ngModel)]="recipeSearch"
+          [disabled]="busy"
+          placeholder="Name eingeben…"
+      /></label>
+      <div class="recipe-list">
+        <button
+          *ngFor="let recipe of filteredPickerRecipes"
+          [disabled]="busy"
+          [class.selected]="pickerRecipe?.id === recipe.id"
+          [attr.aria-pressed]="pickerRecipe?.id === recipe.id"
+          (click)="selectRecipe(recipe)"
+        >
+          <strong>{{ recipe.name }}</strong
+          ><small
+            >{{ recipe.ingredients.length }} Zutaten · {{ recipe.baseServings }}
+            {{ recipe.servingType || 'Portionen' }}</small
+          >
+        </button>
+        <p *ngIf="!filteredPickerRecipes.length">Keine Rezepte gefunden.</p>
       </div>
+      <section class="recipe-preview" *ngIf="pickerRecipe">
+        <label
+          >Gewünschte
+          {{ pickerRecipe.servingType === 'Stücke' ? 'Stückzahl' : 'Portionen' }} insgesamt<input
+            type="number"
+            min="0.01"
+            step="any"
+            [(ngModel)]="pickerServings"
+            [disabled]="busy"
+        /></label>
+        <p>
+          Die Zutaten werden auf diese Gesamtmenge skaliert. Erneutes Hinzufügen ergänzt einen
+          weiteren Einkauf.
+        </p>
+        <div class="preview-row" *ngFor="let item of pickerPreview">
+          <span>{{ item.name }}</span
+          ><strong>{{ quantityLabel(item.quantity, item.unit) }}</strong>
+        </div>
+      </section>
+      <p *ngIf="error" role="alert" class="error">{{ error }}</p>
     </div>
-
-    <div class="modal-footer">
-      <button class="btn-ghost" (click)="closeRecipePicker()">Abbrechen</button>
-      <button class="btn-primary" [disabled]="!pickerRecipe" (click)="addRecipeToList()">
-        Zur Liste hinzufügen
+    <footer class="modal-footer">
+      <button [disabled]="busy" (click)="closeRecipePicker()">Abbrechen</button
+      ><button
+        class="primary"
+        [disabled]="
+          busy || !pickerRecipe || !validPickerQuantity || !pickerRecipe.ingredients.length
+        "
+        (click)="addRecipeToList()"
+      >
+        {{ busy ? 'Wird übernommen…' : 'Zutaten hinzufügen' }}
       </button>
+    </footer>
+  </section>
+</div>
+<div class="modal-backdrop" *ngIf="confirmClear" (click)="!busy && (confirmClear = false)">
+  <section
+    class="modal-panel confirm-panel"
+    appDialog
+    aria-label="Abgehakte Artikel entfernen"
+    (dialogDismiss)="!busy && (confirmClear = false)"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-body">
+      <h2>Abgehakte Artikel entfernen?</h2>
+      <p>
+        {{ checkedItems.length }} abgehakte Artikel der aktuellen Ansicht werden gelöscht. Offene
+        Artikel bleiben erhalten.
+      </p>
+      <p class="error" *ngIf="error" role="alert">{{ error }}</p>
     </div>
-  </div>
+    <footer class="modal-footer">
+      <button [disabled]="busy" (click)="confirmClear = false">Abbrechen</button
+      ><button class="danger" [disabled]="busy || !!pending.size" (click)="clearChecked()">
+        {{ busy ? 'Wird entfernt…' : 'Entfernen' }}
+      </button>
+    </footer>
+  </section>
 </div>

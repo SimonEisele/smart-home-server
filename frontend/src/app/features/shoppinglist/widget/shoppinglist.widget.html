@@ -1,15 +1,30 @@
 <div class="sl-widget">
+  <p *ngIf="error" role="alert">{{ error }} <button (click)="load()">Erneut laden</button></p>
 
   <!-- Quick-add row -->
   <div class="add-row">
-    <input class="add-input" aria-label="Artikel hinzufügen"
-           [(ngModel)]="newItemName"
-           (keydown)="onKeydown($event)"
-           placeholder="Hinzufügen…"
-           [disabled]="adding" />
-    <button class="add-btn" aria-label="Artikel hinzufügen" (click)="addItem()" [disabled]="!newItemName.trim() || adding">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-        <path d="M12 5v14M5 12h14"/>
+    <input
+      class="add-input"
+      aria-label="Artikel hinzufügen"
+      [(ngModel)]="newItemName"
+      (keydown)="onKeydown($event)"
+      placeholder="Hinzufügen…"
+      [disabled]="adding"
+    />
+    <button
+      class="add-btn"
+      aria-label="Artikel hinzufügen"
+      (click)="addItem()"
+      [disabled]="!newItemName.trim() || adding"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+      >
+        <path d="M12 5v14M5 12h14" />
       </svg>
     </button>
   </div>
@@ -22,9 +37,21 @@
   <ul class="sl-list">
     @for (item of unchecked; track item.id) {
       <li class="sl-item" (click)="toggle(item)">
-        <button class="check-btn" aria-label="Abhaken" (click)="$event.stopPropagation(); toggle(item)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
+        <button
+          class="check-btn"
+          [attr.aria-label]="item.name + ' abhaken'"
+          [disabled]="pending.has(item.id)"
+          (click)="$event.stopPropagation(); toggle(item)"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
           </svg>
         </button>
         <span class="item-name">{{ item.name }}</span>
@@ -42,10 +69,22 @@
       <ul class="sl-list sl-list-done">
         @for (item of checked; track item.id) {
           <li class="sl-item sl-item-done" (click)="toggle(item)">
-            <button class="check-btn check-btn-done" aria-label="Rückgängig" (click)="$event.stopPropagation(); toggle(item)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M8 12l3 3 5-5"/>
+            <button
+              class="check-btn check-btn-done"
+              [attr.aria-label]="item.name + ' wieder öffnen'"
+              [disabled]="pending.has(item.id)"
+              (click)="$event.stopPropagation(); toggle(item)"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M8 12l3 3 5-5" />
               </svg>
             </button>
             <span class="item-name item-done-name">{{ item.name }}</span>
@@ -54,5 +93,4 @@
       </ul>
     </div>
   }
-
 </div>

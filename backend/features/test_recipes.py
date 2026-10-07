@@ -104,4 +104,4 @@ class RecipeMigrationTests(TransactionTestCase):
             self.assertEqual(restored.sections,[{'id':12,'title':'Teig'}]);self.assertEqual(restored.side_notes[0]['value'],'180 °C')
             self.assertEqual(restored.steps[0]['ingredients'][0]['quantityPerPerson'],100)
             self.assertEqual(apps.get_model('features','RecipeIngredient').objects.get(pk=amount.pk).section_id,12)
-        finally:MigrationExecutor(connection).migrate(new)
+        finally:MigrationExecutor(connection).migrate([('features','0026_shopping_quantity_completeness')])

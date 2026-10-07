@@ -129,8 +129,8 @@ def commit_export(household, plan, replace):
         for row in plan['data']:
             item=by_key.get((row['name'].casefold(),row['unit'].casefold()))
             if item is None: item=ShoppingItem(household=household,list_type='menuplan',week_tag=plan['weekTag'])
-            elif item.quantity != row['quantity']: item.checked=False
-            item.name=row['name'];item.quantity=row['quantity'];item.unit=row['unit'];item.category=row['category'];item.suggestion=' | '.join(row['sources']) + (' · Menge im Rezept prüfen' if row['quantityIncomplete'] else '');item.save();saved.append(item)
+            elif item.quantity != row['quantity'] or item.quantity_incomplete != row['quantityIncomplete']: item.checked=False
+            item.quantity_incomplete=row['quantityIncomplete'];item.name=row['name'];item.quantity=row['quantity'];item.unit=row['unit'];item.category=row['category'];item.suggestion=' | '.join(row['sources']) + (' · Menge im Rezept prüfen' if row['quantityIncomplete'] else '');item.save();saved.append(item)
         if replace:
             ShoppingItem.objects.filter(household=household,list_type='menuplan',week_tag=plan['weekTag']).exclude(id__in=[i.id for i in saved]).delete()
         return saved
