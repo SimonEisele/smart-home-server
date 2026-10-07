@@ -1,113 +1,243 @@
 <div class="ingredients-page app-page">
-
-  <!-- ── Header ─────────────────────────────────────────────────── -->
-  <div class="page-header">
-    <div class="header-left">
-      <h2 class="page-title">Zutaten-Katalog</h2>
-      <span class="count-pill">{{ ingredients.length }}</span>
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">Küche · Stammdaten</span>
+      <h1>Zutaten</h1>
+      <p>Ein Katalog für deine Rezepte und die Einkaufsliste.</p>
     </div>
-    <div class="header-right">
-      <div class="search-wrap">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input class="search-input" type="text" [(ngModel)]="search" placeholder="Suchen…" />
+    <button class="primary" type="button" (click)="openAdd()" [disabled]="loading || !!loadError">
+      + Neue Zutat
+    </button>
+  </header>
+  <div class="summary" aria-label="Katalogübersicht">
+    <div>
+      <strong>{{ activeCount }}</strong
+      ><span>Aktive Zutaten</span>
+    </div>
+    <div>
+      <strong>{{ usedCount }}</strong
+      ><span>In Rezepten verwendet</span>
+    </div>
+    <div>
+      <strong>{{ archivedCount }}</strong
+      ><span>Archiviert</span>
+    </div>
+  </div>
+  <div class="notice success" role="status" *ngIf="message">{{ message }}</div>
+  <section class="catalog" aria-label="Zutatenkatalog">
+    <div class="filters">
+      <label class="search"
+        >Zutat suchen<input
+          aria-label="Zutat suchen"
+          type="search"
+          [(ngModel)]="search"
+          placeholder="Name, Kategorie oder Einheit"
+      /></label>
+      <label
+        >Kategorie<select aria-label="Kategorie" [(ngModel)]="category">
+          <option value="">Alle Kategorien</option>
+          <option *ngFor="let cat of categories" [value]="cat.value">{{ cat.label }}</option>
+        </select></label
+      >
+      <label
+        >Status<select aria-label="Status" [(ngModel)]="status">
+          <option value="active">Aktive Zutaten</option>
+          <option value="archived">Archiviert</option>
+          <option value="all">Alle Zutaten</option>
+        </select></label
+      >
+    </div>
+    <div class="state" role="status" *ngIf="loading">Zutaten werden geladen…</div>
+    <div class="state" *ngIf="loadError" role="alert">
+      <p>{{ loadError }}</p>
+      <button type="button" (click)="load()">Erneut laden</button>
+    </div>
+    <ng-container *ngIf="!loading && !loadError">
+      <div class="list-heading">
+        <span>{{ filtered.length }} {{ filtered.length === 1 ? 'Zutat' : 'Zutaten' }}</span
+        ><span>Mengen werden im Rezept erfasst.</span>
       </div>
-      <button class="btn-add" (click)="openAdd()" *ngIf="!showAddForm">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-        Neue Zutat
+      <div class="table-labels" aria-hidden="true">
+        <span>Zutat</span><span>Kategorie</span><span>Standard-Einheit</span><span>Verwendung</span
+        ><span></span>
+      </div>
+      <article
+        class="ingredient-row"
+        *ngFor="let ingredient of filtered; trackBy: trackId"
+        [class.archived]="ingredient.archived"
+      >
+        <div class="identity">
+          <strong>{{ ingredient.name }}</strong
+          ><span *ngIf="ingredient.subcategory">{{ ingredient.subcategory }}</span
+          ><span class="archive-badge" *ngIf="ingredient.archived">Archiviert</span>
+        </div>
+        <span class="category-badge">{{ catLabel(ingredient.category) }}</span>
+        <span class="unit"
+          ><span class="mobile-label">Standard: </span
+          >{{ ingredient.defaultUnit || 'Keine Vorgabe' }}</span
+        >
+        <span class="usage"
+          >{{ ingredient.usageCount || 0 }}
+          {{ ingredient.usageCount === 1 ? 'Rezept' : 'Rezepte' }}</span
+        >
+        <button
+          class="edit"
+          type="button"
+          (click)="startEdit(ingredient)"
+          [attr.aria-label]="ingredient.name + ' bearbeiten'"
+        >
+          Bearbeiten <span aria-hidden="true">↗</span>
+        </button>
+      </article>
+      <div class="state" *ngIf="filtered.length === 0">
+        <h2>{{ ingredients.length ? 'Keine passenden Zutaten' : 'Dein Katalog ist noch leer' }}</h2>
+        <p>
+          {{
+            ingredients.length
+              ? 'Passe die Suche oder die Filter an.'
+              : 'Erfasse die erste Zutat mit Kategorie und Standard-Einheit.'
+          }}
+        </p>
+        <button type="button" (click)="resetFilters()" *ngIf="ingredients.length">
+          Filter zurücksetzen
+        </button>
+        <button type="button" class="primary" (click)="openAdd()" *ngIf="!ingredients.length">
+          Zutat erfassen
+        </button>
+      </div>
+    </ng-container>
+  </section>
+  <p class="catalog-note">
+    Der Zutatenkatalog ist gemeinsam verfügbar. Änderungen am Namen gelten auch für verknüpfte
+    Rezepte. Bereits exportierte Einkaufspositionen behalten ihren bisherigen Namen.
+  </p>
+</div>
+<div class="modal-overlay" *ngIf="modal" (click)="closeModal()">
+  <section
+    class="ingredient-dialog"
+    appDialog
+    [attr.aria-label]="
+      modal === 'delete' ? 'Zutat löschen' : selected ? 'Zutat bearbeiten' : 'Neue Zutat'
+    "
+    (dialogDismiss)="closeModal()"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="dialog-header">
+      <div>
+        <span class="eyebrow">Zutatenkatalog</span>
+        <h2>
+          {{ modal === 'delete' ? 'Zutat löschen?' : selected ? selected.name : 'Neue Zutat' }}
+        </h2>
+      </div>
+      <button
+        type="button"
+        aria-label="Dialog schließen"
+        (click)="closeModal()"
+        [disabled]="saving"
+      >
+        ✕
       </button>
-    </div>
-  </div>
-
-  <!-- ── Add form ────────────────────────────────────────────────── -->
-  <div class="add-form-panel" *ngIf="showAddForm">
-    <h3 class="add-form-title">Neue Zutat erfassen</h3>
-    <div class="add-form-row">
-      <div class="add-field">
-        <label>Name *</label>
-        <input type="text" [(ngModel)]="addForm.name" placeholder="z.B. Weizenmehl" />
-      </div>
-      <div class="add-field">
-        <label>Kategorie</label>
-        <select [(ngModel)]="addForm.category">
-          <option *ngFor="let cat of CATEGORIES" [value]="cat.value">{{ cat.label }}</option>
-        </select>
-      </div>
-      <div class="add-field add-field-grow">
-        <label>Unterkategorie <span class="muted">(optional)</span></label>
-        <input type="text" [(ngModel)]="addForm.subcategory" placeholder="z.B. Vollkornmehl" />
-      </div>
-      <div class="add-field add-field-unit">
-        <label>Standard-Einheit</label>
-        <input type="text" [(ngModel)]="addForm.defaultUnit" placeholder="g, ml, Stk…" />
-      </div>
-    </div>
-    <div class="add-form-actions">
-      <button type="button" class="btn-save" (click)="saveAdd()" [disabled]="!addForm.name.trim() || savingAdd">Speichern</button>
-      <button type="button" class="btn-cancel-form" (click)="cancelAdd()">Abbrechen</button>
-    </div>
-  </div>
-
-  <!-- ── Grouped ingredient list ────────────────────────────────── -->
-  <div class="category-group" *ngFor="let group of grouped; trackBy: trackByCategory">
-    <div class="category-head">
-      <span class="category-name">{{ group.label }}</span>
-      <span class="category-count">{{ group.items.length }}</span>
-    </div>
-    <div class="ingredient-table">
-      <ng-container *ngFor="let ing of group.items; trackBy: trackByIngId">
-
-        <!-- Edit row -->
-        <div class="ingredient-row editing" *ngIf="editId === ing.id">
-          <input class="ing-input flex-3" type="text" [(ngModel)]="editForm.name" placeholder="Name" />
-          <select class="ing-select" [(ngModel)]="editForm.category">
-            <option *ngFor="let cat of CATEGORIES" [value]="cat.value">{{ cat.label }}</option>
-          </select>
-          <input class="ing-input flex-2" type="text" [(ngModel)]="editForm.subcategory" placeholder="Unterkategorie" />
-          <input class="ing-input ing-unit" type="text" [(ngModel)]="editForm.defaultUnit" placeholder="Einheit" />
-          <div class="ing-actions">
-            <button type="button" class="btn-icon btn-ok" title="Speichern" (click)="saveEdit()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-            </button>
-            <button type="button" class="btn-icon btn-cancel-icon" title="Abbrechen" (click)="cancelEdit()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
+    </header>
+    <form *ngIf="modal === 'edit'" (ngSubmit)="save()">
+      <div class="dialog-body">
+        <p class="dialog-intro">
+          Name und Kategorie ordnen die Zutat ein. Die Standard-Einheit dient beim Erfassen eines
+          Rezepts als Vorschlag.
+        </p>
+        <fieldset [disabled]="saving">
+          <label
+            ><span>Name <span class="required">*</span></span
+            ><input
+              aria-label="Name"
+              name="name"
+              required
+              maxlength="100"
+              [(ngModel)]="form.name"
+              placeholder="Zum Beispiel Weizenmehl"
+          /></label>
+          <div class="notice warning" *ngIf="duplicate" role="status">
+            „{{ duplicate.name }}“ ist bereits vorhanden{{
+              duplicate.archived ? ' und archiviert' : ''
+            }}. Bitte den vorhandenen Eintrag bearbeiten.
           </div>
-        </div>
-
-        <!-- Display row -->
-        <div class="ingredient-row" *ngIf="editId !== ing.id">
-          <span class="ing-name">{{ ing.name }}</span>
-          <span class="ing-sub" *ngIf="ing.subcategory">{{ ing.subcategory }}</span>
-          <span class="ing-unit-badge" *ngIf="ing.defaultUnit">{{ ing.defaultUnit }}</span>
-          <span class="ing-unit-badge empty" *ngIf="!ing.defaultUnit">—</span>
-          <div class="ing-actions">
-            <ng-container *ngIf="confirmDeleteId === ing.id; else normalActions">
-              <span class="delete-confirm-text">Löschen?</span>
-              <button type="button" class="btn-icon btn-ok" title="Ja, löschen" (click)="doDelete(ing.id)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-              </button>
-              <button type="button" class="btn-icon btn-cancel-icon" title="Abbrechen" (click)="cancelDelete()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </ng-container>
-            <ng-template #normalActions>
-              <button type="button" class="btn-icon btn-edit" title="Bearbeiten" (click)="startEdit(ing)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-              <button type="button" class="btn-icon btn-delete-ing" title="Löschen" (click)="confirmDelete(ing.id)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-              </button>
-            </ng-template>
+          <div class="field-grid">
+            <label
+              >Kategorie<select aria-label="Kategorie" name="category" [(ngModel)]="form.category">
+                <option *ngFor="let cat of categories" [value]="cat.value">{{ cat.label }}</option>
+              </select></label
+            >
+            <label
+              >Standard-Einheit<select
+                aria-label="Standard-Einheit"
+                name="unit"
+                [(ngModel)]="form.defaultUnit"
+              >
+                <option *ngFor="let unit of formUnits" [value]="unit">
+                  {{ unit || 'Keine Vorgabe' }}
+                </option>
+              </select></label
+            >
           </div>
+          <label
+            ><span>Unterkategorie <span class="optional">optional</span></span
+            ><input
+              aria-label="Unterkategorie"
+              name="subcategory"
+              maxlength="100"
+              [(ngModel)]="form.subcategory"
+              placeholder="Zum Beispiel Mehl & Backzutaten"
+          /></label>
+        </fieldset>
+        <div class="usage-note" *ngIf="selected">
+          <strong
+            >{{ selected.usageCount || 0 }}
+            {{ selected.usageCount === 1 ? 'Rezept verwendet' : 'Rezepte verwenden' }} diese
+            Zutat.</strong
+          >
+          <p>
+            Eine neue Standard-Einheit verändert keine bestehenden Rezeptmengen. Archivierte Zutaten
+            bleiben in Rezepten erhalten.
+          </p>
         </div>
-
-      </ng-container>
-    </div>
-  </div>
-
-  <p class="empty-hint" *ngIf="ingredients.length === 0">Noch keine Zutaten im Katalog. Lege die erste an!</p>
-  <p class="empty-hint" *ngIf="ingredients.length > 0 && filtered.length === 0">Keine Treffer für „{{ search }}“.</p>
-
+        <div class="notice error" role="alert" *ngIf="formError">{{ formError }}</div>
+        <div class="management" *ngIf="selected">
+          <button type="button" (click)="archive()" [disabled]="saving">
+            {{ selected.archived ? 'Wieder aktivieren' : 'Archivieren' }}</button
+          ><button
+            class="danger-text"
+            type="button"
+            (click)="confirmDelete()"
+            [disabled]="saving || (selected.usageCount || 0) > 0"
+          >
+            Löschen</button
+          ><small *ngIf="(selected.usageCount || 0) > 0"
+            >Verwendete Zutaten können archiviert werden.</small
+          >
+        </div>
+      </div>
+      <footer class="dialog-footer">
+        <button type="button" (click)="closeModal()" [disabled]="saving">Abbrechen</button
+        ><button
+          class="primary"
+          type="submit"
+          [disabled]="saving || !form.name.trim() || !!duplicate"
+        >
+          {{ saving ? 'Wird gespeichert…' : 'Zutat speichern' }}
+        </button>
+      </footer>
+    </form>
+    <ng-container *ngIf="modal === 'delete'">
+      <div class="dialog-body">
+        <p>„{{ selected?.name }}“ wird dauerhaft aus dem Katalog entfernt.</p>
+        <p>Wenn du sie später wieder verwenden möchtest, kannst du sie stattdessen archivieren.</p>
+        <div class="notice error" role="alert" *ngIf="formError">{{ formError }}</div>
+      </div>
+      <footer class="dialog-footer">
+        <button type="button" (click)="modal = 'edit'" [disabled]="saving">Zurück</button
+        ><button type="button" class="danger" (click)="delete()" [disabled]="saving">
+          {{ saving ? 'Wird gelöscht…' : 'Zutat löschen' }}
+        </button>
+      </footer>
+    </ng-container>
+  </section>
 </div>

@@ -6,6 +6,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ingredientKey } from '../ingredients/model/ingredient.model';
 import { Ingredient, Recipe, RecipeIngredient, RecipeSection, RecipeSideNote, RecipeStep } from './model/recipes.model';
 import { RecipesService } from './service/recipes.service';
 import { CookMode } from './cook-mode/cook-mode';
@@ -104,7 +105,7 @@ export class Recipes implements OnInit, DoCheck {
       next: recipes => { this.recipes = recipes; this.cdr.markForCheck(); },
       error: () => { this.loadError = 'Rezepte konnten nicht geladen werden.'; this.cdr.markForCheck(); },
     });
-    this.service.getIngredients().subscribe(i => { this.ingredientCatalog = i; this.cdr.detectChanges(); });
+    this.service.getIngredients().subscribe(i => { this.ingredientCatalog = i.filter(ingredient => !ingredient.archived); this.cdr.detectChanges(); });
   }
 
   // ── Cache builders ──────────────────────────────────────────────────────
@@ -194,8 +195,9 @@ export class Recipes implements OnInit, DoCheck {
   /** Fires on every input event — fills the default unit immediately when a catalog match is typed/selected. */
   onIngredientNameInput(index: number): void {
     const name = this.form.ingredients[index].name?.trim();
+    const match = this.ingredientCatalog.find(i => ingredientKey(i.name) === ingredientKey(name || ''));
+    this.form.ingredients[index].ingredientId = match?.id;
     if (!name || this.form.ingredients[index].unit) return;
-    const match = this.ingredientCatalog.find(i => i.name === name);
     if (match) {
       // Mutate in place so item.ing in the template stays valid
       this.form.ingredients[index].unit = match.defaultUnit;
@@ -205,9 +207,12 @@ export class Recipes implements OnInit, DoCheck {
   onIngredientNameChange(index: number): void {
     const oldName = this.ingredientPrevNames[index] ?? '';
     const newName = this.form.ingredients[index].name?.trim() ?? '';
+    const identity = this.ingredientCatalog.find(i => ingredientKey(i.name) === ingredientKey(newName));
+    this.form.ingredients[index].ingredientId = identity?.id;
+    if (identity) this.form.ingredients[index].name = identity.name;
     // Auto-fill unit on blur too (covers keyboard-only usage)
     if (newName && !this.form.ingredients[index].unit) {
-      const match = this.ingredientCatalog.find(i => i.name === newName);
+      const match = identity;
       if (match) {
         // Mutate in place — do NOT replace form.ingredients[index] with a new object;
         // that would orphan item.ing in the template and lose any qty the user already typed.
@@ -217,7 +222,7 @@ export class Recipes implements OnInit, DoCheck {
     this.ingredientPrevNames[index] = newName;
     if (!oldName || oldName === newName) {
       // Still check catalog even if name didn't change (e.g. first blur)
-      if (newName && !this.ingredientCatalog.find(i => i.name === newName)) {
+      if (newName && !identity) {
         this.newIngredientPrompt = { name: newName, category: 'sonstiges', defaultUnit: this.form.ingredients[index].unit ?? '' };
       } else {
         this.newIngredientPrompt = null;
@@ -227,10 +232,10 @@ export class Recipes implements OnInit, DoCheck {
     }
     this.form.steps = this.form.steps.map(s => ({
       ...s,
-      ingredients: s.ingredients.map(i => i.name === oldName ? { ...i, name: newName } : i),
+      ingredients: s.ingredients.map(i => i.name === oldName ? { ...i, name: identity?.name ?? newName, ingredientId: identity?.id } : i),
     }));
     // Show prompt if new name isn't in catalog
-    if (newName && !this.ingredientCatalog.find(i => i.name === newName)) {
+    if (newName && !identity) {
       this.newIngredientPrompt = { name: newName, category: 'sonstiges', defaultUnit: this.form.ingredients[index].unit ?? '' };
     } else {
       this.newIngredientPrompt = null;
@@ -310,7 +315,8 @@ export class Recipes implements OnInit, DoCheck {
     const name = this.form.steps[stepIdx].ingredients[ingIdx].name?.trim();
     if (!name) return;
     const recipeIng = this.form.ingredients.find(i => i.name === name);
-    const catalogIng = this.ingredientCatalog.find(i => i.name === name);
+    const catalogIng = this.ingredientCatalog.find(i => ingredientKey(i.name) === ingredientKey(name));
+    this.form.steps[stepIdx].ingredients[ingIdx].ingredientId = recipeIng?.ingredientId ?? catalogIng?.id;
     if (recipeIng) {
       this.form.steps = this.form.steps.map((s, si) =>
         si === stepIdx
@@ -356,7 +362,7 @@ export class Recipes implements OnInit, DoCheck {
     if (this.form.steps[stepIdx].ingredients.find(i => i.name === ing.name)) return;
     this.form.steps = this.form.steps.map((s, si) =>
       si === stepIdx
-        ? { ...s, ingredients: [...s.ingredients, { name: ing.name, quantityPerPerson: ing.quantityPerPerson, unit: ing.unit ?? '' }] }
+        ? { ...s, ingredients: [...s.ingredients, { name: ing.name, ingredientId: ing.ingredientId, quantityPerPerson: ing.quantityPerPerson, unit: ing.unit ?? '' }] }
         : s
     );
   }

@@ -1,5 +1,8 @@
 import re
+import math
+from .ingredient_units import normalize_name, normalize_unit, UNITS
 from django.db.models import Q
+from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from .models import (
@@ -20,11 +23,43 @@ from .models import (
 
 
 class IngredientSerializer(serializers.ModelSerializer):
+    usageCount = serializers.IntegerField(source='usage_count', read_only=True, default=0)
+
+    def create(self, validated_data):
+        try:
+            with transaction.atomic():
+                return super().create(validated_data)
+        except IntegrityError:
+            raise serializers.ValidationError({'name': 'Diese Zutat ist bereits im Katalog vorhanden.'})
+
+    def update(self, instance, validated_data):
+        try:
+            with transaction.atomic():
+                return super().update(instance, validated_data)
+        except IntegrityError:
+            raise serializers.ValidationError({'name': 'Diese Zutat ist bereits im Katalog vorhanden.'})
+
+    def validate_name(self, value):
+        value = ' '.join(value.split())
+        matches = Ingredient.objects.filter(normalized_name=normalize_name(value))
+        if self.instance:
+            matches = matches.exclude(pk=self.instance.pk)
+        if matches.exists():
+            raise serializers.ValidationError('Diese Zutat ist bereits im Katalog vorhanden.')
+        return value
+
+    def validate_defaultUnit(self, value):
+        value = normalize_unit(value)
+        # Preserve existing custom units, but require a known spelling for new choices.
+        if value not in UNITS and value != getattr(self.instance, 'default_unit', None):
+            raise serializers.ValidationError('Bitte eine Einheit aus der Auswahl verwenden.')
+        return value
+
     defaultUnit = serializers.CharField(source='default_unit', allow_blank=True, required=False, default='')
 
     class Meta:
         model = Ingredient
-        fields = ['id', 'name', 'category', 'subcategory', 'defaultUnit']
+        fields = ['id', 'name', 'category', 'subcategory', 'defaultUnit', 'archived', 'usageCount']
         extra_kwargs = {
             'subcategory': {'allow_blank': True, 'required': False, 'default': ''},
         }
@@ -74,7 +109,71 @@ class TodoSerializer(serializers.ModelSerializer):
         return None
 
 
+class RecipeIngredientSerializer(serializers.Serializer):
+    ingredientId = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    name = serializers.CharField(max_length=100)
+    quantityPerPerson = serializers.FloatField(required=False, allow_null=True)
+    unit = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
+    sectionId = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate_quantityPerPerson(self, value):
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise serializers.ValidationError('Die Menge muss eine endliche, nicht negative Zahl sein.')
+        return value
+
+    def validate(self, attrs):
+        name = ' '.join(attrs['name'].split())
+        identity = attrs.get('ingredientId')
+        entry = Ingredient.objects.filter(pk=identity).first() if identity else Ingredient.objects.filter(normalized_name=normalize_name(name)).first()
+        if identity and not entry:
+            raise serializers.ValidationError({'ingredientId': 'Diese Zutat existiert nicht mehr.'})
+        recipe = getattr(self.root, 'instance', None)
+        if entry and entry.archived and (not recipe or not recipe.ingredient_rows.filter(ingredient=entry).exists()):
+            raise serializers.ValidationError({'ingredientId': 'Diese Zutat ist archiviert. Bitte zuerst im Katalog aktivieren.'})
+        attrs['name'] = entry.name if entry else name
+        if entry:
+            attrs['ingredientId'] = entry.id
+        else:
+            attrs.pop('ingredientId', None)
+        attrs['unit'] = normalize_unit(attrs.get('unit'))
+        return attrs
+
+
+class RecipeStepSerializer(serializers.Serializer):
+    order = serializers.IntegerField(min_value=1)
+    description = serializers.CharField(allow_blank=True)
+    ingredients = RecipeIngredientSerializer(many=True, required=False, default=list)
+    sectionId = serializers.IntegerField(required=False, allow_null=True)
+
+
 class RecipeSerializer(serializers.ModelSerializer):
+    steps = RecipeStepSerializer(many=True, required=False)
+    ingredients = RecipeIngredientSerializer(many=True, required=False)
+    def validate(self, attrs):
+        ingredients = attrs.get('ingredients', self.instance.ingredients if self.instance else [])
+        if 'steps' in attrs:
+            names = {normalize_name(value['name']) for value in ingredients}
+            identities = {value.get('ingredientId') for value in ingredients if value.get('ingredientId')}
+            for step in attrs['steps']:
+                for value in step.get('ingredients', []):
+                    if value.get('ingredientId') not in identities and normalize_name(value['name']) not in names:
+                        raise serializers.ValidationError({'steps': 'Zutaten in Kochschritten müssen auch in der Zutatenliste des Rezepts stehen.'})
+        return attrs
+
+    def to_representation(self, instance):
+        result = super().to_representation(instance)
+        rows = list(instance.ingredient_rows.all())
+        by_id = {row.ingredient_id: row.ingredient for row in rows if row.ingredient_id}
+        by_name = {normalize_name(row.name): row.ingredient for row in rows if row.ingredient_id}
+        # Resolve legacy step snapshots through the same catalog identities as the amount rows.
+        for step in result.get('steps', []):
+            for value in step.get('ingredients', []):
+                entry = by_id.get(value.get('ingredientId')) or by_name.get(normalize_name(value['name']))
+                if entry:
+                    value['name'] = entry.name
+                    value['ingredientId'] = entry.id
+        return result
+
     durationMinutes = serializers.IntegerField(source='duration_minutes', required=False, allow_null=True)
     baseServings = serializers.IntegerField(source='base_servings', required=False)
     servingType = serializers.CharField(source='serving_type', required=False)
