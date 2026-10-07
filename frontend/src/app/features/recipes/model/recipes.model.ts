@@ -9,6 +9,7 @@ export interface RecipeSideNote {
 }
 
 export interface RecipeStepIngredient {
+  ingredientId?: number | null;
   name: string;
   quantityPerPerson?: number;
   unit?: string;
@@ -21,15 +22,10 @@ export interface RecipeStep {
   sectionId?: number;
 }
 
-export interface Ingredient {
-  id: number;
-  name: string;
-  category: string;
-  subcategory: string;
-  defaultUnit: string;
-}
+export type { Ingredient } from '../../ingredients/model/ingredient.model';
 
 export interface RecipeIngredient {
+  ingredientId?: number | null;
   name: string;
   quantityPerPerson?: number;
   unit?: string;

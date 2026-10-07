@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import (
     Ingredient,
+    RecipeIngredient,
     Todo,
     ShoppingItem,
     Recipe,
@@ -17,8 +18,8 @@ from .models import (
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'subcategory', 'default_unit')
-    list_filter = ('category', 'subcategory')
+    list_display = ('name', 'category', 'subcategory', 'default_unit', 'archived')
+    list_filter = ('category', 'archived')
     search_fields = ('name', 'subcategory')
 
 
@@ -39,8 +40,16 @@ class ShoppingItemAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at", "updated_at")
 
 
+class RecipeIngredientInline(admin.TabularInline):
+    model = RecipeIngredient
+    extra = 0
+    autocomplete_fields = ['ingredient']
+    fields = ('ingredient', 'name', 'quantity', 'unit', 'section_id', 'position')
+
+
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
+    inlines = [RecipeIngredientInline]
     list_display = ("name", "household", "duration_minutes", "updated_at", "id")
     search_fields = ("name", "description")
     readonly_fields = ("id", "created_at", "updated_at")

@@ -11,6 +11,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from django.db.models import Q
+from django.db.models import Count
+from django.db.models.deletion import ProtectedError
 from .models import (
     CalendarEvent,
     CleaningLog,
@@ -51,7 +53,7 @@ class HasActiveHousehold(permissions.BasePermission):
 class IngredientListView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = IngredientSerializer
-    queryset = Ingredient.objects.all()
+    queryset = Ingredient.objects.annotate(usage_count=Count('recipe_rows__recipe', distinct=True))
 
     def list(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_queryset(), many=True)
@@ -60,25 +62,30 @@ class IngredientListView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({'data': serializer.data}, status=status.HTTP_201_CREATED)
+        instance = serializer.save()
+        result = self.get_serializer(self.get_queryset().get(pk=instance.pk))
+        return Response({'data': result.data}, status=status.HTTP_201_CREATED)
 
 
 class IngredientDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = IngredientSerializer
-    queryset = Ingredient.objects.all()
+    queryset = Ingredient.objects.annotate(usage_count=Count('recipe_rows__recipe', distinct=True))
     lookup_field = 'id'
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({'data': serializer.data})
+        instance = serializer.save()
+        result = self.get_serializer(self.get_queryset().get(pk=instance.pk))
+        return Response({'data': result.data})
 
     def destroy(self, request, *args, **kwargs):
-        self.get_object().delete()
+        try:
+            self.get_object().delete()
+        except ProtectedError:
+            return Response({'detail': 'Diese Zutat wird in Rezepten verwendet. Bitte archivieren statt löschen.'}, status=status.HTTP_409_CONFLICT)
         return Response({'success': True}, status=status.HTTP_200_OK)
 
 
@@ -208,7 +215,7 @@ class RecipeListCreateView(generics.ListCreateAPIView):
     serializer_class = RecipeSerializer
 
     def get_queryset(self):
-        return Recipe.objects.filter(household=self.request.user.active_household).order_by('name')
+        return Recipe.objects.filter(household=self.request.user.active_household).prefetch_related('ingredient_rows__ingredient').order_by('name')
 
     def perform_create(self, serializer):
         serializer.save(household=self.request.user.active_household)
@@ -228,7 +235,7 @@ class RecipeDetailView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = 'id'
 
     def get_queryset(self):
-        return Recipe.objects.filter(household=self.request.user.active_household)
+        return Recipe.objects.filter(household=self.request.user.active_household).prefetch_related('ingredient_rows__ingredient')
 
     def retrieve(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_object())

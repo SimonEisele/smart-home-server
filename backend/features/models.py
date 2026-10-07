@@ -1,4 +1,6 @@
-from django.db import models
+from django.db import models, transaction
+from django.db.models import Q
+from .ingredient_units import normalize_name
 from django.conf import settings
 import uuid
 
@@ -66,9 +68,23 @@ class Ingredient(models.Model):
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='sonstiges')
     subcategory = models.CharField(max_length=100, blank=True)
     default_unit = models.CharField(max_length=20, blank=True)
+    normalized_name = models.CharField(max_length=200, unique=True, editable=False)
+    archived = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['category', 'name']
+
+    def save(self, *args, **kwargs):
+        self.name = ' '.join(self.name.split())
+        self.normalized_name = normalize_name(self.name)
+        if kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | {'normalized_name', 'name'}
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            # Link previously free entries when their ingredient is added to the catalog.
+            for row in RecipeIngredient.objects.filter(ingredient__isnull=True).only('id', 'name'):
+                if normalize_name(row.name) == self.normalized_name:
+                    RecipeIngredient.objects.filter(pk=row.pk).update(ingredient=self)
 
     def __str__(self):
         return self.name
@@ -94,12 +110,71 @@ class Recipe(models.Model):
     serving_type = models.CharField(max_length=20, default='Portionen')  # 'Portionen' | 'Stücke'
     units_per_person = models.FloatField(default=1.0)  # how many servings/pieces per person
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='mahlzeit')
-    ingredients = models.JSONField(default=list, blank=True)  # [{name, quantityPerPerson, unit, sectionId?}]
     steps = models.JSONField(default=list, blank=True)  # [{order, description, ingredients, sectionId?}]
     sections = models.JSONField(default=list, blank=True)  # [{id, title}]
     side_notes = models.JSONField(default=list, blank=True)  # [{label, value}]
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def ingredients(self):
+        if hasattr(self, '_pending_ingredients'):
+            return self._pending_ingredients
+        rows = self.ingredient_rows.all()
+        if 'ingredient_rows' not in getattr(self, '_prefetched_objects_cache', {}):
+            rows = rows.select_related('ingredient')
+        return [row.as_dict() for row in rows]
+
+    @ingredients.setter
+    def ingredients(self, value):
+        # Keep the existing API/import shape; quantities are stored as relational rows.
+        self._pending_ingredients = value or []
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if hasattr(self, '_pending_ingredients'):
+                rows = self._pending_ingredients
+                catalog = {i.normalized_name: i for i in Ingredient.objects.all()}
+                by_id = {i.id: i for i in catalog.values()}
+                self.ingredient_rows.all().delete()
+                RecipeIngredient.objects.bulk_create([
+                    RecipeIngredient(recipe=self, position=position,
+                        ingredient=by_id.get(row.get('ingredientId')) or catalog.get(normalize_name(row.get('name', ''))),
+                        name=row.get('name', '').strip(), quantity=row.get('quantityPerPerson', row.get('quantity_per_person')),
+                        unit=row.get('unit') or '', section_id=row.get('sectionId'))
+                    for position, row in enumerate(rows)
+                ])
+                del self._pending_ingredients
+                if hasattr(self, '_prefetched_objects_cache'):
+                    self._prefetched_objects_cache.pop('ingredient_rows', None)
+
+
+class RecipeIngredient(models.Model):
+    """One amount in a recipe's base batch; a catalog item never owns a quantity."""
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='ingredient_rows')
+    ingredient = models.ForeignKey(Ingredient, null=True, blank=True, on_delete=models.PROTECT, related_name='recipe_rows')
+    name = models.CharField(max_length=100)  # fallback for freely entered recipe ingredients
+    quantity = models.FloatField(null=True, blank=True)
+    unit = models.CharField(max_length=20, blank=True)
+    position = models.PositiveIntegerField()
+    section_id = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['position']
+        constraints = [
+            models.UniqueConstraint(fields=['recipe', 'position'], name='unique_recipe_ingredient_position'),
+            models.CheckConstraint(condition=Q(quantity__isnull=True) | Q(quantity__gte=0), name='recipe_ingredient_nonnegative_quantity'),
+        ]
+
+    def as_dict(self):
+        row = {'name': self.ingredient.name if self.ingredient_id else self.name,
+               'quantityPerPerson': self.quantity, 'unit': self.unit}
+        if self.ingredient_id:
+            row['ingredientId'] = self.ingredient_id
+        if self.section_id is not None:
+            row['sectionId'] = self.section_id
+        return row
 
 
 # Menu Plan
