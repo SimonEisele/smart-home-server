@@ -3,6 +3,8 @@ import { BehaviorSubject } from 'rxjs';
 import { Recipe } from '../../features/recipes/model/recipes.model';
 
 export interface CookSlot {
+  source?: "recipe" | "menuplan";
+  servings?: number;
   date: string;
   meal: 'breakfast' | 'lunch' | 'dinner';
   recipe: Recipe;

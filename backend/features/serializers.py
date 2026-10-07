@@ -110,6 +110,7 @@ class TodoSerializer(serializers.ModelSerializer):
 
 
 class RecipeIngredientSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False)
     ingredientId = serializers.IntegerField(required=False, allow_null=True, min_value=1)
     name = serializers.CharField(max_length=100)
     quantityPerPerson = serializers.FloatField(required=False, allow_null=True)
@@ -139,46 +140,111 @@ class RecipeIngredientSerializer(serializers.Serializer):
         return attrs
 
 
+class RecipeStepIngredientSerializer(serializers.Serializer):
+    recipeIngredientId = serializers.UUIDField(required=False)
+    ingredientId = serializers.IntegerField(required=False, allow_null=True)
+    name = serializers.CharField(max_length=100, required=False)
+    quantityPerPerson = serializers.FloatField(required=False, allow_null=True)
+    unit = serializers.CharField(max_length=20, allow_blank=True, required=False, default='')
+
+    def validate_quantityPerPerson(self, value):
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise serializers.ValidationError('Die Schrittmenge muss eine endliche, nicht negative Zahl sein.')
+        return value
+
+
 class RecipeStepSerializer(serializers.Serializer):
     order = serializers.IntegerField(min_value=1)
-    description = serializers.CharField(allow_blank=True)
-    ingredients = RecipeIngredientSerializer(many=True, required=False, default=list)
+    description = serializers.CharField()
+    ingredients = RecipeStepIngredientSerializer(many=True, required=False, default=list)
     sectionId = serializers.IntegerField(required=False, allow_null=True)
+
+
+class RecipeSectionSerializer(serializers.Serializer):
+    id = serializers.IntegerField(min_value=1)
+    title = serializers.CharField(max_length=150)
+
+
+class RecipeNoteSerializer(serializers.Serializer):
+    label = serializers.CharField(max_length=100)
+    value = serializers.CharField(max_length=500)
 
 
 class RecipeSerializer(serializers.ModelSerializer):
     steps = RecipeStepSerializer(many=True, required=False)
+    sections = RecipeSectionSerializer(many=True, required=False)
+    sideNotes = RecipeNoteSerializer(source='side_notes', many=True, required=False)
     ingredients = RecipeIngredientSerializer(many=True, required=False)
-    def validate(self, attrs):
-        ingredients = attrs.get('ingredients', self.instance.ingredients if self.instance else [])
-        if 'steps' in attrs:
-            names = {normalize_name(value['name']) for value in ingredients}
-            identities = {value.get('ingredientId') for value in ingredients if value.get('ingredientId')}
-            for step in attrs['steps']:
-                for value in step.get('ingredients', []):
-                    if value.get('ingredientId') not in identities and normalize_name(value['name']) not in names:
-                        raise serializers.ValidationError({'steps': 'Zutaten in Kochschritten müssen auch in der Zutatenliste des Rezepts stehen.'})
-        return attrs
 
-    def to_representation(self, instance):
-        result = super().to_representation(instance)
-        rows = list(instance.ingredient_rows.all())
-        by_id = {row.ingredient_id: row.ingredient for row in rows if row.ingredient_id}
-        by_name = {normalize_name(row.name): row.ingredient for row in rows if row.ingredient_id}
-        # Resolve legacy step snapshots through the same catalog identities as the amount rows.
-        for step in result.get('steps', []):
-            for value in step.get('ingredients', []):
-                entry = by_id.get(value.get('ingredientId')) or by_name.get(normalize_name(value['name']))
-                if entry:
-                    value['name'] = entry.name
-                    value['ingredientId'] = entry.id
-        return result
+    def validate(self, attrs):
+        from uuid import uuid4
+        from .models import RecipeIngredient
+        base = attrs.get('base_servings', getattr(self.instance, 'base_servings', 4))
+        units = attrs.get('units_per_person', getattr(self.instance, 'units_per_person', 1))
+        duration = attrs.get('duration_minutes', getattr(self.instance, 'duration_minutes', None))
+        serving_type = attrs.get('serving_type', getattr(self.instance, 'serving_type', 'Portionen'))
+        if base < 1:
+            raise serializers.ValidationError({'baseServings':'Bitte mindestens eine Basisportion angeben.'})
+        if not math.isfinite(units) or units <= 0:
+            raise serializers.ValidationError({'unitsPerPerson':'Portionen pro Person müssen positiv und endlich sein.'})
+        if duration is not None and duration < 0:
+            raise serializers.ValidationError({'durationMinutes':'Die Dauer darf nicht negativ sein.'})
+        if serving_type not in ('Portionen', 'Stücke'):
+            raise serializers.ValidationError({'servingType':'Bitte Portionen oder Stücke wählen.'})
+        sections = attrs.get('sections', self.instance.sections if self.instance else [])
+        section_ids = [value['id'] for value in sections]
+        if len(section_ids) != len(set(section_ids)):
+            raise serializers.ValidationError({'sections':'Abschnitts-IDs müssen eindeutig sein.'})
+        ingredients = attrs.get('ingredients', self.instance.ingredients if self.instance else [])
+        keys = set()
+        previous = self.instance.ingredients if self.instance else []
+        for value in ingredients:
+            if not value.get('id'):
+                matches = [old for old in previous if normalize_name(old['name']) == normalize_name(value['name'])]
+                local = [old for old in matches if old.get('sectionId') == value.get('sectionId')]
+                options = local or matches
+                value['id'] = options[0]['id'] if len(options) == 1 else uuid4()
+            identity = str(value['id'])
+            if identity in keys:
+                raise serializers.ValidationError({'ingredients':'Eine Zutatenposition darf nur einmal vorkommen.'})
+            keys.add(identity)
+            existing = RecipeIngredient.objects.filter(key=value['id']).first()
+            if existing and (not self.instance or existing.recipe_id != self.instance.pk):
+                raise serializers.ValidationError({'ingredients':'Diese Zutatenposition gehört zu einem anderen Rezept.'})
+            if value.get('sectionId') is not None and value['sectionId'] not in section_ids:
+                raise serializers.ValidationError({'ingredients':'Unbekannter Rezeptabschnitt.'})
+        steps = attrs.get('steps', self.instance.steps if self.instance else [])
+        orders = [step['order'] for step in steps]
+        if len(orders) != len(set(orders)):
+            raise serializers.ValidationError({'steps':'Schrittnummern müssen eindeutig sein.'})
+        for step in steps:
+            if step.get('sectionId') is not None and step['sectionId'] not in section_ids:
+                raise serializers.ValidationError({'steps':'Unbekannter Rezeptabschnitt.'})
+            used = set()
+            for link in step.get('ingredients', []):
+                identity = str(link.get('recipeIngredientId') or '')
+                matches = [v for v in ingredients if str(v['id']) == identity] if identity else [v for v in ingredients if normalize_name(v['name']) == normalize_name(link.get('name', '')) or (v.get('ingredientId') and v.get('ingredientId') == link.get('ingredientId'))]
+                if not identity:
+                    local = [v for v in matches if v.get('sectionId') == step.get('sectionId')]
+                    matches = local or matches
+                if len(matches) != 1:
+                    raise serializers.ValidationError({'steps':'Bitte jede Schrittzutat eindeutig aus den Zutaten dieses Rezepts wählen.'})
+                value = matches[0]; identity = str(value['id'])
+                if identity in used:
+                    raise serializers.ValidationError({'steps':'Eine Zutat darf pro Schritt nur einmal verknüpft werden.'})
+                used.add(identity)
+                link['recipeIngredientId'] = value['id']
+                link['name'] = value['name']
+                link['unit'] = normalize_unit(link.get('unit'))
+        # Persist canonical references together, even for partial updates.
+        if any(name in attrs for name in ('ingredients', 'sections', 'steps')):
+            attrs.update(ingredients=ingredients, sections=sections, steps=steps)
+        return attrs
 
     durationMinutes = serializers.IntegerField(source='duration_minutes', required=False, allow_null=True)
     baseServings = serializers.IntegerField(source='base_servings', required=False)
     servingType = serializers.CharField(source='serving_type', required=False)
     unitsPerPerson = serializers.FloatField(source='units_per_person', required=False)
-    sideNotes = serializers.JSONField(source='side_notes', required=False)
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
 
