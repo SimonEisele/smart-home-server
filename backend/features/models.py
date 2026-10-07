@@ -110,9 +110,6 @@ class Recipe(models.Model):
     serving_type = models.CharField(max_length=20, default='Portionen')  # 'Portionen' | 'Stücke'
     units_per_person = models.FloatField(default=1.0)  # how many servings/pieces per person
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='mahlzeit')
-    steps = models.JSONField(default=list, blank=True)  # [{order, description, ingredients, sectionId?}]
-    sections = models.JSONField(default=list, blank=True)  # [{id, title}]
-    side_notes = models.JSONField(default=list, blank=True)  # [{label, value}]
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -122,7 +119,7 @@ class Recipe(models.Model):
             return self._pending_ingredients
         rows = self.ingredient_rows.all()
         if 'ingredient_rows' not in getattr(self, '_prefetched_objects_cache', {}):
-            rows = rows.select_related('ingredient')
+            rows = rows.select_related('ingredient', 'section_ref')
         return [row.as_dict() for row in rows]
 
     @ingredients.setter
@@ -130,24 +127,44 @@ class Recipe(models.Model):
         # Keep the existing API/import shape; quantities are stored as relational rows.
         self._pending_ingredients = value or []
 
+    @property
+    def sections(self):
+        if hasattr(self, '_pending_sections'):
+            return self._pending_sections
+        return [{'id': row.key, 'title': row.title} for row in self.section_rows.all()]
+
+    @sections.setter
+    def sections(self, value):
+        self._pending_sections = value or []
+
+    @property
+    def steps(self):
+        if hasattr(self, '_pending_steps'):
+            return self._pending_steps
+        rows = self.step_rows.all()
+        if 'step_rows' not in getattr(self, '_prefetched_objects_cache', {}):
+            rows = rows.select_related('section').prefetch_related('ingredient_links__recipe_ingredient__ingredient')
+        return [row.as_dict() for row in rows]
+
+    @steps.setter
+    def steps(self, value):
+        self._pending_steps = value or []
+
+    @property
+    def side_notes(self):
+        if hasattr(self, '_pending_side_notes'):
+            return self._pending_side_notes
+        return [{'label': row.label, 'value': row.value} for row in self.note_rows.all()]
+
+    @side_notes.setter
+    def side_notes(self, value):
+        self._pending_side_notes = value or []
+
     def save(self, *args, **kwargs):
+        from .recipe_data import save_contents
         with transaction.atomic():
             super().save(*args, **kwargs)
-            if hasattr(self, '_pending_ingredients'):
-                rows = self._pending_ingredients
-                catalog = {i.normalized_name: i for i in Ingredient.objects.all()}
-                by_id = {i.id: i for i in catalog.values()}
-                self.ingredient_rows.all().delete()
-                RecipeIngredient.objects.bulk_create([
-                    RecipeIngredient(recipe=self, position=position,
-                        ingredient=by_id.get(row.get('ingredientId')) or catalog.get(normalize_name(row.get('name', ''))),
-                        name=row.get('name', '').strip(), quantity=row.get('quantityPerPerson', row.get('quantity_per_person')),
-                        unit=row.get('unit') or '', section_id=row.get('sectionId'))
-                    for position, row in enumerate(rows)
-                ])
-                del self._pending_ingredients
-                if hasattr(self, '_prefetched_objects_cache'):
-                    self._prefetched_objects_cache.pop('ingredient_rows', None)
+            save_contents(self)
 
 
 class RecipeIngredient(models.Model):
@@ -158,7 +175,12 @@ class RecipeIngredient(models.Model):
     quantity = models.FloatField(null=True, blank=True)
     unit = models.CharField(max_length=20, blank=True)
     position = models.PositiveIntegerField()
-    section_id = models.IntegerField(null=True, blank=True)
+    key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    section_ref = models.ForeignKey('RecipeSection', null=True, blank=True, on_delete=models.SET_NULL, related_name='ingredients')
+
+    @property
+    def section_id(self):
+        return self.section_ref.key if self.section_ref_id else None
 
     class Meta:
         ordering = ['position']
@@ -168,13 +190,75 @@ class RecipeIngredient(models.Model):
         ]
 
     def as_dict(self):
-        row = {'name': self.ingredient.name if self.ingredient_id else self.name,
+        row = {'id': str(self.key), 'name': self.ingredient.name if self.ingredient_id else self.name,
                'quantityPerPerson': self.quantity, 'unit': self.unit}
         if self.ingredient_id:
             row['ingredientId'] = self.ingredient_id
         if self.section_id is not None:
             row['sectionId'] = self.section_id
         return row
+
+
+class RecipeSection(models.Model):
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='section_rows')
+    key = models.BigIntegerField()
+    title = models.CharField(max_length=150)
+    position = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ['position']
+        constraints = [models.UniqueConstraint(fields=['recipe', 'key'], name='unique_recipe_section_key')]
+
+
+class RecipeStep(models.Model):
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='step_rows')
+    order = models.PositiveIntegerField()
+    description = models.TextField()
+    section = models.ForeignKey(RecipeSection, null=True, blank=True, on_delete=models.SET_NULL, related_name='steps')
+
+    class Meta:
+        ordering = ['order']
+        constraints = [models.UniqueConstraint(fields=['recipe', 'order'], name='unique_recipe_step_order')]
+
+    def as_dict(self):
+        result = {'order': self.order, 'description': self.description,
+                  'ingredients': [link.as_dict() for link in self.ingredient_links.all()]}
+        if self.section_id:
+            result['sectionId'] = self.section.key
+        return result
+
+
+class RecipeStepIngredient(models.Model):
+    step = models.ForeignKey(RecipeStep, on_delete=models.CASCADE, related_name='ingredient_links')
+    recipe_ingredient = models.ForeignKey(RecipeIngredient, on_delete=models.CASCADE, related_name='step_links')
+    quantity = models.FloatField(null=True, blank=True)  # null: use the recipe's total amount
+    unit = models.CharField(max_length=20, blank=True)  # blank: use the recipe's unit
+    position = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ['position']
+        constraints = [
+            models.UniqueConstraint(fields=['step', 'recipe_ingredient'], name='unique_step_ingredient'),
+            models.CheckConstraint(condition=Q(quantity__isnull=True) | Q(quantity__gte=0), name='step_ingredient_nonnegative_quantity'),
+        ]
+
+    def as_dict(self):
+        amount = self.recipe_ingredient
+        result = {'recipeIngredientId': str(amount.key), 'name': amount.ingredient.name if amount.ingredient_id else amount.name,
+                  'quantityPerPerson': self.quantity, 'unit': (self.unit or amount.unit) if self.quantity is not None else amount.unit}
+        if amount.ingredient_id:
+            result['ingredientId'] = amount.ingredient_id
+        return result
+
+
+class RecipeNote(models.Model):
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='note_rows')
+    label = models.CharField(max_length=100)
+    value = models.CharField(max_length=500)
+    position = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ['position']
 
 
 # Menu Plan

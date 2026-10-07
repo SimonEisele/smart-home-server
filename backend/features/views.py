@@ -215,7 +215,7 @@ class RecipeListCreateView(generics.ListCreateAPIView):
     serializer_class = RecipeSerializer
 
     def get_queryset(self):
-        return Recipe.objects.filter(household=self.request.user.active_household).prefetch_related('ingredient_rows__ingredient').order_by('name')
+        return Recipe.objects.filter(household=self.request.user.active_household).prefetch_related('ingredient_rows__ingredient', 'ingredient_rows__section_ref', 'section_rows', 'note_rows', 'step_rows__section', 'step_rows__ingredient_links__recipe_ingredient__ingredient').order_by('name')
 
     def perform_create(self, serializer):
         serializer.save(household=self.request.user.active_household)
@@ -235,7 +235,7 @@ class RecipeDetailView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = 'id'
 
     def get_queryset(self):
-        return Recipe.objects.filter(household=self.request.user.active_household).prefetch_related('ingredient_rows__ingredient')
+        return Recipe.objects.filter(household=self.request.user.active_household).prefetch_related('ingredient_rows__ingredient', 'ingredient_rows__section_ref', 'section_rows', 'note_rows', 'step_rows__section', 'step_rows__ingredient_links__recipe_ingredient__ingredient')
 
     def retrieve(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_object())

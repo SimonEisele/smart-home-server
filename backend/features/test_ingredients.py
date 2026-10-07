@@ -13,7 +13,7 @@ class IngredientWorkflowTests(TestCase):
         self.flour, _ = Ingredient.objects.get_or_create(normalized_name='weizenmehl', defaults={'name': 'Weizenmehl', 'category': 'getreide', 'default_unit': 'g'})
 
     def recipe(self, **kwargs):
-        return Recipe.objects.create(household=self.household, name='Brot', ingredients=[
+        return Recipe.objects.create(household=self.household, name='Brot', sections=[{'id':2, 'title':'Teig'}], ingredients=[
             {'name': 'Weizenmehl', 'quantityPerPerson': 250, 'unit': 'g', 'sectionId': 2},
             {'name': 'Wasser', 'unit': 'ml'}], **kwargs)
 
@@ -135,7 +135,7 @@ class IngredientMigrationTests(TransactionTestCase):
             household = Household.objects.create(name='Migration')
             canonical = Ingredient.objects.create(name='Migration Flour', category='getreide', default_unit='g')
             Ingredient.objects.create(name='MIGRATION  FLOUR', category='getreide', default_unit='g')
-            recipe = Recipe.objects.create(household=household, name='Bread', ingredients=[
+            recipe = Recipe.objects.create(household=household, name='Bread', sections=[{'id':5,'title':'Teig'}], ingredients=[
                 {'name': 'MIGRATION  FLOUR', 'quantityPerPerson': 250, 'unit': 'g', 'sectionId': 5},
                 {'name': 'Free water', 'unit': 'ml'}, {'name': 'Salt', 'quantityPerPerson': 0}])
             executor = MigrationExecutor(connection); executor.migrate(latest)
@@ -153,4 +153,4 @@ class IngredientMigrationTests(TransactionTestCase):
             self.assertEqual(restored.ingredients[0]['quantityPerPerson'], 250)
             self.assertEqual(restored.ingredients[0]['sectionId'], 5)
         finally:
-            MigrationExecutor(connection).migrate(latest)
+            MigrationExecutor(connection).migrate([('features', '0025_structured_recipes')])

@@ -9,9 +9,10 @@ export interface RecipeSideNote {
 }
 
 export interface RecipeStepIngredient {
+  recipeIngredientId?: string;
   ingredientId?: number | null;
   name: string;
-  quantityPerPerson?: number;
+  quantityPerPerson?: number | null;
   unit?: string;
 }
 
@@ -25,9 +26,10 @@ export interface RecipeStep {
 export type { Ingredient } from '../../ingredients/model/ingredient.model';
 
 export interface RecipeIngredient {
+  id?: string;
   ingredientId?: number | null;
   name: string;
-  quantityPerPerson?: number;
+  quantityPerPerson?: number | null;
   unit?: string;
   sectionId?: number;
 }

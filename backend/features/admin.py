@@ -2,6 +2,9 @@ from django.contrib import admin
 from .models import (
     Ingredient,
     RecipeIngredient,
+    RecipeSection,
+    RecipeStep,
+    RecipeNote,
     Todo,
     ShoppingItem,
     Recipe,
@@ -44,12 +47,27 @@ class RecipeIngredientInline(admin.TabularInline):
     model = RecipeIngredient
     extra = 0
     autocomplete_fields = ['ingredient']
-    fields = ('ingredient', 'name', 'quantity', 'unit', 'section_id', 'position')
+    fields = ('ingredient', 'name', 'quantity', 'unit', 'section_ref', 'position')
+
+
+class RecipeSectionInline(admin.TabularInline):
+    model = RecipeSection
+    extra = 0
+
+
+class RecipeStepInline(admin.TabularInline):
+    model = RecipeStep
+    extra = 0
+
+
+class RecipeNoteInline(admin.TabularInline):
+    model = RecipeNote
+    extra = 0
 
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    inlines = [RecipeIngredientInline]
+    inlines = [RecipeSectionInline, RecipeIngredientInline, RecipeStepInline, RecipeNoteInline]
     list_display = ("name", "household", "duration_minutes", "updated_at", "id")
     search_fields = ("name", "description")
     readonly_fields = ("id", "created_at", "updated_at")
