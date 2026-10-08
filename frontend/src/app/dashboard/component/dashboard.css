@@ -1,4 +1,4 @@
-.dashboard-container { height:calc(100dvh - var(--header-height)); min-height:500px; padding:18px; position:relative; }
+.dashboard-container { height:calc(100dvh - var(--header-height)); min-height:500px; box-sizing:border-box; padding:18px; position:relative; }
 gridster,gridster-item { background:transparent; }
 .dashboard-status { margin:18px; background:#382922; padding:14px; border:1px solid #775146; border-radius:12px; }
 .dashboard-status button { float:right; border:0; background:transparent; color:inherit; }
@@ -13,4 +13,9 @@ gridster,gridster-item { background:transparent; }
 .add-widget-fab { position:fixed; bottom:24px; right:24px; width:48px; height:48px; border-radius:14px; border:0; background:var(--color-accent); color:#10271f; display:grid; place-items:center; box-shadow:0 8px 24px #193d3520; z-index:2100; }.add-widget-fab svg { width:24px; height:24px; }.add-widget-popover { position:fixed; z-index:2200; }
 .mobile-dashboard { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }.mobile-dashboard card { min-width:0; height:320px; }.mobile-dashboard card[data-widget=datetime] { height:220px; }.mobile-dashboard card[data-widget=weather] { height:440px; }.mobile-dashboard card[data-widget=menuplan] { height:340px; }
 @media(max-width:899px) { .dashboard-container { height:calc(100dvh - var(--header-height) - 64px); }.edit-banner { left:50%; max-width:calc(100vw - 24px); }.add-widget-fab { bottom:80px; right:16px; } }
-@media(max-width:699px) { .dashboard-container { height:auto; min-height:0; padding:14px; }.edit-banner { width:calc(100vw - 24px); font-size:.7rem; gap:6px; }.edit-banner span { flex:1; }.edit-banner svg { display:none; } }
+@media(max-width:1099px) { .dashboard-container { height:auto; min-height:0; padding:14px; }.edit-banner { width:calc(100vw - 24px); font-size:.7rem; gap:6px; }.edit-banner span { flex:1; }.edit-banner svg { display:none; } }
+
+@media(min-width:700px) and (max-width:1099px) {
+  .mobile-dashboard { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
+  .mobile-dashboard card[data-widget=menuplan], .mobile-dashboard card[data-widget=weather] { height:400px; }
+}

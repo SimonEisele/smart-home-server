@@ -4,6 +4,7 @@ import { CompactType, DisplayGrid, Gridster, GridsterConfig, GridsterItem, Grids
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DashboardItem } from '../models/dashboard.models';
+import { normalizeWidgetLayout } from '../models/widget-layout';
 import { WidgetHost } from '../../widgets/widget-host/widget-host';
 import { Card } from '../card/card';
 import { WIDGET_REGISTRY, WidgetDefinition } from '../../widgets/widgets.registry';
@@ -30,7 +31,7 @@ export class Dashboard implements OnInit, OnDestroy {
   private readonly mutations = new Subject<() => Observable<unknown>>();
   private readonly saveTimeouts = new Map<DashboardItem, ReturnType<typeof setTimeout>>();
   errorMessage = "";
-  isMobile = window.innerWidth < 700;
+  isMobile = window.innerWidth < 1100;
   @ViewChild('dashboardGrid', { read: ElementRef }) dashboardGrid?: ElementRef<HTMLElement>;
   @ViewChild('addWidgetButton', { read: ElementRef }) addWidgetBtn!: ElementRef;
 
@@ -87,19 +88,19 @@ export class Dashboard implements OnInit, OnDestroy {
 
   private initGrid() {
     this.options = {
-      gridType: GridType.Fit,
-      mobileBreakpoint: 700,
+      gridType: GridType.VerticalFixed,
+      mobileBreakpoint: 1100,
       keepFixedHeightInMobile: true,
       compactType: CompactType.None,
       margin: 8,
       outerMargin: false,
       useTransformPositioning: false,
       fixedColWidth: this.containerWith / this.columns,
-      fixedRowHeight: (this.containerHeight - this.navbarHeight) / this.rows,
+      fixedRowHeight: 48,
       minCols: this.columns,
-      maxCols: this.maxColumns,
+      maxCols: this.columns,
       minRows: this.rows,
-      maxRows: this.maxRows,
+      maxRows: 1000,
       draggable: {
         enabled: this.editMode,
         stop: (item: GridsterItemConfig) => this.onItemChange(item)
@@ -162,10 +163,10 @@ export class Dashboard implements OnInit, OnDestroy {
       y: 0,
       cols: def.defaultCols,
       minItemCols: def.minCols,
-      maxItemCols: def.maxCols,
+      maxItemCols: def.maxCols ?? this.columns,
       rows: def.defaultRows,
       minItemRows: def.minRows,
-      maxItemRows: def.maxRows,
+      maxItemRows: def.maxRows ?? this.maxRows,
       title: def.title,
       icon: def.icon,
       config: {}
@@ -276,19 +277,7 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   private applyLoadedItems(items: DashboardItem[]) {
-    items.forEach(item => {
-      item.minItemCols = item.minItemCols || 1;
-      item.minItemRows = item.minItemRows || 1;
-      item.maxItemCols = item.maxItemCols || this.maxColumns;
-      item.maxItemRows = item.maxItemRows || this.maxRows;
-      // Always pull icon + title from registry so they never need to be persisted
-      const def = WIDGET_REGISTRY.find(w => w.type === item.widget_type);
-      if (def) {
-        item.icon  = item.icon  || def.icon;
-        item.title = item.title || def.title;
-      }
-    });
-    this.dashboard = items;
+    this.dashboard = normalizeWidgetLayout(items, this.columns);
     this.dashboardLoaded = true;
     setTimeout(() => {
       this.cdr.detectChanges();
@@ -319,12 +308,12 @@ export class Dashboard implements OnInit, OnDestroy {
 
   private getInitialLayout(): DashboardItem[] {
     return [
-      { id: '', widget_type: 'datetime', x: 0, y: 0, cols: 3, rows: 4, minItemCols: 2, minItemRows: 4, config: {}, title: 'Uhr & Datum', icon: 'datetime.svg' },
-      { id: '', widget_type: 'calendar', x: 3, y: 0, cols: 5, rows: 4, minItemCols: 2, minItemRows: 4, config: {}, title: 'Als Nächstes', icon: 'calendar.svg' },
-      { id: '', widget_type: 'weather', x: 8, y: 0, cols: 4, rows: 4, minItemCols: 2, minItemRows: 4, config: {}, title: 'Wetter', icon: 'weather.svg' },
-      { id: '', widget_type: 'menuplan', x: 0, y: 4, cols: 4, rows: 8, minItemCols: 2, minItemRows: 4, config: {}, title: 'Nächste Mahlzeiten', icon: 'menuplan.svg' },
-      { id: '', widget_type: 'todos', x: 4, y: 4, cols: 4, rows: 8, minItemCols: 2, minItemRows: 4, config: {}, title: 'Offene Aufgaben', icon: 'todo.svg' },
-      { id: '', widget_type: 'shoppinglist', x: 8, y: 4, cols: 4, rows: 8, minItemCols: 2, minItemRows: 4, config: {}, title: 'Einkaufsliste', icon: 'shoppinglist.svg' }
+      { id: '', widget_type: 'datetime', x: 0, y: 0, cols: 3, rows: 4, minItemCols: 3, minItemRows: 4, config: {}, title: 'Uhr & Datum', icon: 'datetime.svg' },
+      { id: '', widget_type: 'calendar', x: 3, y: 0, cols: 5, rows: 5, minItemCols: 3, minItemRows: 5, config: {}, title: 'Als Nächstes', icon: 'calendar.svg' },
+      { id: '', widget_type: 'weather', x: 8, y: 0, cols: 4, rows: 5, minItemCols: 3, minItemRows: 5, config: {}, title: 'Wetter', icon: 'weather.svg' },
+      { id: '', widget_type: 'menuplan', x: 0, y: 5, cols: 4, rows: 8, minItemCols: 3, minItemRows: 5, config: {}, title: 'Nächste Mahlzeiten', icon: 'menuplan.svg' },
+      { id: '', widget_type: 'todos', x: 4, y: 5, cols: 4, rows: 8, minItemCols: 3, minItemRows: 5, config: {}, title: 'Offene Aufgaben', icon: 'todo.svg' },
+      { id: '', widget_type: 'shoppinglist', x: 8, y: 5, cols: 4, rows: 8, minItemCols: 3, minItemRows: 5, config: {}, title: 'Einkaufsliste', icon: 'shoppinglist.svg' }
     ];
   }
 
@@ -430,7 +419,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
   @HostListener('window:resize')
   onResize() {
-    this.isMobile = window.innerWidth < 700;
+    this.isMobile = window.innerWidth < 1100;
     this.recalcFixedCellSize();
     this.options['api'].optionsChanged();
     this.options['api'].resize();
