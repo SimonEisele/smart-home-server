@@ -250,3 +250,8 @@
 .ev-title { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 @container (width < 280px) { .ev-item { gap:6px; padding:8px 6px; } .ev-time-col { min-width:34px; } .now-badge { display:none; } }
 @container (height < 240px) { .cal-widget { gap:8px; } .ev-end, .ev-loc { display:none; } .ev-item { min-height:40px; padding:6px; } }
+
+/* Compact previews do not capture dashboard scrolling or display partial entries. */
+.cal-widget { overflow:hidden; touch-action:pan-y; }
+.ev-title { display:block; white-space:normal; overflow:visible; text-overflow:clip; -webkit-line-clamp:unset; }
+.ev-loc { white-space:normal; overflow-wrap:anywhere; }

@@ -1,3 +1,4 @@
+import { FitWidgetContentDirective } from '../../../shared/directives/fit-widget-content.directive';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, DestroyRef, inject, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { Todo } from '../model/todos.model';
@@ -7,7 +8,7 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'todos-widget',
   standalone: true,
-  imports: [ CommonModule ],
+  imports: [FitWidgetContentDirective,  CommonModule ],
   templateUrl: './todos.widget.html',
   styleUrl: './todos.widget.css',
 })

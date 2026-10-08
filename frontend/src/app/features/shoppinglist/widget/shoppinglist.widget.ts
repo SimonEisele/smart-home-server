@@ -1,3 +1,4 @@
+import { FitWidgetContentDirective } from '../../../shared/directives/fit-widget-content.directive';
 import { ChangeDetectorRef, Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
@@ -8,7 +9,7 @@ import { ShoppinglistService } from '../service/shoppinglist.service';
 @Component({
   selector: 'shoppinglist-widget',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FitWidgetContentDirective, CommonModule, FormsModule],
   templateUrl: './shoppinglist.widget.html',
   styleUrl: './shoppinglist.widget.css',
 })

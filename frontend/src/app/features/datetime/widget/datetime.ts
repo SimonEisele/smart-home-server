@@ -1,3 +1,4 @@
+import { FitWidgetContentDirective } from '../../../shared/directives/fit-widget-content.directive';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { interval, Observable, Subscription } from 'rxjs';
@@ -8,7 +9,7 @@ import { User } from '../../../core/auth/model/auth.model';
 @Component({
   selector: 'app-datetime',
   standalone: true,
-  imports: [ CommonModule, GreetingPipe ],
+  imports: [FitWidgetContentDirective,  CommonModule, GreetingPipe ],
   templateUrl: './datetime.html',
   styleUrl: './datetime.css',
 })

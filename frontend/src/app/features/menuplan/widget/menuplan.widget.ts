@@ -1,3 +1,4 @@
+import { FitWidgetContentDirective } from '../../../shared/directives/fit-widget-content.directive';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { localIsoDate } from '../../../shared/date-utils';
 import { CommonModule } from '@angular/common';
@@ -15,7 +16,7 @@ type MealType = 'breakfast' | 'lunch' | 'dinner';
 @Component({
   selector: 'menuplan-widget',
   standalone: true,
-  imports: [CommonModule],
+  imports: [FitWidgetContentDirective, CommonModule],
   templateUrl: './menuplan.widget.html',
   styleUrl: './menuplan.widget.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
