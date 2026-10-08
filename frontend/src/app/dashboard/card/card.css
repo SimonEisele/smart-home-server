@@ -7,4 +7,4 @@
 .header-actions { display:flex; gap:4px; }
 .btn-open,.btn-remove { display:grid; place-items:center; width:32px; height:32px; padding:7px; border:0; background:transparent; color:var(--color-muted); border-radius:8px; }
 .btn-open:hover { color:var(--color-accent); background:var(--color-surface-soft); }.btn-remove { color:#aa453d; }.btn-open svg,.btn-remove svg { width:16px; height:16px; }
-.dash-card-content { flex:1; min-width:0; min-height:0; overflow:auto; padding:14px; overscroll-behavior:contain; }
+.dash-card-content { flex:1; min-width:0; min-height:0; overflow:hidden; padding:clamp(8px,1.2vw,14px); overscroll-behavior:contain; }
