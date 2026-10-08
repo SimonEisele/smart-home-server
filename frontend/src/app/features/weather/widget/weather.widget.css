@@ -22,3 +22,6 @@
 @container (height < 260px) { .current-precip { display:none; } .current-weather { padding:8px; } }
 @container (height < 210px) { .hourly-forecast { display:none; } }
 @container (height < 340px) { .daily-forecast, .divider { display:none; } }
+
+/* Compact previews do not capture dashboard scrolling or display partial entries. */
+.weather-widget { overflow:hidden; touch-action:pan-y; }

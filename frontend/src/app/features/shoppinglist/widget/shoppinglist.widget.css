@@ -159,3 +159,8 @@
 .item-qty { max-width:35%; white-space:normal; overflow-wrap:anywhere; text-align:right; }
 @container (width < 280px) { .sl-item { gap:6px; padding:6px; } .item-qty { font-size:.7rem; } }
 @container (height < 240px) { .sl-item { min-height:44px; padding:6px; } .sl-list { gap:5px; } .item-name { -webkit-line-clamp:1; } }
+
+/* Compact previews do not capture dashboard scrolling or display partial entries. */
+.shopping-scroll { overflow:hidden; touch-action:pan-y; }
+.item-name { display:block; white-space:normal; overflow:visible; text-overflow:clip; -webkit-line-clamp:unset; }
+.checked-section { flex-shrink:1; min-height:0; overflow:hidden; }

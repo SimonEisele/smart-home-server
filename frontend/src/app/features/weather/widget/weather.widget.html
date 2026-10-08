@@ -1,4 +1,4 @@
-<div #container class="weather-widget">
+<div #container class="weather-widget" fitWidgetContent=".current-weather, .hourly-forecast, .daily-forecast, .divider">
   @if (error) { <p role="alert">{{ error }} <button type="button" (click)="load()" [disabled]="loading">Erneut laden</button></p> }
   <a routerLink="/weather" aria-label="Wetterseite öffnen">{{ data ? data.location.city : 'Wetterort wählen' }} →</a>
   <ng-container *ngIf="data; else loading">

@@ -24,3 +24,9 @@
 .cook-recipe-name { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 @container (width < 280px) { .cook-banner { gap:6px; padding:8px; } .cook-start-btn { padding:8px; } .cook-persons { display:none; } }
 @container (height < 240px) { .cook-banner { padding:6px; } .cook-recipe-name { -webkit-line-clamp:1; } .cook-persons { display:none; } .meal-row { padding:0; } }
+
+/* Compact previews do not capture dashboard scrolling or display partial entries. */
+.menu-widget { overflow:hidden; touch-action:pan-y; }
+.week { flex:1; min-height:0; overflow:hidden; }
+.meal-val { white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:anywhere; }
+.cook-recipe-name { display:block; -webkit-line-clamp:unset; }

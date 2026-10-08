@@ -1,3 +1,4 @@
+import { FitWidgetContentDirective } from '../../../shared/directives/fit-widget-content.directive';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -20,7 +21,7 @@ interface CalendarWidgetDayGroup {
 @Component({
   selector: 'calendar-widget',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [FitWidgetContentDirective, CommonModule, RouterLink],
   templateUrl: './calendar.widget.html',
   styleUrl: './calendar.widget.css',
 })

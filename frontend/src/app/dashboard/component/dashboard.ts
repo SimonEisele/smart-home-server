@@ -103,6 +103,8 @@ export class Dashboard implements OnInit, OnDestroy {
       maxRows: 1000,
       draggable: {
         enabled: this.editMode,
+        dragHandleClass: 'dash-card-header',
+        ignoreContent: true,
         stop: (item: GridsterItemConfig) => this.onItemChange(item)
       },
       resizable: {
@@ -124,6 +126,8 @@ export class Dashboard implements OnInit, OnDestroy {
       ...this.options,
       draggable: {
         enabled: this.editMode,
+        dragHandleClass: 'dash-card-header',
+        ignoreContent: true,
         stop: (item: GridsterItemConfig) => this.onItemChange(item)
       },
       resizable: {

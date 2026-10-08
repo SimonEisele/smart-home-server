@@ -1,3 +1,4 @@
+import { FitWidgetContentDirective } from '../../../shared/directives/fit-widget-content.directive';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AfterViewInit, Component, OnDestroy, DestroyRef, inject, ChangeDetectorRef, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -11,7 +12,7 @@ import { WeatherService } from '../service/weather.service';
 @Component({
   selector: 'weather-widget',
   standalone: true,
-  imports: [ CommonModule, WeatherSymbol, WeatherLabelPipe, RouterLink ],
+  imports: [FitWidgetContentDirective,  CommonModule, WeatherSymbol, WeatherLabelPipe, RouterLink ],
   templateUrl: './weather.widget.html',
   styleUrl: './weather.widget.css',
 })

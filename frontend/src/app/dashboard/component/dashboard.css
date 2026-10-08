@@ -19,3 +19,6 @@ gridster,gridster-item { background:transparent; }
   .mobile-dashboard { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
   .mobile-dashboard card[data-widget=menuplan], .mobile-dashboard card[data-widget=weather] { height:400px; }
 }
+
+gridster { touch-action:pan-y; -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain; }
+gridster-item, .mobile-dashboard { touch-action:pan-y; }
