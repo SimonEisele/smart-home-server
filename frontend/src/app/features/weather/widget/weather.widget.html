@@ -1,12 +1,14 @@
-﻿<div #container class="weather-widget">
+<div #container class="weather-widget">
+  @if (error) { <p role="alert">{{ error }} <button type="button" (click)="load()" [disabled]="loading">Erneut laden</button></p> }
+  <a routerLink="/weather" aria-label="Wetterseite öffnen">{{ data ? data.location.city : 'Wetterort wählen' }} →</a>
   <ng-container *ngIf="data; else loading">
     <!-- Aktuelles Wetter -->
     <div class="current-weather">
       <div class="current-icon"><weather-symbol [code]="data.current.weatherCode" [isDay]="data.current.isDay" /></div>
       <div class="current-info">
-        <div class="current-temp">{{ data.current.temperature | number:'1.0-0' }}°C</div>
+        <div class="current-temp">{{ value(data.current.temperature) }}°C</div>
         <div class="current-label">{{ data.current.weatherCode | weatherLabel }}</div>
-        <div class="current-precip">Gefühlt {{ data.current.apparentTemperature | number:'1.0-0' }}° · Luftfeuchte {{ data.current.humidity }}%</div>
+        <div class="current-precip">Gefühlt {{ value(data.current.apparentTemperature) }}° · Luftfeuchte {{ value(data.current.humidity) }}%</div>
       </div>
     </div>
 
@@ -14,8 +16,8 @@
     <div class="hourly-forecast">
       <div *ngFor="let h of visibleHourlyData" class="hour">
         <div class="hour-time">{{ hourTime(h.time) }}</div>
-        <div class="hour-icon"><weather-symbol [code]="h.weatherCode" /></div>
-        <div class="hour-temp">{{ h.temperature | number:'1.0-0' }}°</div>
+        <div class="hour-icon"><weather-symbol [code]="h.weatherCode" [isDay]="h.isDay ?? true" /></div>
+        <div class="hour-temp">{{ value(h.temperature) }}°</div>
         <div class="hour-precip" *ngIf="h.precipitationProbability > 5">{{ h.precipitationProbability }}%</div>
       </div>
     </div>
@@ -27,8 +29,8 @@
       <div *ngFor="let d of visibleDailyData; let i = index" class="day">
         <div class="day-date">{{ dayName(d.date, i) }}</div>
         <div class="day-icon"><weather-symbol [code]="d.weatherCode" /></div>
-        <div class="day-maxTemp">{{ d.tempMax | number:'1.0-0' }}°</div>
-        <div class="day-minTemp">{{ d.tempMin | number:'1.0-0' }}°</div>
+        <div class="day-maxTemp">{{ value(d.tempMax) }}°</div>
+        <div class="day-minTemp">{{ value(d.tempMin) }}°</div>
         <div class="day-precip" *ngIf="d.precipitationProbabilityMax > 5">{{ d.precipitationProbabilityMax }}%</div>
       </div>
     </div>
@@ -36,5 +38,5 @@
 </div>
 
 <ng-template #loading>
-  <div class="loading">Lade Wetterdaten...</div>
+  <div class="loading" *ngIf="loading">Lade Wetterdaten…</div>
 </ng-template>

@@ -1,6 +1,6 @@
-﻿import { Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, from, switchMap, map, catchError, throwError } from 'rxjs';
+import { Observable, from, switchMap, map, catchError, throwError, timeout } from 'rxjs';
 import {
   WeatherData, CurrentWeather, HourlyWeather, DailyWeather, CitySearchResult
 } from '../model/weather.model';
@@ -12,13 +12,13 @@ const CURRENT_VARS = [
   'temperature_2m', 'relative_humidity_2m', 'apparent_temperature',
   'is_day', 'precipitation', 'weather_code', 'cloud_cover',
   'surface_pressure', 'wind_speed_10m', 'wind_direction_10m',
-  'wind_gusts_10m', 'uv_index',
+  'wind_gusts_10m',
 ].join(',');
 
 const HOURLY_VARS = [
   'temperature_2m', 'relative_humidity_2m', 'apparent_temperature',
   'precipitation_probability', 'precipitation', 'weather_code', 'cloud_cover',
-  'wind_speed_10m', 'wind_direction_10m', 'uv_index', 'visibility',
+  'wind_speed_10m', 'wind_direction_10m', 'uv_index', 'visibility', 'is_day',
 ].join(',');
 
 const DAILY_VARS = [
@@ -37,12 +37,16 @@ export class WeatherService {
   constructor(private http: HttpClient) {}
 
   getSavedLocation(): { lat: number; lon: number; city: string; country: string; admin1?: string; timezone?: string } | null {
-    try { const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; }
+    try {
+      const r = localStorage.getItem(LS_KEY);
+      const loc = r ? JSON.parse(r) : null;
+      return loc && Number.isFinite(loc.lat) && Math.abs(loc.lat) <= 90 && Number.isFinite(loc.lon) && Math.abs(loc.lon) <= 180 ? loc : null;
+    }
     catch { return null; }
   }
 
   saveLocation(loc: { lat: number; lon: number; city: string; country: string; admin1?: string; timezone?: string }): void {
-    localStorage.setItem(LS_KEY, JSON.stringify(loc));
+    try { localStorage.setItem(LS_KEY, JSON.stringify(loc)); } catch { /* Storage may be disabled; weather still works. */ }
   }
 
   getBrowserLocation(): Observable<{ lat: number; lon: number }> {
@@ -60,7 +64,7 @@ export class WeatherService {
     if (!name.trim()) return from([[]]);
     return this.http.get<{ results?: CitySearchResult[] }>(
       `${GEO}?name=${encodeURIComponent(name)}&count=8&language=de&format=json`
-    ).pipe(map(r => r.results ?? []));
+    ).pipe(timeout(15000), map(r => r.results ?? []));
   }
 
   getWeatherByCoords(
@@ -72,8 +76,9 @@ export class WeatherService {
       `&timezone=auto&forecast_days=7&wind_speed_unit=kmh`;
 
     return this.http.get<any>(url).pipe(
+      timeout(15000),
       map(raw => this.mapRaw(raw, lat, lon, city, country, admin1, timezone)),
-      catchError(err => throwError(() => new Error(`Wetterdaten konnten nicht geladen werden: ${err.message}`)))
+      catchError(err => throwError(() => new Error('Wetterdaten konnten nicht geladen werden. Bitte erneut versuchen.')))
     );
   }
 
@@ -81,23 +86,23 @@ export class WeatherService {
   getWeather(): Observable<WeatherData> {
     const saved = this.getSavedLocation();
     if (saved) return this.getWeatherByCoords(saved.lat, saved.lon, saved.city, saved.country, saved.admin1, saved.timezone);
-    return this.getWeatherByCoords(52.52, 13.41, 'Berlin', 'Deutschland');
+    return throwError(() => new Error('Wähle auf der Wetterseite zuerst einen Ort.'));
   }
 
   private mapRaw(raw: any, lat: number, lon: number, city: string, country: string, admin1?: string, tz?: string): WeatherData {
     const c = raw.current ?? {};
     const current: CurrentWeather = {
-      temperature:         c.temperature_2m        ?? 0,
-      apparentTemperature: c.apparent_temperature  ?? 0,
-      humidity:            c.relative_humidity_2m  ?? 0,
-      precipitation:       c.precipitation         ?? 0,
-      weatherCode:         c.weather_code          ?? 0,
-      cloudCover:          c.cloud_cover           ?? 0,
-      pressure:            c.surface_pressure      ?? 0,
-      windSpeed:           c.wind_speed_10m        ?? 0,
-      windDirection:       c.wind_direction_10m    ?? 0,
-      windGusts:           c.wind_gusts_10m        ?? 0,
-      uvIndex:             c.uv_index              ?? 0,
+      temperature:         c.temperature_2m        ?? Number.NaN,
+      apparentTemperature: c.apparent_temperature  ?? Number.NaN,
+      humidity:            c.relative_humidity_2m  ?? Number.NaN,
+      precipitation:       c.precipitation         ?? Number.NaN,
+      weatherCode:         c.weather_code          ?? Number.NaN,
+      cloudCover:          c.cloud_cover           ?? Number.NaN,
+      pressure:            c.surface_pressure      ?? Number.NaN,
+      windSpeed:           c.wind_speed_10m        ?? Number.NaN,
+      windDirection:       c.wind_direction_10m    ?? Number.NaN,
+      windGusts:           c.wind_gusts_10m        ?? Number.NaN,
+      uvIndex:             c.uv_index              ?? Number.NaN,
       isDay:               c.is_day === 1,
       time:                c.time                  ?? '',
     };
@@ -105,39 +110,46 @@ export class WeatherService {
     const h = raw.hourly ?? {};
     const hourly: HourlyWeather[] = (h.time ?? []).map((t: string, i: number) => ({
       time:                     t,
-      temperature:              h.temperature_2m?.[i]             ?? 0,
-      apparentTemperature:      h.apparent_temperature?.[i]       ?? 0,
-      humidity:                 h.relative_humidity_2m?.[i]       ?? 0,
-      precipitationProbability: h.precipitation_probability?.[i]  ?? 0,
-      precipitation:            h.precipitation?.[i]              ?? 0,
-      weatherCode:              h.weather_code?.[i]               ?? 0,
-      cloudCover:               h.cloud_cover?.[i]                ?? 0,
-      windSpeed:                h.wind_speed_10m?.[i]             ?? 0,
-      windDirection:            h.wind_direction_10m?.[i]         ?? 0,
-      uvIndex:                  h.uv_index?.[i]                   ?? 0,
-      visibility:               (h.visibility?.[i] ?? 0) / 1000,
+      isDay:                    h.is_day?.[i] == null ? undefined : h.is_day[i] === 1,
+      temperature:              h.temperature_2m?.[i]             ?? Number.NaN,
+      apparentTemperature:      h.apparent_temperature?.[i]       ?? Number.NaN,
+      humidity:                 h.relative_humidity_2m?.[i]       ?? Number.NaN,
+      precipitationProbability: h.precipitation_probability?.[i]  ?? Number.NaN,
+      precipitation:            h.precipitation?.[i]              ?? Number.NaN,
+      weatherCode:              h.weather_code?.[i]               ?? Number.NaN,
+      cloudCover:               h.cloud_cover?.[i]                ?? Number.NaN,
+      windSpeed:                h.wind_speed_10m?.[i]             ?? Number.NaN,
+      windDirection:            h.wind_direction_10m?.[i]         ?? Number.NaN,
+      uvIndex:                  h.uv_index?.[i]                   ?? Number.NaN,
+      visibility:               (h.visibility?.[i] ?? Number.NaN) / 1000,
     }));
 
     const d = raw.daily ?? {};
     const daily: DailyWeather[] = (d.time ?? []).map((t: string, i: number) => ({
       date:                       t,
-      weatherCode:                d.weather_code?.[i]                   ?? 0,
-      tempMax:                    d.temperature_2m_max?.[i]              ?? 0,
-      tempMin:                    d.temperature_2m_min?.[i]              ?? 0,
-      apparentTempMax:            d.apparent_temperature_max?.[i]        ?? 0,
-      apparentTempMin:            d.apparent_temperature_min?.[i]        ?? 0,
+      weatherCode:                d.weather_code?.[i]                   ?? Number.NaN,
+      tempMax:                    d.temperature_2m_max?.[i]              ?? Number.NaN,
+      tempMin:                    d.temperature_2m_min?.[i]              ?? Number.NaN,
+      apparentTempMax:            d.apparent_temperature_max?.[i]        ?? Number.NaN,
+      apparentTempMin:            d.apparent_temperature_min?.[i]        ?? Number.NaN,
       sunrise:                    d.sunrise?.[i]                         ?? '',
       sunset:                     d.sunset?.[i]                          ?? '',
-      precipitationSum:           d.precipitation_sum?.[i]               ?? 0,
-      precipitationHours:         d.precipitation_hours?.[i]             ?? 0,
-      precipitationProbabilityMax: d.precipitation_probability_max?.[i]  ?? 0,
-      windSpeedMax:               d.wind_speed_10m_max?.[i]              ?? 0,
-      windGustsMax:               d.wind_gusts_10m_max?.[i]              ?? 0,
-      windDirectionDominant:      d.wind_direction_10m_dominant?.[i]     ?? 0,
-      uvIndexMax:                 d.uv_index_max?.[i]                    ?? 0,
+      precipitationSum:           d.precipitation_sum?.[i]               ?? Number.NaN,
+      precipitationHours:         d.precipitation_hours?.[i]             ?? Number.NaN,
+      precipitationProbabilityMax: d.precipitation_probability_max?.[i]  ?? Number.NaN,
+      windSpeedMax:               d.wind_speed_10m_max?.[i]              ?? Number.NaN,
+      windGustsMax:               d.wind_gusts_10m_max?.[i]              ?? Number.NaN,
+      windDirectionDominant:      d.wind_direction_10m_dominant?.[i]     ?? Number.NaN,
+      uvIndexMax:                 d.uv_index_max?.[i]                    ?? Number.NaN,
     }));
 
-    const resolvedCity = city || ((raw.timezone ?? '').replace('_', ' ').split('/').pop() ?? `${lat.toFixed(2)},${lon.toFixed(2)}`);
+    if (!raw.current?.time || !Number.isFinite(current.temperature)) {
+      throw new Error('Unvollständige Wetterdaten');
+    }
+    const currentHour = hourly.find(h => h.time.slice(0, 13) === current.time.slice(0, 13));
+    current.uvIndex = currentHour?.uvIndex ?? Number.NaN;
+    // A time zone name is not a reverse-geocoded city.
+    const resolvedCity = city || 'Mein Standort';
 
     return {
       location: { latitude: lat, longitude: lon, city: resolvedCity, country, admin1, timezone: raw.timezone ?? tz ?? 'UTC' },
