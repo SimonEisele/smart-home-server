@@ -153,4 +153,4 @@ class IngredientMigrationTests(TransactionTestCase):
             self.assertEqual(restored.ingredients[0]['quantityPerPerson'], 250)
             self.assertEqual(restored.ingredients[0]['sectionId'], 5)
         finally:
-            MigrationExecutor(connection).migrate([('features', '0025_structured_recipes')])
+            MigrationExecutor(connection).migrate([('features', '0026_shopping_quantity_completeness')])

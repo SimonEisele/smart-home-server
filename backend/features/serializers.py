@@ -375,9 +375,10 @@ class MenuSerializer(serializers.ModelSerializer):
 
 
 class ShoppingItemSerializer(serializers.ModelSerializer):
+    quantityIncomplete = serializers.BooleanField(source='quantity_incomplete', required=False)
     imageUrl = serializers.URLField(source='image_url', required=False, allow_blank=True)
     globalItem = serializers.BooleanField(source='global_item', required=False)
-    listType = serializers.CharField(source='list_type', required=False)
+    listType = serializers.ChoiceField(choices=['manual', 'menuplan'], source='list_type', required=False)
     weekTag = serializers.CharField(source='week_tag', required=False, allow_blank=True)
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
@@ -385,10 +386,44 @@ class ShoppingItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShoppingItem
         fields = [
-            'id', 'name', 'quantity', 'unit', 'category', 'imageUrl', 'suggestion',
+            'id', 'name', 'quantity', 'quantityIncomplete', 'unit', 'category', 'imageUrl', 'suggestion',
             'checked', 'globalItem', 'listType', 'weekTag', 'createdAt', 'updatedAt'
         ]
         read_only_fields = ['id', 'createdAt', 'updatedAt']
+
+    def validate_name(self, value):
+        value = ' '.join(value.split())
+        if not value:
+            raise serializers.ValidationError('Bitte einen Artikelnamen angeben.')
+        return value
+
+    def validate_quantity(self, value):
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise serializers.ValidationError('Die Menge muss eine endliche Zahl ab 0 sein.')
+        return value
+
+    def validate_unit(self, value):
+        return normalize_unit(value)
+
+    def validate(self, attrs):
+        list_type = attrs.get('list_type', getattr(self.instance, 'list_type', 'manual'))
+        week_tag = attrs.get('week_tag', getattr(self.instance, 'week_tag', ''))
+        validate_week = self.instance is None or 'list_type' in attrs or 'week_tag' in attrs
+        if validate_week and list_type == 'menuplan' and not re.fullmatch(r'\d{4}-W\d{2}', week_tag):
+            raise serializers.ValidationError({'weekTag': 'Für Menüplanartikel ist eine Kalenderwoche erforderlich.'})
+        if validate_week and list_type == 'menuplan':
+            from datetime import date
+            try:
+                date.fromisocalendar(int(week_tag[:4]), int(week_tag[-2:]), 1)
+            except ValueError:
+                raise serializers.ValidationError({'weekTag': 'Ungültige Kalenderwoche.'})
+        if list_type == 'manual':
+            attrs['week_tag'] = ''
+        if 'quantity' in attrs:
+            attrs['quantity_incomplete'] = attrs['quantity'] is None or attrs.get('quantity_incomplete', getattr(self.instance, 'quantity_incomplete', False))
+        if self.instance is None and attrs.get('quantity') is None:
+            attrs['quantity_incomplete'] = True
+        return attrs
 
 
 class CalendarEventSerializer(serializers.ModelSerializer):

@@ -348,6 +348,25 @@ class ShoppingItemListCreateView(generics.ListCreateAPIView):
         return Response({"data": response.data}, status=response.status_code)
 
 
+class ClearCheckedShoppingItemsView(APIView):
+    permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
+
+    def post(self, request):
+        ids = request.data.get('ids')
+        if not isinstance(ids, list) or not ids or len(ids) > 1000:
+            return Response({'error': 'Bitte 1 bis 1000 Artikel auswählen.'}, status=400)
+        import uuid
+        try:
+            ids = [uuid.UUID(str(value)) for value in ids]
+        except (ValueError, TypeError, AttributeError):
+            return Response({'error': 'Ungültige Artikelkennung.'}, status=400)
+        with transaction.atomic():
+            items = ShoppingItem.objects.select_for_update().filter(household=request.user.active_household, id__in=ids, checked=True)
+            deleted_ids = [str(value) for value in items.values_list('id', flat=True)]
+            items.delete()
+        return Response({'deletedIds': deleted_ids})
+
+
 class ShoppingItemDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
     serializer_class = ShoppingItemSerializer
@@ -378,7 +397,7 @@ class ShoppingSuggestionView(APIView):
         if query:
             base = base.filter(name__icontains=query)
 
-        values = base.values('name', 'unit', 'category', 'image_url').order_by('name')[:20]
+        values = base.values('name', 'unit', 'category', 'image_url').order_by('name').distinct()[:20]
         suggestions = [
             {
                 'name': item['name'],
@@ -462,25 +481,35 @@ class AddRecipeToShoppingListView(APIView):
 
     def post(self, request):
         recipe_id = request.data.get('recipeId')
+        from django.core.exceptions import ValidationError as DjangoValidationError
         persons = request.data.get('persons', 2)
         try:
-            persons = max(1, int(persons))
-        except (TypeError, ValueError):
-            persons = 2
+            number = float(persons)
+            if isinstance(persons, bool) or not math.isfinite(number) or number < 1 or not number.is_integer():
+                raise ValueError
+            persons = int(number)
+        except (TypeError, ValueError, OverflowError):
+            return Response({'error': 'Personen müssen eine positive ganze Zahl sein.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             recipe = Recipe.objects.get(id=recipe_id, household=request.user.active_household)
-        except Recipe.DoesNotExist:
+        except (Recipe.DoesNotExist, ValueError, DjangoValidationError):
             return Response({'error': 'Recipe not found'}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             units_per_person = float(request.data.get('unitsPerPerson', 1))
         except (TypeError, ValueError):
             return Response({'error': 'Portionen pro Person müssen eine positive Zahl sein.'}, status=status.HTTP_400_BAD_REQUEST)
-        if not math.isfinite(units_per_person) or units_per_person <= 0:
+        if isinstance(request.data.get('unitsPerPerson'), bool) or not math.isfinite(units_per_person) or units_per_person <= 0:
             return Response({'error': 'Portionen pro Person müssen eine positive Zahl sein.'}, status=status.HTTP_400_BAD_REQUEST)
         base_servings = recipe.base_servings or persons or 2
         scale = persons * units_per_person / base_servings
+        if not math.isfinite(scale):
+            return Response({'error': 'Die gewünschte Menge ist zu groß.'}, status=400)
+        for ing in recipe.ingredients:
+            qty = ing.get('quantityPerPerson')
+            if qty is not None and not math.isfinite(qty * scale):
+                return Response({'error': 'Die berechnete Zutatenmenge ist zu groß.'}, status=400)
 
         cat_display = dict(Ingredient.CATEGORY_CHOICES)
         ing_catalog = {i.name.lower(): i for i in Ingredient.objects.all()}
@@ -502,7 +531,8 @@ class AddRecipeToShoppingListView(APIView):
                 item = ShoppingItem.objects.create(
                     household=request.user.active_household,
                     name=name,
-                    quantity=round(qty, 2) if qty is not None else None,
+                    quantity=round(qty, 3) if qty is not None else None,
+                    quantity_incomplete=qty is None,
                     unit=unit,
                     category=category,
                     suggestion=recipe.name,

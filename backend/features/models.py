@@ -38,6 +38,7 @@ class ShoppingItem(models.Model):
     household = models.ForeignKey(Household, on_delete=models.CASCADE, related_name='shopping_items')
     name = models.CharField(max_length=200)
     quantity = models.FloatField(null=True, blank=True)
+    quantity_incomplete = models.BooleanField(default=False)
     unit = models.CharField(max_length=32, blank=True)
     category = models.CharField(max_length=80, blank=True)
     image_url = models.URLField(blank=True)
