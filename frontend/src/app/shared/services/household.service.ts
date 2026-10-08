@@ -69,6 +69,7 @@ export class HouseholdService {
         if (!this.householdsSubject.value.find(h => h.id === hh.id)) {
           this.householdsSubject.next([...this.householdsSubject.value, hh]);
         }
+        if (!this.activeHouseholdSubject.value) this.activeHouseholdSubject.next(hh);
       })
     );
   }

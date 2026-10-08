@@ -23,6 +23,25 @@ export class AccountManager implements OnInit {
 
   members: HouseholdMember[] = [];
   loadingMembers = false;
+  memberError = '';
+  memberSearch = '';
+  memberPending = new Set<string>();
+  switching = false;
+  switchError = '';
+  inviteFeedback = '';
+  savingHousehold = false;
+  householdError = '';
+  editDescription = '';
+  private memberRequest = 0;
+
+  get filteredMembers(): HouseholdMember[] {
+    const query = this.memberSearch.trim().toLocaleLowerCase();
+    return this.members.filter(m => `${m.user_first_name} ${m.user_last_name} ${m.user_email}`.toLocaleLowerCase().includes(query));
+  }
+
+  get personalMemberCount(): number {
+    return this.members.filter(m => !m.user_is_household_account).length;
+  }
 
   // Tab state
   tab: 'members' | 'accounts' = 'members';
@@ -89,15 +108,37 @@ export class AccountManager implements OnInit {
 
   ngOnInit() {
     this.activeHousehold$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(hh => {
+      this.memberRequest++;
+      this.members = [];
+      this.memberSearch = '';
+      this.memberError = '';
+      this.editingName = false;
+      this.householdError = '';
+      this.inviteFeedback = '';
+      this.tab = 'members';
+      this.showCreateAccountForm = false;
+      this.newAccount = { name: '', password: '' };
+      this.cancelChangePassword();
+      this.loadingMembers = false;
       if (hh) this.loadMembers(hh.id);
     });
   }
 
   loadMembers(householdId: string) {
+    if (householdId !== this.householdService.activeHousehold?.id) return;
+    const request = ++this.memberRequest;
     this.loadingMembers = true;
-    this.householdService.getMembers(householdId).subscribe({
-      next: m => { this.members = m; this.loadingMembers = false; this.cdr.detectChanges(); },
-      error: () => { this.loadingMembers = false; this.cdr.detectChanges(); },
+    this.memberError = '';
+    this.householdService.getMembers(householdId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: m => {
+        if (request !== this.memberRequest) return;
+        this.members = m; this.loadingMembers = false; this.cdr.markForCheck();
+      },
+      error: () => {
+        if (request !== this.memberRequest) return;
+        this.members = []; this.memberError = 'Mitglieder konnten nicht geladen werden. Bitte erneut versuchen.';
+        this.loadingMembers = false; this.cdr.markForCheck();
+      },
     });
   }
 
@@ -123,11 +164,17 @@ export class AccountManager implements OnInit {
   }
 
   switchTo(id: string) {
-    this.householdService.switchHousehold(id).subscribe(() => this.cdr.detectChanges());
+    if (this.switching || id === this.householdService.activeHousehold?.id) return;
+    this.switching = true;
+    this.switchError = '';
+    this.householdService.switchHousehold(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => { this.switching = false; this.cdr.markForCheck(); },
+      error: () => { this.switching = false; this.switchError = 'WG konnte nicht gewechselt werden. Bitte erneut versuchen.'; this.cdr.markForCheck(); },
+    });
   }
 
   createWg() {
-    if (!this.newWgName.trim()) return;
+    if (this.creating || !this.newWgName.trim()) return;
     this.creating = true;
     this.createError = '';
     this.householdService.createHousehold(this.newWgName.trim(), this.newWgDesc.trim()).subscribe({
@@ -142,7 +189,7 @@ export class AccountManager implements OnInit {
   }
 
   joinWg() {
-    if (!this.inviteCode.trim()) return;
+    if (this.joining || !this.inviteCode.trim()) return;
     this.joining = true;
     this.joinError = '';
     this.householdService.joinHousehold(this.inviteCode.trim()).subscribe({
@@ -160,48 +207,81 @@ export class AccountManager implements OnInit {
     });
   }
 
-  copyInviteCode(code: string) {
-    navigator.clipboard.writeText(code);
+  async copyInviteCode(code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      this.inviteFeedback = 'Einladungscode kopiert.';
+    } catch {
+      this.inviteFeedback = 'Kopieren nicht möglich. Bitte den Code markieren und manuell kopieren.';
+    }
+    if (!this.destroyRef.destroyed) this.cdr.markForCheck();
   }
 
+  private memberAction(userId: string, action: Observable<unknown>, success: () => void) {
+    const householdId = this.householdService.activeHousehold?.id;
+    if (this.memberPending.has(userId)) return;
+    this.memberPending.add(userId);
+    this.memberError = '';
+    action.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.memberPending.delete(userId);
+        if (this.householdService.activeHousehold?.id === householdId) success();
+        this.cdr.markForCheck();
+      },
+      error: err => {
+        this.memberPending.delete(userId);
+        if (this.householdService.activeHousehold?.id === householdId) {
+          this.memberError = err?.error?.error || err?.error?.detail || 'Änderung konnte nicht gespeichert werden. Bitte erneut versuchen.';
+          this.members = [...this.members];
+        }
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  trackMember(_index: number, member: HouseholdMember) { return member.user_id; }
+
   updateMemberRole(userId: string, role: string) {
+    if (this.memberPending.has(userId)) return;
     const hh = this.householdService.activeHousehold;
     if (!hh) return;
-    this.householdService.updateMemberRole(hh.id, userId, role).subscribe({
-      next: updated => {
-        this.members = this.members.map(m => m.user_id === userId ? { ...m, role: updated.role } : m);
-        this.cdr.detectChanges();
-      }
-    });
+    const member = this.members.find(m => m.user_id === userId);
+    if (!member || member.role === 'owner' || member.user_is_household_account || !['owner', 'admin'].includes(hh.role)) return;
+    this.memberAction(userId, this.householdService.updateMemberRole(hh.id, userId, role), () => this.loadMembers(hh.id));
   }
 
   removeMember(userId: string) {
     const hh = this.householdService.activeHousehold;
-    if (!hh) return;
-    if (!confirm('Mitglied wirklich entfernen?')) return;
-    this.householdService.removeMember(hh.id, userId).subscribe({
-      next: () => { this.members = this.members.filter(m => m.user_id !== userId); this.cdr.detectChanges(); }
-    });
+    const member = this.members.find(m => m.user_id === userId);
+    if (!hh || !member || member.role === 'owner' || this.memberPending.has(userId)) return;
+    if (!confirm(`${member.user_first_name || member.user_email} wirklich aus der WG entfernen?`)) return;
+    this.memberAction(userId, this.householdService.removeMember(hh.id, userId), () => this.loadMembers(hh.id));
   }
 
   startEditName(hh: Household) {
     this.editName = hh.name;
+    this.editDescription = hh.description;
+    this.householdError = '';
     this.editingName = true;
   }
 
   saveEditName(hh: Household) {
-    if (!this.editName.trim()) return;
-    this.householdService.updateHousehold(hh.id, { name: this.editName.trim() }).subscribe({
-      next: () => { this.editingName = false; this.cdr.detectChanges(); },
+    if (this.savingHousehold || !this.editName.trim()) return;
+    this.savingHousehold = true;
+    this.householdError = "";
+    this.householdService.updateHousehold(hh.id, { name: this.editName.trim(), description: this.editDescription.trim() }).subscribe({
+      next: () => { this.savingHousehold = false; this.editingName = false; this.cdr.markForCheck(); },
+      error: () => { this.savingHousehold = false; this.householdError = 'WG konnte nicht gespeichert werden.'; this.cdr.markForCheck(); },
     });
   }
 
   createHouseholdAccount(hh: Household) {
-    if (!this.newAccount.name.trim() || !this.newAccount.password.trim()) return;
+    if (this.creatingAccount || !this.newAccount.name.trim()) return;
+    if (this.newAccount.password.trim().length < 6) { this.createAccountError = 'Passwort muss mindestens 6 Zeichen lang sein.'; return; }
     this.creatingAccount = true;
     this.createAccountError = '';
     this.createAccountSuccess = '';
-    this.householdService.createHouseholdAccount(hh.id, this.newAccount).subscribe({
+    this.householdService.createHouseholdAccount(hh.id, { name: this.newAccount.name.trim(), password: this.newAccount.password.trim() }).subscribe({
       next: (acct) => {
         this.createAccountSuccess = `WG-Konto "${acct.email}" wurde erstellt.`;
         this.newAccount = { name: '', password: '' };
@@ -217,10 +297,9 @@ export class AccountManager implements OnInit {
   }
 
   deleteHouseholdAccount(userId: string, hh: Household) {
+    if (this.memberPending.has(userId)) return;
     if (!confirm('WG-Konto wirklich löschen? Der Login wird dauerhaft entfernt.')) return;
-    this.householdService.deleteHouseholdAccount(hh.id, userId).subscribe({
-      next: () => { this.members = this.members.filter(m => m.user_id !== userId); this.cdr.detectChanges(); }
-    });
+    this.memberAction(userId, this.householdService.deleteHouseholdAccount(hh.id, userId), () => this.loadMembers(hh.id));
   }
 
   startChangePassword(userId: string) {
@@ -239,7 +318,8 @@ export class AccountManager implements OnInit {
   }
 
   confirmChangePassword(userId: string, hh: Household) {
-    if (!this.newPasswordVal.trim()) return;
+    if (this.changePasswordLoading) return;
+    if (this.newPasswordVal.trim().length < 6) { this.changePasswordError = 'Passwort muss mindestens 6 Zeichen lang sein.'; return; }
     this.changePasswordLoading = true;
     this.changePasswordError = '';
     this.changePasswordSuccess = '';
@@ -263,6 +343,7 @@ export class AccountManager implements OnInit {
   leaveError = '';
 
   leaveHousehold(hh: Household) {
+    if (this.leavingHousehold) return;
     if (!confirm(`WG "${hh.name}" wirklich verlassen?`)) return;
     this.leavingHousehold = true;
     this.leaveError = '';
@@ -298,6 +379,7 @@ export class AccountManager implements OnInit {
   }
 
   saveProfile() {
+    if (this.profileSaving) return;
     if (!this.profileEdit.first_name.trim()) { this.profileError = 'Vorname ist erforderlich'; return; }
     this.profileSaving = true;
     this.profileError = '';
@@ -328,6 +410,7 @@ export class AccountManager implements OnInit {
   }
 
   savePassword() {
+    if (this.passwordSaving) return;
     if (!this.passwordEdit.current) { this.passwordError = 'Bitte aktuelles Passwort eingeben'; return; }
     if (!this.passwordEdit.new_pw) { this.passwordError = 'Bitte neues Passwort eingeben'; return; }
     if (this.passwordEdit.new_pw.length < 8) { this.passwordError = 'Passwort muss mindestens 8 Zeichen lang sein'; return; }
