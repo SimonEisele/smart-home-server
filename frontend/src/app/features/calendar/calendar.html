@@ -286,7 +286,7 @@
 
       <div class="modal-foot">
         @if (editingEvent) {
-          <button class="btn-danger" (click)="editingEvent?.todoRefId ? unscheduleEvent(editingEvent!) : deleteEvent()" [disabled]="savingEvent || (editingEvent && planningPending.has(editingEvent.id))">{{ editingEvent?.todoRefId ? 'Planung entfernen' : 'Löschen' }}</button>
+          <button class="btn-danger" (click)="editingEvent.todoRefId ? unscheduleEvent(editingEvent) : deleteEvent()" [disabled]="savingEvent || (editingEvent && planningPending.has(editingEvent.id))">{{ editingEvent.todoRefId ? 'Planung entfernen' : 'Löschen' }}</button>
         }
         <button class="btn-ghost" (click)="closeModal()" [disabled]="savingEvent">Abbrechen</button>
         <button class="btn-primary" (click)="saveEvent()" [disabled]="savingEvent || (editingEvent && planningPending.has(editingEvent.id))">Speichern</button>
