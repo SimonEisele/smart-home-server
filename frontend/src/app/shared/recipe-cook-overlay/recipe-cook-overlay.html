@@ -1,4 +1,4 @@
-<div class="cooking-backdrop" *ngIf="slot as active" (click)="onBackdropClick($event)">
+<div class="cooking-backdrop" *ngIf="slot && activeTab === 'full' ? slot : null as active" (click)="onBackdropClick($event)">
   <section class="cooking-dialog" appDialog aria-label="Kochen" (dialogDismiss)="close()">
     <header class="cooking-header">
       <div>
@@ -110,10 +110,10 @@
           type="button"
           [class.active]="activeTab === 'steps'"
           [attr.aria-pressed]="activeTab === 'steps'"
-          (click)="setTab('steps')"
-          [disabled]="!steps.length"
+          #stepLaunch (click)="setTab('steps')"
+          [disabled]="!steps.length || !validQuantity || addingToShoppingList"
         >
-          Schritt für Schritt
+          Schritte im eigenen Popup öffnen
         </button>
       </nav>
       <label *ngIf="active.recipe.sections?.length"
@@ -155,15 +155,16 @@
         <p class="empty" *ngIf="!ingredients.length">
           Keine Zutaten in diesem Abschnitt hinterlegt.
         </p>
+      </aside>
+      <section class="preparation" #preparation>
         <div class="cooking-notes" *ngIf="active.recipe.sideNotes?.length">
-          <h3>Wichtige Infos</h3>
+          <h3>Zusatzinformationen</h3>
           <div *ngFor="let note of active.recipe.sideNotes">
             <span>{{ note.label }}</span
             ><strong>{{ note.value }}</strong>
           </div>
         </div>
-      </aside>
-      <section class="preparation" #preparation>
+
         <ng-container *ngIf="activeTab === 'full'"
           ><p class="description" *ngIf="active.recipe.description">
             {{ active.recipe.description }}
@@ -178,6 +179,7 @@
             class="overview-step"
             *ngFor="let cookingStep of steps; let i = index"
             (click)="goToStep(i); setTab('steps')"
+            [disabled]="!validQuantity || addingToShoppingList"
           >
             <span class="step-number" [class.done]="completedSteps.has(cookingStep.order)">{{
               completedSteps.has(cookingStep.order) ? '✓' : i + 1
@@ -191,6 +193,46 @@
             Noch keine Kochschritte hinterlegt. Du kannst die Zutatenliste und Hinweise verwenden.
           </p></ng-container
         >
+      </section>
+    </div>
+    <footer class="cooking-footer">
+<ng-container *ngIf="activeTab === 'full'">
+      <div>
+        <span class="export-note">Optional: Zutaten zur manuellen Einkaufsliste hinzufügen.</span
+        ><span class="export-success" role="status" *ngIf="addedMessage">{{ addedMessage }}</span
+        ><span class="export-error" role="alert" *ngIf="exportError">{{ exportError }}</span>
+      </div>
+      <button
+        type="button"
+        class="secondary"
+        (click)="addToShoppingList(active)"
+        [disabled]="
+          addingToShoppingList ||
+          ingredientsAdded ||
+          !validQuantity ||
+          !active.recipe.ingredients.length
+        "
+      >
+        {{
+          addingToShoppingList
+            ? 'Wird hinzugefügt…'
+            : ingredientsAdded
+              ? '✓ Zutaten hinzugefügt'
+              : 'Zur Einkaufsliste'
+        }}
+      </button>
+</ng-container>
+    </footer>
+  </section>
+</div>
+
+<div class="cooking-backdrop step-backdrop" *ngIf="slot && activeTab === 'steps' ? slot : null as active" (click)="onStepBackdropClick($event)">
+  <section class="cooking-dialog step-dialog" appDialog aria-label="Kochschritte" (dialogDismiss)="setTab('full')">
+    <header class="cooking-header">
+      <div><span class="eyebrow">Schritt für Schritt · {{ totalServings | number:'1.0-2' }} {{ servingLabel }}</span><h2>{{ active.recipe.name }}</h2></div>
+      <button type="button" class="secondary" (click)="setTab('full')" aria-label="Schritte schließen und zur Übersicht">Zur Übersicht ✕</button>
+    </header>
+    <div class="step-body" #preparation>
         <ng-container *ngIf="activeTab === 'steps'"
           ><div class="step-progress">
             <span>{{ completedCount }} von {{ steps.length }} erledigt</span
@@ -229,6 +271,13 @@
               }}
             </button>
           </article>
+        <div class="cooking-notes" *ngIf="active.recipe.sideNotes?.length">
+          <h3>Zusatzinformationen</h3>
+          <div *ngFor="let note of active.recipe.sideNotes">
+            <span>{{ note.label }}</span
+            ><strong>{{ note.value }}</strong>
+          </div>
+        </div>
           <nav class="step-jump" aria-label="Schritt auswählen">
             <button
               type="button"
@@ -245,53 +294,22 @@
           <p class="finished" role="status" *ngIf="steps.length && completedCount === steps.length">
             Alle Schritte erledigt. Guten Appetit!
           </p>
-          <details class="mobile-prep">
-            <summary>Zutaten und Hinweise anzeigen</summary>
-            <div *ngFor="let ingredient of ingredients">
-              {{ ingredient.name }} · {{ ingredient.qty }} {{ ingredient.unit }}
-            </div>
-            <div *ngFor="let note of active.recipe.sideNotes">
-              {{ note.label }} · {{ note.value }}
-            </div>
+          <details class="step-reference">
+            <summary>Alle Zutaten und Zubereitungshinweise</summary>
+            <div *ngFor="let ingredient of ingredients">{{ ingredient.name }} · {{ ingredient.qty }} {{ ingredient.qty === 'Nach Bedarf' ? '' : ingredient.unit }}</div>
             <p *ngIf="active.recipe.instructions">{{ active.recipe.instructions }}</p>
+            <p *ngIf="active.recipe.description">{{ active.recipe.description }}</p>
           </details></ng-container
         >
-      </section>
+
     </div>
-    <footer class="cooking-footer">
-      <div class="step-navigation" *ngIf="activeTab === 'steps'">
+    <footer class="cooking-footer">      <div class="step-navigation" *ngIf="activeTab === 'steps'">
         <button type="button" class="secondary" (click)="prevStep()" [disabled]="currentStep === 0">← Zurück</button>
         <span>{{ completedCount }} / {{ steps.length }} erledigt</span>
-        <button type="button" class="primary" (click)="currentStep === steps.length - 1 && completedCount === steps.length ? close() : completeStep()">
-          {{ currentStep < steps.length - 1 ? (step && completedSteps.has(step.order) ? 'Weiter →' : 'Erledigt & weiter →') : completedCount === steps.length ? 'Fertig · Schließen' : 'Letzten Schritt abschließen' }}
+        <button type="button" class="primary" (click)="currentStep === steps.length - 1 && completedCount === steps.length ? setTab('full') : completeStep()">
+          {{ currentStep < steps.length - 1 ? (step && completedSteps.has(step.order) ? 'Weiter →' : 'Erledigt & weiter →') : completedCount === steps.length ? 'Fertig · Zur Übersicht' : 'Letzten Schritt abschließen' }}
         </button>
       </div>
-<ng-container *ngIf="activeTab === 'full'">
-      <div>
-        <span class="export-note">Optional: Zutaten zur manuellen Einkaufsliste hinzufügen.</span
-        ><span class="export-success" role="status" *ngIf="addedMessage">{{ addedMessage }}</span
-        ><span class="export-error" role="alert" *ngIf="exportError">{{ exportError }}</span>
-      </div>
-      <button
-        type="button"
-        class="secondary"
-        (click)="addToShoppingList(active)"
-        [disabled]="
-          addingToShoppingList ||
-          ingredientsAdded ||
-          !validQuantity ||
-          !active.recipe.ingredients.length
-        "
-      >
-        {{
-          addingToShoppingList
-            ? 'Wird hinzugefügt…'
-            : ingredientsAdded
-              ? '✓ Zutaten hinzugefügt'
-              : 'Zur Einkaufsliste'
-        }}
-      </button>
-</ng-container>
-    </footer>
+</footer>
   </section>
 </div>
