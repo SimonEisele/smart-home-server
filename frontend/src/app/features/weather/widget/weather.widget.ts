@@ -1,6 +1,8 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AfterViewInit, Component, OnDestroy, DestroyRef, inject, ChangeDetectorRef, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { dateTimeInZone } from '../../../shared/date-utils';
 import { DailyWeather, HourlyWeather, WeatherData } from '../model/weather.model';
 import { WeatherSymbol } from '../icon/weather-icon';
 import { WeatherLabelPipe } from '../pipes/weather.pipe';
@@ -9,7 +11,7 @@ import { WeatherService } from '../service/weather.service';
 @Component({
   selector: 'weather-widget',
   standalone: true,
-  imports: [ CommonModule, WeatherSymbol, WeatherLabelPipe ],
+  imports: [ CommonModule, WeatherSymbol, WeatherLabelPipe, RouterLink ],
   templateUrl: './weather.widget.html',
   styleUrl: './weather.widget.css',
 })
@@ -19,7 +21,9 @@ export class WeatherWidget implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('container', { static: true })
   container!: ElementRef<HTMLDivElement>;
 
-  data!: WeatherData;
+  data: WeatherData | null = null;
+  error = '';
+  loading = false;
   visibleHourlyData: HourlyWeather[] = [];
   visibleDailyData: DailyWeather[] = [];
 
@@ -29,11 +33,26 @@ export class WeatherWidget implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(private weatherService: WeatherService, private cdr: ChangeDetectorRef) {}
 
-  ngOnInit() {
-    this.weatherService.getWeather().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((weather) => {
-      this.data = weather;
-      this.updateVisibleData();
-      this.cdr.detectChanges();
+  ngOnInit(): void { this.load(); }
+
+  load(): void {
+    if (this.loading) return;
+    this.loading = true;
+    this.error = '';
+    this.weatherService.getWeather().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: weather => {
+        this.data = weather;
+        this.loading = false;
+        this.updateVisibleData();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loading = false;
+        this.error = this.weatherService.getSavedLocation()
+          ? 'Wetter nicht verfügbar. Bitte erneut laden.'
+          : 'Wähle zuerst deinen Wetterort.';
+        this.cdr.markForCheck();
+      },
     });
   }
 
@@ -58,18 +77,21 @@ export class WeatherWidget implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getUpcomingHours(hours: HourlyWeather[]): HourlyWeather[] {
-    const now = new Date();
-    return hours.filter(h => new Date(h.time) >= now);
+    const hour = dateTimeInZone(new Date(), this.data?.location.timezone || 'UTC').slice(0, 13);
+    return hours.filter(h => h.time.slice(0, 13) >= hour);
   }
 
   hourTime(isoTime: string): string {
-    const d = new Date(isoTime);
-    return `${String(d.getHours()).padStart(2,'0')}:00`;
+    return isoTime.slice(11, 16);
+  }
+
+  value(n: number): string {
+    return Number.isFinite(n) ? new Intl.NumberFormat('de-CH', { maximumFractionDigits: 0 }).format(n) : '—';
   }
 
   dayName(dateStr: string, i: number): string {
-    if (i === 0) return 'Heute';
-    const d = new Date(dateStr);
-    return ['So','Mo','Di','Mi','Do','Fr','Sa'][d.getDay()];
+    if (dateStr === dateTimeInZone(new Date(), this.data?.location.timezone || 'UTC').slice(0, 10)) return 'Heute';
+    const d = new Date(dateStr + 'T12:00:00Z');
+    return ['So','Mo','Di','Mi','Do','Fr','Sa'][d.getUTCDay()];
   }
 }

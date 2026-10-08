@@ -1,291 +1,219 @@
-import { WeatherSymbol } from '../icon/weather-icon';
-import { localIsoDate, dateTimeInZone } from '../../../shared/date-utils';
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
-import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { Subscription } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { WeatherSymbol } from '../icon/weather-icon';
+import { dateTimeInZone } from '../../../shared/date-utils';
 import { WeatherService } from '../service/weather.service';
 import { WeatherData, HourlyWeather, DailyWeather, CitySearchResult } from '../model/weather.model';
-import { wmoIcon, wmoLabel } from '../pipes/weather.pipe';
-
-const SUN_R   = 90;
-const SUN_CX  = 100;
-const SUN_CY  = 100;
-const ARC_LEN = Math.PI * SUN_R; // ~282.74
+import { wmoLabel } from '../pipes/weather.pipe';
 
 @Component({
-  selector: 'weather-page',
-  standalone: true,
+  selector: 'weather-page', standalone: true,
   imports: [CommonModule, FormsModule, WeatherSymbol],
-  templateUrl: './weather.page.html',
-  styleUrl: './weather.page.css',
+  templateUrl: './weather.page.html', styleUrl: './weather.page.css',
 })
 export class WeatherPage implements OnInit, OnDestroy {
+  private readonly destroyRef = inject(DestroyRef);
+  private weatherRequest?: Subscription;
+  private searchRequest?: Subscription;
+  private locationRequest?: Subscription;
+  private searchTimer?: ReturnType<typeof setTimeout>;
+  private searchRevision = 0;
   weather: WeatherData | null = null;
-  loading  = false;
+  loading = false;
   locating = false;
-  error: string | null = null;
-
-  // Map layer tabs
-  radarLayer = 'rain';
-  europeLayer = 'clouds';
-
-  readonly RADAR_LAYERS: Array<{ key: string; label: string }> = [
-    { key: 'rain', label: 'Regen' }, { key: 'wind', label: 'Wind' },
-    { key: 'clouds', label: 'Wolken' }, { key: 'pressure', label: 'Druck' },
-  ];
-  readonly EUROPE_LAYERS: Array<{ key: string; label: string }> = [
-    { key: 'clouds', label: 'Wolken/Satellit' }, { key: 'pressure', label: 'Druck' },
-    { key: 'wind', label: 'Wind' }, { key: 'temp', label: 'Temperatur' },
-  ];
-
+  error = '';
+  showSearch = false;
   citySearch = '';
   cityResults: CitySearchResult[] = [];
-  showSearch  = false;
-  searching   = false;
-  private searchTimer: any = null;
+  searching = false;
+  searchCompleted = false;
+  searchError = '';
+  selectedDate = '';
+  mapVisible = false;
+  mapLayer = 'rain';
+  mapRegion = 'local';
+  mapUrl: SafeResourceUrl | null = null;
+  readonly mapLayers = [{ key: 'rain', label: 'Niederschlag' }, { key: 'wind', label: 'Wind' }, { key: 'clouds', label: 'Wolken' }, { key: 'temp', label: 'Temperatur' }];
 
   constructor(private svc: WeatherService, private cdr: ChangeDetectorRef, private sanitizer: DomSanitizer) {}
 
   ngOnInit(): void {
     const saved = this.svc.getSavedLocation();
-    if (saved) {
-      this.loadWeather(saved.lat, saved.lon, saved.city, saved.country, saved.admin1, saved.timezone);
-    } else {
-      this.useGeolocation();
-    }
+    if (saved) this.loadWeather(saved.lat, saved.lon, saved.city, saved.country, saved.admin1, saved.timezone);
+    else this.showSearch = true;
   }
 
-  // ── Location ─────────────────────────────────────────────────────────
   useGeolocation(): void {
-    this.locating = true; this.error = null; this.cdr.detectChanges();
-    this.svc.getBrowserLocation().subscribe({
-      next: ({ lat, lon }) => {
+    if (this.locating || this.loading) return;
+    this.locating = true;
+    this.error = '';
+    this.locationRequest = this.svc.getBrowserLocation().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ lat, lon }) => { this.locating = false; this.loadWeather(lat, lon); },
+      error: () => {
         this.locating = false;
-        this.loadWeather(lat, lon);
-      },
-      error: (msg) => {
-        this.locating = false;
-        this.error = 'Standort konnte nicht ermittelt werden. Bitte Stadt suchen.';
+        this.error = 'Standort nicht verfügbar. Suche stattdessen einen Ort.';
         this.showSearch = true;
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       },
     });
   }
 
   refresh(): void {
-    if (!this.weather) return;
-    const { latitude: lat, longitude: lon, city, country, admin1, timezone } = this.weather.location;
-    this.loadWeather(lat, lon, city, country, admin1, timezone);
+    if (this.loading || this.locating || !this.weather) return;
+    const l = this.weather.location;
+    this.loadWeather(l.latitude, l.longitude, l.city, l.country, l.admin1, l.timezone);
   }
 
   private loadWeather(lat: number, lon: number, city = '', country = '', admin1?: string, tz?: string): void {
-    this.loading = true; this.error = null; this.cdr.detectChanges();
-    this.svc.getWeatherByCoords(lat, lon, city, country, admin1, tz).subscribe({
-      next: w => {
-        this.weather = w; this.loading = false;
-        if (!city) {
-          // save with resolved city from timezone
+    // Only the latest location may replace the page or its saved location.
+    this.weatherRequest?.unsubscribe();
+    this.loading = true;
+    this.error = '';
+    this.weatherRequest = this.svc.getWeatherByCoords(lat, lon, city, country, admin1, tz)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: w => {
+          this.weather = w;
+          this.selectedDate = this.todayForecast?.date ?? w.daily[0]?.date ?? '';
+          this.loading = false;
           this.svc.saveLocation({ lat, lon, city: w.location.city, country: w.location.country, admin1: w.location.admin1, timezone: w.location.timezone });
-        }
-        this.cdr.detectChanges();
-      },
-      error: (err: Error) => { this.error = err.message; this.loading = false; this.cdr.detectChanges(); },
-    });
+          this.updateMap();
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.loading = false;
+          this.error = this.weather
+            ? 'Aktualisierung fehlgeschlagen. Du siehst weiterhin die zuletzt geladenen Daten.'
+            : 'Wetterdaten konnten nicht geladen werden. Bitte den Ort erneut wählen.';
+          this.showSearch = !this.weather;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
-  // ── City search ───────────────────────────────────────────────────────
-  onSearchInput(): void {
+  toggleSearch(): void {
+    this.showSearch = !this.showSearch;
+    if (!this.showSearch) this.cancelSearch();
+  }
+
+  private cancelSearch(): void {
     clearTimeout(this.searchTimer);
-    if (!this.citySearch.trim()) { this.cityResults = []; return; }
+    this.searchRequest?.unsubscribe();
+    this.searchRevision++;
+    this.searching = false;
+    this.cityResults = [];
+    this.searchError = '';
+    this.searchCompleted = false;
+  }
+
+  onSearchInput(): void {
+    this.cancelSearch();
+    const query = this.citySearch.trim();
+    if (query.length < 2) return;
+    const revision = this.searchRevision;
+    this.searching = true;
     this.searchTimer = setTimeout(() => {
-      this.searching = true; this.cdr.detectChanges();
-      this.svc.searchCity(this.citySearch).subscribe(r => {
-        this.cityResults = r; this.searching = false; this.cdr.detectChanges();
+      this.searchRequest = this.svc.searchCity(query).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: results => {
+          if (revision !== this.searchRevision) return;
+          this.cityResults = results;
+          this.searching = false;
+          this.searchCompleted = true;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          if (revision !== this.searchRevision) return;
+          this.searching = false;
+          this.searchError = 'Ortssuche fehlgeschlagen. Bitte erneut suchen.';
+          this.cdr.markForCheck();
+        },
       });
-    }, 350);
+    }, 300);
   }
 
   selectCity(r: CitySearchResult): void {
-    this.svc.saveLocation({ lat: r.latitude, lon: r.longitude, city: r.name, country: r.country, admin1: r.admin1, timezone: r.timezone });
-    this.showSearch = false; this.citySearch = ''; this.cityResults = [];
+    this.cancelSearch();
+    this.locationRequest?.unsubscribe();
+    this.locating = false;
+    this.showSearch = false;
+    this.citySearch = '';
     this.loadWeather(r.latitude, r.longitude, r.name, r.country, r.admin1, r.timezone);
   }
 
-  // ── Computed ──────────────────────────────────────────────────────────
+  get todayDate(): string {
+    return dateTimeInZone(new Date(), this.weather?.location.timezone || 'UTC').slice(0, 10);
+  }
+  get todayForecast(): DailyWeather | null {
+    return this.weather?.daily.find(d => d.date === this.todayDate) ?? null;
+  }
+  get selectedDay(): DailyWeather | null {
+    return this.weather?.daily.find(d => d.date === this.selectedDate) ?? null;
+  }
   get next24Hours(): HourlyWeather[] {
     if (!this.weather) return [];
-    const nowStr = dateTimeInZone(new Date(), this.weather.location.timezone); // "2026-07-03T14"
-    const idx = this.weather.hourly.findIndex(h => h.time >= nowStr);
-    if (idx < 0) return [];
-    const start = idx;
-    return this.weather.hourly.slice(start, start + 24);
+    const hour = dateTimeInZone(new Date(), this.weather.location.timezone).slice(0, 13);
+    return this.weather.hourly.filter(h => h.time.slice(0, 13) >= hour).slice(0, 24);
+  }
+  get displayedHours(): HourlyWeather[] {
+    if (!this.selectedDate) return [];
+    if (this.selectedDate === this.todayDate) return this.next24Hours;
+    return this.weather?.hourly.filter(h => h.time.startsWith(this.selectedDate)) ?? [];
+  }
+  get rainSummary(): string {
+    if (!this.next24Hours.length) return 'Keine Stundenvorhersage verfügbar.';
+    const rain = this.next24Hours.find(h => Number.isFinite(h.precipitation) && h.precipitation > 0);
+    if (rain) return `Niederschlag vorhergesagt: ${this.dayName(rain.time.slice(0, 10))}, ${this.formatTime(rain.time)} Uhr.`;
+    return this.next24Hours.some(h => !Number.isFinite(h.precipitation))
+      ? 'Niederschlagsdaten sind teilweise nicht verfügbar.'
+      : 'Kein Niederschlag in den nächsten 24 Stunden vorhergesagt.';
   }
 
-  get todayForecast(): DailyWeather | null {
-    if (!this.weather) return null;
-    const today = dateTimeInZone(new Date(), this.weather.location.timezone).split('T')[0];
-    return this.weather.daily.find(d => d.date === today) ?? this.weather.daily[0] ?? null;
-  }
-
-  get weekTempRange(): { min: number; max: number } {
-    if (!this.weather) return { min: 0, max: 30 };
-    const all = this.weather.daily.flatMap(d => [d.tempMin, d.tempMax]);
-    return { min: Math.min(...all), max: Math.max(...all) };
-  }
-
-  tempBarLeft(d: DailyWeather): number {
-    const { min, max } = this.weekTempRange;
-    return ((d.tempMin - min) / (max - min || 1)) * 100;
-  }
-  tempBarWidth(d: DailyWeather): number {
-    const { min, max } = this.weekTempRange;
-    return ((d.tempMax - d.tempMin) / (max - min || 1)) * 100;
-  }
-
-  get dewPoint(): number {
-    if (!this.weather) return 0;
-    const { temperature: T, humidity: RH } = this.weather.current;
-    // Magnus approximation
-    const a = 17.625, b = 243.04;
-    const alpha = Math.log(RH / 100) + (a * T) / (b + T);
-    return Math.round((b * alpha) / (a - alpha));
-  }
-
-  get dayProgressPct(): number {
-    if (!this.todayForecast) return 0;
-    const rise = new Date(this.todayForecast.sunrise).getTime();
-    const set  = new Date(this.todayForecast.sunset).getTime();
-    const now  = Date.now();
-    return Math.max(0, Math.min(100, ((now - rise) / (set - rise)) * 100));
-  }
-
-  get sunX(): number { return SUN_CX + SUN_R * Math.cos(Math.PI - (this.dayProgressPct / 100) * Math.PI); }
-  get sunY(): number { return SUN_CY - SUN_R * Math.sin(Math.PI - (this.dayProgressPct / 100) * Math.PI); }
-  get sunDashArray(): string {
-    const len = (this.dayProgressPct / 100) * ARC_LEN;
-    return `${len} ${ARC_LEN - len}`;
-  }
-
-  get dayLength(): string {
-    if (!this.todayForecast) return '';
-    const rise = new Date(this.todayForecast.sunrise).getTime();
-    const set  = new Date(this.todayForecast.sunset).getTime();
-    const mins = Math.round((set - rise) / 60000);
-    const h = Math.floor(mins / 60), m = mins % 60;
-    return `${h}h ${m}min`;
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────────
-  icon(code: number, isDay = true): string { return wmoIcon(code, isDay); }
+  selectDay(day: DailyWeather): void { this.selectedDate = day.date; }
   label(code: number): string { return wmoLabel(code); }
-
+  value(n: number | undefined, decimals = 0): string {
+    return n != null && Number.isFinite(n) ? new Intl.NumberFormat('de-CH', { maximumFractionDigits: decimals }).format(n) : '—';
+  }
   windDir(deg: number): string {
-    const dirs = ['N','NO','O','SO','S','SW','W','NW'];
-    return dirs[Math.round(deg / 45) % 8];
+    return Number.isFinite(deg) ? ['N', 'NO', 'O', 'SO', 'S', 'SW', 'W', 'NW'][Math.round(((deg % 360) + 360) % 360 / 45) % 8] : '—';
   }
-
-  windArrow(deg: number): string {
-    // CSS rotation applied in template
-    return '↑';
+  formatTime(iso: string): string { return iso?.slice(11, 16) || '—'; }
+  dayName(date: string, _index?: number): string {
+    if (date === this.todayDate) return 'Heute';
+    const tomorrow = new Date(this.todayDate + 'T12:00:00Z');
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    if (date === tomorrow.toISOString().slice(0, 10)) return 'Morgen';
+    return new Intl.DateTimeFormat('de-CH', { weekday: 'short', timeZone: 'UTC' }).format(new Date(date + 'T12:00:00Z'));
   }
-
+  shortDate(date: string): string { return `${date.slice(8, 10)}.${date.slice(5, 7)}.`; }
   uvLabel(uv: number): string {
-    if (uv < 3) return 'Niedrig';
-    if (uv < 6) return 'Moderat';
-    if (uv < 8) return 'Hoch';
-    if (uv < 11) return 'Sehr hoch';
-    return 'Extrem';
+    if (!Number.isFinite(uv)) return 'Keine Daten';
+    return uv < 3 ? 'Niedrig' : uv < 6 ? 'Moderat' : uv < 8 ? 'Hoch' : uv < 11 ? 'Sehr hoch' : 'Extrem';
+  }
+  isDayHour(h: HourlyWeather): boolean {
+    if (h.isDay != null) return h.isDay;
+    const day = this.weather?.daily.find(d => d.date === h.time.slice(0, 10));
+    return !!day && h.time >= day.sunrise && h.time < day.sunset;
+  }
+  get dayLength(): string {
+    const day = this.selectedDay;
+    if (!day?.sunrise || !day.sunset) return '—';
+    const minutes = (iso: string) => Number(iso.slice(11, 13)) * 60 + Number(iso.slice(14, 16));
+    const duration = minutes(day.sunset) - minutes(day.sunrise);
+    return duration >= 0 ? `${Math.floor(duration / 60)} h ${duration % 60} min` : '—';
   }
 
-  uvColor(uv: number): string {
-    if (uv < 3)  return '#82d7bb';
-    if (uv < 6)  return '#ebc575';
-    if (uv < 8)  return '#edaf75';
-    if (uv < 11) return '#ffaaa6';
-    return '#c4a1e8';
+  showMap(): void { this.mapVisible = true; this.updateMap(); }
+  changeMapLayer(layer: string): void { this.mapLayer = layer; this.updateMap(); }
+  changeMapRegion(region: string): void { this.mapRegion = region; this.updateMap(); }
+  private updateMap(): void {
+    if (!this.mapVisible || !this.weather) return;
+    const l = this.weather.location;
+    const params = new URLSearchParams({ lat: String(this.mapRegion === 'local' ? l.latitude : 52), lon: String(this.mapRegion === 'local' ? l.longitude : 15), zoom: this.mapRegion === 'local' ? '8' : '4', level: 'surface', overlay: this.mapLayer, product: 'ecmwf', marker: 'true', metricWind: 'km/h', metricTemp: '°C' });
+    this.mapUrl = this.sanitizer.bypassSecurityTrustResourceUrl(`https://embed.windy.com/embed2.html?${params}`);
   }
 
-  precipColor(prob: number): string {
-    if (prob < 20) return 'rgba(111,231,255,0.3)';
-    if (prob < 50) return 'rgba(111,231,255,0.55)';
-    if (prob < 80) return 'rgba(79,209,197,0.7)';
-    return '#4fd1c5';
-  }
-
-  tempColor(t: number): string {
-    if (t <= 0)  return '#92c7f2';
-    if (t <= 10) return '#83d7d5';
-    if (t <= 18) return '#82d7bb';
-    if (t <= 25) return '#ebc575';
-    if (t <= 30) return '#edaf75';
-    return '#ffaaa6';
-  }
-
-  heroGradient(): string {
-    const w = this.weather;
-    if (!w) return '';
-    const code = w.current.weatherCode;
-    const isDay = w.current.isDay;
-    if (!isDay) return 'linear-gradient(145deg,#1b293c 0%,#23344a 60%,#1b293c 100%)';
-    if (code === 0) return 'linear-gradient(145deg,rgba(251,191,36,0.15),rgba(251,146,60,0.08))';
-    if (code <= 2)  return 'linear-gradient(145deg,rgba(147,197,253,0.12),rgba(196,181,253,0.06))';
-    if (code <= 3)  return 'linear-gradient(145deg,rgba(100,116,139,0.15),rgba(51,65,85,0.1))';
-    if (code <= 67) return 'linear-gradient(145deg,rgba(96,165,250,0.15),rgba(56,189,248,0.08))';
-    if (code <= 77) return 'linear-gradient(145deg,rgba(186,230,253,0.15),rgba(224,242,254,0.08))';
-    return 'linear-gradient(145deg,rgba(99,102,241,0.12),rgba(139,92,246,0.06))';
-  }
-
-  dayName(dateStr: string, i: number): string {
-    if (i === 0) return 'Heute';
-    if (i === 1) return 'Morgen';
-    const d = new Date(dateStr);
-    const names = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-    return names[d.getDay()];
-  }
-
-  formatTime(iso: string): string {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-  }
-
-  hourLabel(iso: string): string {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return `${String(d.getHours()).padStart(2,'0')}:00`;
-  }
-
-  round(n: number, dec = 0): number { return Number(n.toFixed(dec)); }
-
-  // ── Weather maps ──────────────────────────────────────────────────────
-  private windyUrl(lat: number, lon: number, zoom: number, overlay: string, pressure: boolean): string {
-    const p = new URLSearchParams({
-      lat: lat.toFixed(4), lon: lon.toFixed(4),
-      detailLat: lat.toFixed(4), detailLon: lon.toFixed(4),
-      zoom: String(zoom), level: 'surface', overlay,
-      product: 'ecmwf', menu: '', message: 'true', marker: 'true',
-      calendar: '24', pressure: pressure ? 'true' : '',
-      type: 'map', location: 'coordinates', detail: 'true',
-      metricWind: 'km/h', metricTemp: '°C', radarRange: '-1',
-    });
-    return `https://embed.windy.com/embed2.html?${p.toString()}`;
-  }
-
-  get radarMapUrl(): SafeResourceUrl {
-    if (!this.weather) return this.sanitizer.bypassSecurityTrustResourceUrl('about:blank');
-    const { latitude: lat, longitude: lon } = this.weather.location;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(
-      this.windyUrl(lat, lon, 8, this.radarLayer, this.radarLayer === 'pressure')
-    );
-  }
-
-  get europeMapUrl(): SafeResourceUrl {
-    return this.sanitizer.bypassSecurityTrustResourceUrl(
-      this.windyUrl(52, 15, 4, this.europeLayer, true)
-    );
-  }
-
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void { this.cancelSearch(); }
 }
-

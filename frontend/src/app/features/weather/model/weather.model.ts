@@ -1,3 +1,4 @@
+/** Missing numeric API values use NaN and are rendered as —, never as zero. */
 export interface GeoLocation {
   latitude: number;
   longitude: number;
@@ -24,7 +25,8 @@ export interface CurrentWeather {
 }
 
 export interface HourlyWeather {
-  time: string;  // ISO datetime without Z
+  isDay?: boolean;
+  time: string;  // Local time in location.timezone, without Z
   temperature: number;
   apparentTemperature: number;
   humidity: number;
@@ -73,30 +75,4 @@ export interface CitySearchResult {
   country_code: string;
   timezone: string;
   admin1?: string;
-}
-
-
-
-export interface HourlyWeather {
-  date: string;
-  time: string;
-  temperature: number;
-  weatherCode: number;
-  precipitation: number;
-  windSpeed: number;
-  windDirection: number;
-}
-
-export interface DailyWeather {
-  date: string;
-  minTemperature: number;
-  maxTemperature: number;
-  weatherCode: number;
-  precipitation: number;
-}
-
-export interface WeatherData {
-  current: CurrentWeather;
-  hourly: HourlyWeather[];
-  daily: DailyWeather[];
 }
