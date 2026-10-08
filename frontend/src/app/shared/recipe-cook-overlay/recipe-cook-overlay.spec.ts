@@ -165,3 +165,43 @@ describe('Shared cooking journey', () => {
     expect(addRecipe).not.toHaveBeenCalled();
   });
 });
+
+describe('Separate cooking step popup', () => {
+  let overlay: RecipeCookOverlay;
+  beforeEach(() => {
+    overlay = TestBed.createComponent(RecipeCookOverlay).componentInstance;
+    overlay.ngOnInit();
+    TestBed.inject(RecipeCookService).open({date:'',meal:'dinner',weekTag:'',persons:1,source:'recipe',servings:4,recipe:{...cookingRecipe, sideNotes:[{label:'Ofentemperatur',value:'180 °C Ober-/Unterhitze'}],instructions:'Ofen vorheizen.'}});
+  });
+  it('returns from the step popup without closing the recipe or losing preparation and progress', () => {
+    overlay.toggleIngredient('amount'); overlay.setTab('steps'); overlay.completeStep();
+    overlay.onKey(new KeyboardEvent('keydown',{key:'Escape'}));
+    expect(overlay.activeTab).toBe('full'); expect(overlay.slot).not.toBeNull();
+    expect(overlay.currentStep).toBe(1); expect(overlay.completedCount).toBe(1); expect(overlay.checkedIngredients.has('amount')).toBe(true);
+    overlay.setTab('steps'); expect(overlay.currentStep).toBe(1);
+  });
+  it('closes only the focused step popup when its backdrop is clicked', () => {
+    overlay.setTab('steps');
+    const element=document.createElement('div');
+    overlay.onStepBackdropClick({target:element,currentTarget:element} as unknown as MouseEvent);
+    expect(overlay.activeTab).toBe('full'); expect(overlay.slot).not.toBeNull();
+  });
+  it('does not open a focused popup for invalid amounts or an empty section', () => {
+    overlay.selectedServings=0; overlay.setTab('steps'); expect(overlay.activeTab).toBe('full');
+    overlay.selectedServings=4; overlay.setSection(999); overlay.setTab('steps'); expect(overlay.activeTab).toBe('full');
+  });
+  it('shows notes in both dialogs and keeps exactly one modal active', async () => {
+    const fixture=TestBed.createComponent(RecipeCookOverlay);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('[role=dialog]').length).toBe(1);
+    expect(fixture.nativeElement.textContent).toContain('180 °C Ober-/Unterhitze');
+    fixture.componentInstance.setTab('steps'); fixture.detectChanges();
+    const dialog=fixture.nativeElement.querySelector('[role=dialog]');
+    expect(fixture.nativeElement.querySelectorAll('[role=dialog]').length).toBe(1);
+    expect(dialog.getAttribute('aria-label')).toBe('Kochschritte');
+    expect(dialog.textContent).toContain('180 °C Ober-/Unterhitze');
+    expect(dialog.textContent).toContain('Alle Zutaten und Zubereitungshinweise');
+    fixture.componentInstance.setTab('full'); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role=dialog]').getAttribute('aria-label')).toBe('Kochen');
+  });
+});

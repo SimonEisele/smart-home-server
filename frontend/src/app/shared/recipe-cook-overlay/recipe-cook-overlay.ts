@@ -26,6 +26,7 @@ import { Recipe, RecipeIngredient, RecipeStep } from '../../features/recipes/mod
 export class RecipeCookOverlay implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   @ViewChild('cookingBody') body?: ElementRef<HTMLElement>;
+  @ViewChild('stepLaunch') stepLaunch?: ElementRef<HTMLButtonElement>;
   @ViewChild('preparation') preparation?: ElementRef<HTMLElement>;
   private revision = 0;
   private exported = new Set<string>();
@@ -170,7 +171,16 @@ export class RecipeCookOverlay implements OnInit {
       if (this.preparation) this.preparation.nativeElement.scrollTop = 0;
     });
   }
-  setTab(tab: 'full' | 'steps'): void { this.activeTab = tab; this.scrollContent(); }
+  setTab(tab: 'full' | 'steps'): void {
+    if (tab === 'steps' && (!this.steps.length || !this.validQuantity || this.addingToShoppingList)) return;
+    this.activeTab = tab;
+    this.cdr.markForCheck();
+    this.scrollContent();
+    if (tab === 'full') requestAnimationFrame(() => this.stepLaunch?.nativeElement.focus());
+  }
+  onStepBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) this.setTab('full');
+  }
   setSection(id: number | null): void {
     this.selectedSection = id; this.currentStep = 0;
     if (!this.steps.length) this.activeTab = 'full';
@@ -263,7 +273,11 @@ export class RecipeCookOverlay implements OnInit {
     if (!this.slot) return;
     const element = event.target as HTMLElement;
     if (element?.matches('input,textarea,select')) return;
-    if (event.key === 'Escape') this.close();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.activeTab === 'steps' ? this.setTab('full') : this.close();
+      return;
+    }
     if (this.activeTab !== 'steps') return;
     if (event.key === 'ArrowRight') {
       event.preventDefault();
