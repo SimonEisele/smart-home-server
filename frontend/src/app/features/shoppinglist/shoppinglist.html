@@ -168,6 +168,7 @@
   <section
     class="modal-panel"
     appDialog
+    [dialogFocusInput]="focusArticleInput"
     aria-label="Artikel bearbeiten"
     (dialogDismiss)="cancelAdd()"
     (click)="$event.stopPropagation()"
@@ -187,14 +188,18 @@
             [(ngModel)]="addName"
             (ngModelChange)="onAddNameInput()"
             (blur)="applyCatalog()"
-            list="ingredient-catalog"
             required
             maxlength="200"
             autocomplete="off"
             placeholder="Zum Beispiel Milch" /></label
-        ><datalist id="ingredient-catalog">
-          <option *ngFor="let i of ingredients" [value]="i.name"></option>
-        </datalist>
+        >
+        <div class="suggestions" *ngIf="catalogSuggestions.length" aria-label="Zutatenvorschläge">
+          <span>Aus dem Zutatenkatalog</span>
+          <button type="button" *ngFor="let ingredient of catalogSuggestions"
+            (click)="selectCatalogIngredient(ingredient)">
+            {{ ingredient.name }} <small>{{ ingredient.defaultUnit }}</small>
+          </button>
+        </div>
         <div class="suggestions" *ngIf="addSuggestions.length">
           <span>Schon einmal eingekauft</span
           ><button type="button" *ngFor="let s of addSuggestions" (click)="applySuggestion(s)">

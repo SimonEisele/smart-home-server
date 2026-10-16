@@ -44,6 +44,20 @@ describe('Shopping workflow', () => {
       },
     ];
   });
+  it('limits catalog suggestions and preserves ingredient selection without a native datalist', () => {
+    page.ingredients = Array.from({ length: 5000 }, (_, i) => ({ id: i, name: `Milch ${i}`, category: 'milch', subcategory: '', defaultUnit: 'l', imageUrl: 'https://example.com/milk.jpg' }));
+    page.openAdd();
+    expect(page.catalogSuggestions).toEqual([]);
+    page.addName = 'Milch';
+    page.showCatalogSuggestions = true;
+    expect(page.catalogSuggestions).toHaveLength(8);
+    page.selectCatalogIngredient(page.catalogSuggestions[0]);
+    expect(page.addName).toBe('Milch 0');
+    expect(page.addUnit).toBe('l');
+    expect(page.addCategory).toBe('Milchprodukte');
+    expect(page.addImageUrl).toBe('https://example.com/milk.jpg');
+    expect(page.catalogSuggestions).toEqual([]);
+  });
   it('keeps sources separate but shows combined purchase quantities', () => {
     expect(page.allGroups[0].items.map((i) => i.id)).toEqual(['one', 'two']);
     expect(page.purchaseSummary).toEqual([
