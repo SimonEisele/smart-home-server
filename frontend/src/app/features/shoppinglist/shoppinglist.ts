@@ -162,6 +162,15 @@ export class Shoppinglist implements OnInit {
     this.busy = false;
     this.cdr.markForCheck();
   }
+  // Group getters return fresh objects. Keep the existing DOM and image elements
+  // when their identity has not changed (for example when opening a dialog).
+  trackCategory(_index: number, group: ShoppingGroup): string { return group.category; }
+  trackWeek(_index: number, group: MenuplanGroup): string { return group.weekTag; }
+  trackItem(_index: number, item: ShoppingItem): string { return item.id; }
+  trackSummary(_index: number, row: PurchaseSummary): string {
+    return `${row.name.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('de')}\u0000${row.unit}`;
+  }
+
   private get filteredItems(): ShoppingItem[] {
     const q = this.search.trim().toLocaleLowerCase('de');
     return this.items.filter(

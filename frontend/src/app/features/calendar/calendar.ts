@@ -33,6 +33,10 @@ const HOUR_PX    = 64; // px per hour
 export class Calendar implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   calendarView: 'schedule' | 'attendance' = 'schedule';
+  isMobile = window.innerWidth < 700;
+
+  @HostListener('window:resize')
+  onViewportResize(): void { this.isMobile = window.innerWidth < 700; }
   weekStart!: Date;
   weekDays: DayEntry[] = [];
 
@@ -237,6 +241,8 @@ export class Calendar implements OnInit, OnDestroy {
   }
 
   // ── Cleaning ─────────────────────────────────────────────────────────────
+
+  trackCleaning(_index: number, entry: { task: CleaningTask }): string { return entry.task.id; }
 
   cleaningEventsForDay(dateStr: string): { task: CleaningTask; overdue: boolean }[] {
     const day = new Date(dateStr);
@@ -580,6 +586,9 @@ export class Calendar implements OnInit, OnDestroy {
 
   @HostListener('document:touchend', ['$event'])
   onDocTouchEnd(_e: TouchEvent): void {
+    // Ordinary button taps are not drag gestures. Do not force another render
+    // or clear a dialog's scroll lock before the button's click arrives.
+    if (!this.touchActive && !this.touchDragEvent && !this.touchDragTodo && !this.touchIsResize) return;
     // ── Resize commit ─────────────────────────────────────────────────────────
     if (this.touchIsResize && this.resizingEvent && this.resizePreview) {
       const ev     = this.resizingEvent;
