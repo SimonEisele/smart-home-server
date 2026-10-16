@@ -67,6 +67,7 @@
         [class.archived]="ingredient.archived"
       >
         <div class="identity">
+          <img *ngIf="ingredient.imageUrl" class="ingredient-image" [src]="ingredient.imageUrl" alt="" loading="lazy" />
           <strong>{{ ingredient.name }}</strong
           ><span *ngIf="ingredient.subcategory">{{ ingredient.subcategory }}</span
           ><span class="archive-badge" *ngIf="ingredient.archived">Archiviert</span>
@@ -187,6 +188,8 @@
               [(ngModel)]="form.subcategory"
               placeholder="Zum Beispiel Mehl & Backzutaten"
           /></label>
+          <app-article-image [(value)]="form.imageUrl" [disabled]="saving"
+            (processingChange)="imageProcessing = $event"></app-article-image>
         </fieldset>
         <div class="usage-note" *ngIf="selected">
           <strong
@@ -220,7 +223,7 @@
         ><button
           class="primary"
           type="submit"
-          [disabled]="saving || !form.name.trim() || !!duplicate"
+          [disabled]="saving || imageProcessing || !form.name.trim() || !!duplicate"
         >
           {{ saving ? 'Wird gespeichert…' : 'Zutat speichern' }}
         </button>

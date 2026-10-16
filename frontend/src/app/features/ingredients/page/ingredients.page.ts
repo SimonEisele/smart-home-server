@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
+import { ArticleImage } from '../../../shared/article-image/article-image';
 import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { RecipesService } from '../../recipes/service/recipes.service';
 import {
@@ -17,11 +18,12 @@ interface IngredientForm {
   category: string;
   subcategory: string;
   defaultUnit: string;
+  imageUrl: string;
 }
 @Component({
   selector: 'app-ingredients-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, DialogDirective],
+  imports: [CommonModule, FormsModule, DialogDirective, ArticleImage],
   templateUrl: './ingredients.page.html',
   styleUrl: './ingredients.page.css',
 })
@@ -40,6 +42,7 @@ export class IngredientsPage implements OnInit {
   selected: Ingredient | null = null;
   form: IngredientForm = this.emptyForm();
   saving = false;
+  imageProcessing = false;
   formError = '';
   constructor(
     private service: RecipesService,
@@ -133,19 +136,20 @@ export class IngredientsPage implements OnInit {
       category: ingredient.category,
       subcategory: ingredient.subcategory,
       defaultUnit: ingredient.defaultUnit,
+      imageUrl: ingredient.imageUrl || '',
     };
     this.formError = '';
     this.modal = 'edit';
     this.message = '';
   }
   closeModal(): void {
-    if (!this.saving) {
+    if (!this.saving && !this.imageProcessing) {
       this.modal = null;
       this.formError = '';
     }
   }
   save(): void {
-    if (this.saving || !this.form.name.trim()) return;
+    if (this.saving || this.imageProcessing || !this.form.name.trim()) return;
     if (this.duplicate) {
       this.formError = 'Diese Zutat gibt es bereits. Bitte den vorhandenen Eintrag bearbeiten.';
       return;
@@ -260,6 +264,6 @@ export class IngredientsPage implements OnInit {
     );
   }
   private emptyForm(): IngredientForm {
-    return { name: '', category: 'sonstiges', subcategory: '', defaultUnit: '' };
+    return { name: '', category: 'sonstiges', subcategory: '', defaultUnit: '', imageUrl: '' };
   }
 }

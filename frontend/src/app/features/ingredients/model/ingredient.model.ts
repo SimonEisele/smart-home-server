@@ -5,6 +5,7 @@ export interface Ingredient {
   category: string;
   subcategory: string;
   defaultUnit: string;
+  imageUrl?: string;
   archived?: boolean;
   usageCount?: number;
 }

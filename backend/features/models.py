@@ -41,7 +41,7 @@ class ShoppingItem(models.Model):
     quantity_incomplete = models.BooleanField(default=False)
     unit = models.CharField(max_length=32, blank=True)
     category = models.CharField(max_length=80, blank=True)
-    image_url = models.URLField(blank=True)
+    image_url = models.TextField(blank=True)
     suggestion = models.CharField(max_length=240, blank=True)
     checked = models.BooleanField(default=False)
     global_item = models.BooleanField(default=False)
@@ -69,6 +69,7 @@ class Ingredient(models.Model):
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='sonstiges')
     subcategory = models.CharField(max_length=100, blank=True)
     default_unit = models.CharField(max_length=20, blank=True)
+    image_url = models.TextField(blank=True)
     normalized_name = models.CharField(max_length=200, unique=True, editable=False)
     archived = models.BooleanField(default=False)
 

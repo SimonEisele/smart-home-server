@@ -3,7 +3,7 @@
   <ng-container *ngIf="nextCookSlot as slot">
     <div class="cook-banner">
       <div class="cook-banner-info">
-        <span class="cook-meal-lbl">{{ MEAL_LABELS[slot.meal] }}</span>
+        <span class="cook-meal-lbl">{{ dayName(slot.date) }}, {{ dayDate(slot.date) }} · {{ MEAL_LABELS[slot.meal] }}</span>
         <span class="cook-recipe-name">{{ slot.recipe.name }}</span>
         <span class="cook-persons">{{ slot.persons }} Person{{ slot.persons !== 1 ? 'en' : '' }}</span>
       </div>

@@ -535,6 +535,7 @@ class AddRecipeToShoppingListView(APIView):
                     quantity_incomplete=qty is None,
                     unit=unit,
                     category=category,
+                    image_url=catalog_entry.image_url if catalog_entry else '',
                     suggestion=recipe.name,
                     list_type='manual',
                 )

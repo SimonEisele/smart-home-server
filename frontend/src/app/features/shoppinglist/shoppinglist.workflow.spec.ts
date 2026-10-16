@@ -51,6 +51,19 @@ describe('Shopping workflow', () => {
     ]);
     expect(page.manualGroups[0].items.length).toBe(1);
   });
+  it('inherits catalog pictures but respects explicitly removing or replacing them', () => {
+    page.ingredients = [{ id: 1, name: 'Pasta', category: 'getreide', subcategory: '', defaultUnit: 'g', imageUrl: 'https://example.com/pasta.jpg' }];
+    page.openAdd();
+    page.addName = 'Pasta';
+    page.applyCatalog();
+    expect(page.addImageUrl).toBe('https://example.com/pasta.jpg');
+    page.setArticleImage('');
+    page.applyCatalog();
+    expect(page.addImageUrl).toBe('');
+    page.setArticleImage('data:image/webp;base64,replacement');
+    page.applyCatalog();
+    expect(page.addImageUrl).toBe('data:image/webp;base64,replacement');
+  });
   it('never mixes units, retains zero and marks partially unknown sums', () => {
     page.items.push(
       { id: 'three', name: ' PASTA ', unit: 'g', checked: false },
