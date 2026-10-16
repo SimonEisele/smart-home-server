@@ -1,3 +1,4 @@
+import { ArticleImage } from '../../shared/article-image/article-image';
 import { DialogDirective } from '../../shared/directives/dialog.directive';
 import { RouterLink } from '@angular/router';
 import {
@@ -63,7 +64,7 @@ const CAT_MAP: Record<string, string> = Object.fromEntries(
 @Component({
   selector: 'app-shoppinglist',
   standalone: true,
-  imports: [DialogDirective, CommonModule, FormsModule, RouterLink],
+  imports: [DialogDirective, CommonModule, FormsModule, RouterLink, ArticleImage],
   templateUrl: './shoppinglist.html',
   styleUrl: './shoppinglist.css',
 })
@@ -88,6 +89,8 @@ export class Shoppinglist implements OnInit {
   addUnit = '';
   addCategory = '';
   addImageUrl = '';
+  imageProcessing = false;
+  imageChanged = false;
   addIncomplete = false;
   addSuggestions: Array<Partial<ShoppingItem>> = [];
   showRecipePicker = false;
@@ -360,6 +363,7 @@ export class Shoppinglist implements OnInit {
     this.addUnit = '';
     this.addCategory = '';
     this.addImageUrl = '';
+    this.imageChanged = false;
     this.addIncomplete = false;
     this.addSuggestions = [];
     this.suggestionRevision++;
@@ -369,7 +373,7 @@ export class Shoppinglist implements OnInit {
     this.error = '';
   }
   cancelAdd(): void {
-    if (this.busy) return;
+    if (this.busy || this.imageProcessing) return;
     this.showAddForm = false;
     this.editId = null;
     this.addSuggestions = [];
@@ -398,20 +402,27 @@ export class Shoppinglist implements OnInit {
     this.addUnit = s.unit ?? this.addUnit;
     this.addCategory = s.category ?? this.addCategory;
     this.addImageUrl = s.imageUrl ?? this.addImageUrl;
+    this.imageChanged = true;
     this.addSuggestions = [];
     this.suggestionRevision++;
+  }
+  setArticleImage(value: string): void {
+    this.addImageUrl = value;
+    this.imageChanged = true;
   }
   applyCatalog(): void {
     const entry = this.ingredients.find(
       (i) => i.name.toLowerCase() === this.addName.trim().toLowerCase(),
     );
+    if (!this.editId && !this.imageChanged) this.addImageUrl = entry?.imageUrl || '';
     if (entry) {
       if (!this.addUnit) this.addUnit = entry.defaultUnit || '';
       if (!this.addCategory) this.addCategory = CAT_MAP[entry.category] || entry.category;
+
     }
   }
   saveAdd(): void {
-    if (this.busy || !this.addName.trim()) return;
+    if (this.busy || this.imageProcessing || !this.addName.trim()) return;
     if (!this.validQuantity(this.addQty)) {
       this.fail('Bitte eine Menge ab 0 eingeben oder das Feld leer lassen.');
       return;
@@ -450,7 +461,7 @@ export class Shoppinglist implements OnInit {
       },
       error: () =>
         this.fail(
-          'Speichern fehlgeschlagen. Bitte Eingaben und Bild-URL prüfen und erneut versuchen.',
+          'Speichern fehlgeschlagen. Bitte Eingaben und Artikelbild prüfen und erneut versuchen.',
         ),
     });
   }

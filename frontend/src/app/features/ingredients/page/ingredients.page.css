@@ -494,3 +494,5 @@ fieldset {
   .field-grid { grid-template-columns: 1fr; }
   .identity { padding-right: 0; }
 }
+
+.ingredient-image { width:48px; height:48px; object-fit:contain; border-radius:8px; background:var(--color-surface-soft); }

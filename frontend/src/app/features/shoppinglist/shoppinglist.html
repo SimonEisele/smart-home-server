@@ -8,14 +8,9 @@
       (click)="toggleChecked(item)"
     >
       {{ item.checked ? '✓' : '' }}</button
-    ><img
-      *ngIf="item.imageUrl"
-      class="item-thumb"
-      [src]="item.imageUrl"
-      alt=""
-      (error)="item.imageUrl = ''"
-    />
+    >
     <div class="item-body">
+      <img *ngIf="item.imageUrl" class="item-thumb" [src]="item.imageUrl" alt="" loading="lazy" />
       <strong>{{ item.name }}</strong
       ><small
         >{{ sourceLabel(item) }}<span *ngIf="item.suggestion"> · {{ item.suggestion }}</span></small
@@ -245,21 +240,13 @@
         ><datalist id="shopping-categories">
           <option *ngFor="let category of categories" [value]="category"></option>
         </datalist>
-        <details>
-          <summary>Optionales Artikelbild</summary>
-          <label
-            >Bild-URL<input
-              name="image"
-              type="url"
-              [(ngModel)]="addImageUrl"
-              placeholder="https://…"
-          /></label>
-        </details>
+        <app-article-image [value]="addImageUrl" (valueChange)="setArticleImage($event)" [disabled]="busy"
+          (processingChange)="imageProcessing = $event"></app-article-image>
         <p class="error" role="alert" *ngIf="error">{{ error }}</p>
       </fieldset>
       <footer class="modal-footer">
         <button type="button" [disabled]="busy" (click)="cancelAdd()">Abbrechen</button
-        ><button type="submit" class="primary" [disabled]="busy || !addName.trim()">
+        ><button type="submit" class="primary" [disabled]="busy || imageProcessing || !addName.trim()">
           {{ busy ? 'Wird gespeichert…' : editId ? 'Änderungen speichern' : 'Hinzufügen' }}
         </button>
       </footer>

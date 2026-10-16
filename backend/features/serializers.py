@@ -5,6 +5,7 @@ from django.db.models import Q
 from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
+from .image_data import ArticleImageField
 from .models import (
     CalendarEvent,
     CleaningLog,
@@ -23,6 +24,7 @@ from .models import (
 
 
 class IngredientSerializer(serializers.ModelSerializer):
+    imageUrl = ArticleImageField(source='image_url', required=False, allow_blank=True)
     usageCount = serializers.IntegerField(source='usage_count', read_only=True, default=0)
 
     def create(self, validated_data):
@@ -59,7 +61,7 @@ class IngredientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ingredient
-        fields = ['id', 'name', 'category', 'subcategory', 'defaultUnit', 'archived', 'usageCount']
+        fields = ['id', 'name', 'category', 'subcategory', 'defaultUnit', 'imageUrl', 'archived', 'usageCount']
         extra_kwargs = {
             'subcategory': {'allow_blank': True, 'required': False, 'default': ''},
         }
@@ -376,7 +378,7 @@ class MenuSerializer(serializers.ModelSerializer):
 
 class ShoppingItemSerializer(serializers.ModelSerializer):
     quantityIncomplete = serializers.BooleanField(source='quantity_incomplete', required=False)
-    imageUrl = serializers.URLField(source='image_url', required=False, allow_blank=True)
+    imageUrl = ArticleImageField(source='image_url', required=False, allow_blank=True)
     globalItem = serializers.BooleanField(source='global_item', required=False)
     listType = serializers.ChoiceField(choices=['manual', 'menuplan'], source='list_type', required=False)
     weekTag = serializers.CharField(source='week_tag', required=False, allow_blank=True)

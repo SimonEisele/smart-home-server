@@ -591,7 +591,8 @@ details summary {
 }
 @media (max-width: 760px) {
   .item-thumb {
-    display: none;
+    width: 32px;
+    height: 32px;
   }
 }
 
@@ -606,3 +607,8 @@ details summary {
   min-height: 18px;
   accent-color: var(--color-accent);
 }
+
+.item-body:has(.item-thumb) { display:grid; grid-template-columns:40px minmax(0,1fr); column-gap:10px; }
+.item-body .item-thumb { grid-column:1; grid-row:1 / 3; }
+.item-body:has(.item-thumb) > :is(strong,small) { grid-column:2; }
+@media(max-width:760px) { .item-body:has(.item-thumb) { grid-template-columns:32px minmax(0,1fr); column-gap:8px; } }

@@ -102,7 +102,7 @@ def build_export(household, payload):
             key = (name.casefold(), unit.casefold())
             if key not in aggregate:
                 entry = catalog.get(name.casefold())
-                aggregate[key] = {'name':name,'unit':unit,'quantity':qty,'category':categories.get(entry.category,entry.category) if entry else 'Sonstiges','sources':[recipe.name],'quantityIncomplete':qty is None}
+                aggregate[key] = {'name':name,'unit':unit,'quantity':qty,'category':categories.get(entry.category,entry.category) if entry else 'Sonstiges','imageUrl':entry.image_url if entry else '', 'sources':[recipe.name],'quantityIncomplete':qty is None}
             else:
                 entry=aggregate[key]
                 entry['quantityIncomplete'] |= qty is None
@@ -130,6 +130,8 @@ def commit_export(household, plan, replace):
             item=by_key.get((row['name'].casefold(),row['unit'].casefold()))
             if item is None: item=ShoppingItem(household=household,list_type='menuplan',week_tag=plan['weekTag'])
             elif item.quantity != row['quantity'] or item.quantity_incomplete != row['quantityIncomplete']: item.checked=False
+            if not item.image_url:
+                item.image_url = row.get('imageUrl', '')
             item.quantity_incomplete=row['quantityIncomplete'];item.name=row['name'];item.quantity=row['quantity'];item.unit=row['unit'];item.category=row['category'];item.suggestion=' | '.join(row['sources']) + (' · Menge im Rezept prüfen' if row['quantityIncomplete'] else '');item.save();saved.append(item)
         if replace:
             ShoppingItem.objects.filter(household=household,list_type='menuplan',week_tag=plan['weekTag']).exclude(id__in=[i.id for i in saved]).delete()
