@@ -100,21 +100,21 @@
   <div class="shopping-layout" *ngIf="!loading && !loadFailed">
     <main class="shopping-main">
       <ng-container *ngIf="activeTab !== 'menuplan'"
-        ><section class="category-card" *ngFor="let group of allGroups">
+        ><section class="category-card" *ngFor="let group of allGroups; trackBy: trackCategory">
           <h2>
             {{ group.category }} <span>{{ group.items.length }}</span>
           </h2>
-          <ng-container *ngFor="let item of group.items"
+          <ng-container *ngFor="let item of group.items; trackBy: trackItem"
             ><ng-container *ngTemplateOutlet="itemRow; context: { item: item }"></ng-container
           ></ng-container></section></ng-container
       ><ng-container *ngIf="activeTab === 'menuplan'"
-        ><section class="week-group" *ngFor="let week of menuplanGroups">
+        ><section class="week-group" *ngFor="let week of menuplanGroups; trackBy: trackWeek">
           <h2 class="week-title">{{ week.weekLabel }}</h2>
-          <section class="category-card" *ngFor="let group of week.groups">
+          <section class="category-card" *ngFor="let group of week.groups; trackBy: trackCategory">
             <h3>
               {{ group.category }} <span>{{ group.items.length }}</span>
             </h3>
-            <ng-container *ngFor="let item of group.items"
+            <ng-container *ngFor="let item of group.items; trackBy: trackItem"
               ><ng-container *ngTemplateOutlet="itemRow; context: { item: item }"></ng-container
             ></ng-container>
           </section></section
@@ -139,7 +139,7 @@
             Abgehakte entfernen
           </button>
         </div>
-        <ng-container *ngFor="let item of checkedItems"
+        <ng-container *ngFor="let item of checkedItems; trackBy: trackItem"
           ><ng-container *ngTemplateOutlet="itemRow; context: { item: item }"></ng-container
         ></ng-container>
       </details>
@@ -151,7 +151,7 @@
         Gleiche Artikel mit gleicher Einheit werden hier addiert. Die einzelnen Artikel kannst du
         weiterhin getrennt abhaken.
       </p>
-      <div class="summary-row" *ngFor="let row of purchaseSummary">
+      <div class="summary-row" *ngFor="let row of purchaseSummary; trackBy: trackSummary">
         <div>
           <strong>{{ row.name }}</strong
           ><small *ngIf="row.count > 1">{{ row.count }} Einträge</small>

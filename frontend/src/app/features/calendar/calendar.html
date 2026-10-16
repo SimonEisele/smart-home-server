@@ -58,7 +58,7 @@
   </section>
 
   } @else {
-  <section class="agenda-view" aria-label="Wochenagenda">
+  <section *ngIf="isMobile" class="agenda-view" aria-label="Wochenagenda">
     <div class="agenda-tasks" *ngIf="openTodos.length">
       <h2>Aufgaben einplanen</h2>
       <div *ngFor="let todo of openTodos" class="agenda-task"><span>{{ todo.title }}</span><button (click)="openSplitDirect(todo, $event)">Einplanen</button></div>
@@ -67,13 +67,13 @@
       <header><h2>{{ day.dayName }} <span>{{ day.dayNum }}.</span> <small *ngIf="day.isToday">Heute</small></h2><button (click)="openNewEvent(day.dateStr)" [attr.aria-label]="'Termin am ' + day.dateStr + ' hinzufügen'">+ Termin</button></header>
       <button *ngFor="let event of allDayEventsForDay(day.dateStr)" class="agenda-event" (click)="onEvClick(event, $event)"><span>Ganztägig</span><strong>{{ event.title }}</strong></button>
       <button *ngFor="let event of eventsForDay(day.dateStr)" class="agenda-event" (click)="onEvClick(event, $event)"><span>{{ event.start | date:'HH:mm' }}<small>{{ event.end | date:'HH:mm' }}</small></span><strong>{{ event.title }}<small *ngIf="event.location">{{ event.location }}</small></strong></button>
-      <a *ngFor="let cleaning of cleaningEventsForDay(day.dateStr)" class="agenda-cleaning" routerLink="/cleaning">Reinigung: {{ cleaning.task.name }}</a>
+      <a *ngFor="let cleaning of cleaningEventsForDay(day.dateStr); trackBy: trackCleaning" class="agenda-cleaning" routerLink="/cleaning">Reinigung: {{ cleaning.task.name }}</a>
       <p class="agenda-empty" *ngIf="!eventsForDay(day.dateStr).length && !allDayEventsForDay(day.dateStr).length && !cleaningEventsForDay(day.dateStr).length">Noch keine Termine.</p>
     </article>
   </section>
 
   <!-- ── Main layout: sidebar + week grid ────────────────────────────────── -->
-  <div class="cal-main">
+  <div *ngIf="!isMobile" class="cal-main">
 
     <!-- Todo sidebar -->
     <aside class="todo-sidebar" [class.sidebar-drop-target]="sidebarDragOver || (touchOverSidebar && !!touchDragEvent?.todoRefId)" (dragover)="onSidebarDragover($event)" (dragleave)="onSidebarDragleave($event)" (drop)="onSidebarDrop($event)">
