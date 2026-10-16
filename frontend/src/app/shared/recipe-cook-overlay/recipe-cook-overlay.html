@@ -1,5 +1,5 @@
 <div class="cooking-backdrop" *ngIf="slot && activeTab === 'full' ? slot : null as active" (click)="onBackdropClick($event)">
-  <section class="cooking-dialog" appDialog aria-label="Kochen" (dialogDismiss)="close()">
+  <section class="cooking-dialog" appDialog [dialogFocusInput]="focusCookInput" aria-label="Kochen" (dialogDismiss)="close()">
     <header class="cooking-header">
       <div>
         <span class="eyebrow"
@@ -21,6 +21,7 @@
         ✕
       </button>
     </header>
+    <div class="cooking-content">
     <div class="cooking-settings">
       <div class="amount-control" *ngIf="directRecipe">
         <label for="cook-servings">Gewünschte {{ servingLabel }}</label>
@@ -195,6 +196,7 @@
         >
       </section>
     </div>
+    </div><!-- .cooking-content -->
     <footer class="cooking-footer">
 <ng-container *ngIf="activeTab === 'full'">
       <div>

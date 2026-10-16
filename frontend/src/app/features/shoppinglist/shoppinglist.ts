@@ -101,11 +101,13 @@ export class Shoppinglist implements OnInit {
   editId: string | null = null;
   private suggestionRevision = 0;
   showCatalogSuggestions = false;
+  articleEntryMode: 'catalog' | 'free' = 'catalog';
+  selectedCatalogIngredient: Ingredient | null = null;
   readonly focusArticleInput = !window.matchMedia?.('(pointer: coarse)').matches;
 
   get catalogSuggestions(): Ingredient[] {
     const query = this.addName.trim().toLocaleLowerCase('de');
-    if (!this.showCatalogSuggestions || query.length < 2) return [];
+    if (this.articleEntryMode !== 'catalog' || !this.showCatalogSuggestions) return [];
     const matches: Ingredient[] = [];
     for (const ingredient of this.ingredients) {
       if (ingredient.name.toLocaleLowerCase('de').includes(query)) matches.push(ingredient);
@@ -114,9 +116,21 @@ export class Shoppinglist implements OnInit {
     return matches;
   }
 
+  setArticleEntryMode(mode: 'catalog' | 'free'): void {
+    this.articleEntryMode = mode;
+    this.selectedCatalogIngredient = null;
+    this.showCatalogSuggestions = mode === 'catalog';
+    this.addSuggestions = [];
+    this.suggestionRevision++;
+  }
+
   selectCatalogIngredient(ingredient: Ingredient): void {
+    this.articleEntryMode = 'catalog';
+    this.selectedCatalogIngredient = ingredient;
     this.addName = ingredient.name;
-    this.applyCatalog();
+    this.addUnit = ingredient.defaultUnit || '';
+    this.addCategory = CAT_MAP[ingredient.category] || ingredient.category;
+    if (!this.imageChanged) this.addImageUrl = ingredient.imageUrl || '';
     this.showCatalogSuggestions = false;
     this.addSuggestions = [];
     this.suggestionRevision++;
@@ -396,7 +410,9 @@ export class Shoppinglist implements OnInit {
     this.imageChanged = false;
     this.addIncomplete = false;
     this.addSuggestions = [];
-    this.showCatalogSuggestions = false;
+    this.showCatalogSuggestions = true;
+    this.articleEntryMode = 'catalog';
+    this.selectedCatalogIngredient = null;
     this.suggestionRevision++;
     this.showAddForm = true;
     this.showRecipePicker = false;
@@ -411,7 +427,14 @@ export class Shoppinglist implements OnInit {
     this.suggestionRevision++;
   }
   onAddNameInput(): void {
-    this.showCatalogSuggestions = true;
+    const selected = this.selectedCatalogIngredient;
+    if (selected && this.addName !== selected.name) {
+      if (this.addUnit === selected.defaultUnit) this.addUnit = '';
+      if (this.addCategory === (CAT_MAP[selected.category] || selected.category)) this.addCategory = '';
+      if (!this.imageChanged) this.addImageUrl = '';
+      this.selectedCatalogIngredient = null;
+    }
+    this.showCatalogSuggestions = this.articleEntryMode === 'catalog';
     const revision = ++this.suggestionRevision,
       q = this.addName.trim();
     this.addSuggestions = [];
@@ -444,6 +467,7 @@ export class Shoppinglist implements OnInit {
     this.imageChanged = true;
   }
   applyCatalog(): void {
+    if (this.articleEntryMode === 'free') return;
     const entry = this.ingredients.find(
       (i) => i.name.toLowerCase() === this.addName.trim().toLowerCase(),
     );

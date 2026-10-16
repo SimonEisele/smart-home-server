@@ -181,7 +181,15 @@
       <button aria-label="Schließen" [disabled]="busy" (click)="cancelAdd()">×</button>
     </header>
     <form (ngSubmit)="saveAdd()">
+      <div class="article-form-scroll">
       <fieldset [disabled]="busy" class="modal-body">
+        <div class="article-entry-modes" role="group" aria-label="Artikel erfassen">
+          <button type="button" [class.active]="articleEntryMode === 'catalog'"
+            [attr.aria-pressed]="articleEntryMode === 'catalog'" (click)="setArticleEntryMode('catalog')">Zutat auswählen</button>
+          <button type="button" [class.active]="articleEntryMode === 'free'"
+            [attr.aria-pressed]="articleEntryMode === 'free'" (click)="setArticleEntryMode('free')">Freier Artikel</button>
+        </div>
+        <p class="article-entry-hint">{{ articleEntryMode === 'catalog' ? 'Suche eine erfasste Zutat oder wähle einen Vorschlag. Menge und Einheit kannst du anpassen.' : 'Gib einen beliebigen Artikelnamen ein. Ein Katalogeintrag ist nicht erforderlich.' }}</p>
         <label
           >Artikelname<input
             name="article"
@@ -191,14 +199,19 @@
             required
             maxlength="200"
             autocomplete="off"
-            placeholder="Zum Beispiel Milch" /></label
+            [placeholder]="articleEntryMode === 'catalog' ? 'Zutat suchen…' : 'Zum Beispiel Abfallsäcke'" /></label
         >
-        <div class="suggestions" *ngIf="catalogSuggestions.length" aria-label="Zutatenvorschläge">
-          <span>Aus dem Zutatenkatalog</span>
+        <p class="catalog-selection" *ngIf="selectedCatalogIngredient" role="status">✓ {{ selectedCatalogIngredient.name }} aus dem Zutatenkatalog übernommen</p>
+        <div class="suggestions catalog-suggestions" *ngIf="catalogSuggestions.length" aria-label="Zutatenvorschläge">
+          <span>Aus dem Zutatenkatalog · bis zu 8 Treffer</span>
           <button type="button" *ngFor="let ingredient of catalogSuggestions"
             (click)="selectCatalogIngredient(ingredient)">
             {{ ingredient.name }} <small>{{ ingredient.defaultUnit }}</small>
           </button>
+        </div>
+        <div class="catalog-empty" *ngIf="articleEntryMode === 'catalog' && showCatalogSuggestions && !catalogSuggestions.length">
+          Keine passende Zutat gefunden.
+          <button type="button" (click)="setArticleEntryMode('free')">Als freien Artikel erfassen</button>
         </div>
         <div class="suggestions" *ngIf="addSuggestions.length">
           <span>Schon einmal eingekauft</span
@@ -249,6 +262,7 @@
           (processingChange)="imageProcessing = $event"></app-article-image>
         <p class="error" role="alert" *ngIf="error">{{ error }}</p>
       </fieldset>
+      </div>
       <footer class="modal-footer">
         <button type="button" [disabled]="busy" (click)="cancelAdd()">Abbrechen</button
         ><button type="submit" class="primary" [disabled]="busy || imageProcessing || !addName.trim()">
