@@ -100,6 +100,27 @@ export class Shoppinglist implements OnInit {
   pickerServings = 2;
   editId: string | null = null;
   private suggestionRevision = 0;
+  showCatalogSuggestions = false;
+  readonly focusArticleInput = !window.matchMedia?.('(pointer: coarse)').matches;
+
+  get catalogSuggestions(): Ingredient[] {
+    const query = this.addName.trim().toLocaleLowerCase('de');
+    if (!this.showCatalogSuggestions || query.length < 2) return [];
+    const matches: Ingredient[] = [];
+    for (const ingredient of this.ingredients) {
+      if (ingredient.name.toLocaleLowerCase('de').includes(query)) matches.push(ingredient);
+      if (matches.length === 8) break;
+    }
+    return matches;
+  }
+
+  selectCatalogIngredient(ingredient: Ingredient): void {
+    this.addName = ingredient.name;
+    this.applyCatalog();
+    this.showCatalogSuggestions = false;
+    this.addSuggestions = [];
+    this.suggestionRevision++;
+  }
 
   constructor(
     private service: ShoppinglistService,
@@ -375,6 +396,7 @@ export class Shoppinglist implements OnInit {
     this.imageChanged = false;
     this.addIncomplete = false;
     this.addSuggestions = [];
+    this.showCatalogSuggestions = false;
     this.suggestionRevision++;
     this.showAddForm = true;
     this.showRecipePicker = false;
@@ -389,6 +411,7 @@ export class Shoppinglist implements OnInit {
     this.suggestionRevision++;
   }
   onAddNameInput(): void {
+    this.showCatalogSuggestions = true;
     const revision = ++this.suggestionRevision,
       q = this.addName.trim();
     this.addSuggestions = [];
@@ -407,6 +430,7 @@ export class Shoppinglist implements OnInit {
       });
   }
   applySuggestion(s: Partial<ShoppingItem>): void {
+    this.showCatalogSuggestions = false;
     this.addName = s.name ?? this.addName;
     this.addUnit = s.unit ?? this.addUnit;
     this.addCategory = s.category ?? this.addCategory;

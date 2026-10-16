@@ -1,9 +1,10 @@
-import { AfterViewInit, Directive, ElementRef, EventEmitter, HostListener, OnDestroy, Output, inject } from '@angular/core';
+import { AfterViewInit, Directive, ElementRef, EventEmitter, HostListener, Input, OnDestroy, Output, inject } from '@angular/core';
 import { FocusTrap, FocusTrapFactory } from '@angular/cdk/a11y';
 
 /** One keyboard and focus contract for every dialog, including popovers. */
 @Directive({ selector: '[appDialog]', standalone: true, host: { role: 'dialog', 'aria-modal': 'true', tabindex: '-1' } })
 export class DialogDirective implements AfterViewInit, OnDestroy {
+  @Input() dialogFocusInput = true;
   @Output() dialogDismiss = new EventEmitter<void>();
   private readonly element: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly factory = inject(FocusTrapFactory);
@@ -30,7 +31,7 @@ export class DialogDirective implements AfterViewInit, OnDestroy {
     this.trap = this.factory.create(this.element.nativeElement);
     // Prefer the editable field to avoid putting initial focus on a destructive action.
     const field = this.element.nativeElement.querySelector<HTMLElement>('input:not([type=checkbox]):not([type=radio]):not([disabled]),textarea:not([disabled]),select:not([disabled])');
-    (field ?? this.element.nativeElement).focus();
+    (this.dialogFocusInput && field ? field : this.element.nativeElement).focus({ preventScroll: true });
   }
 
   @HostListener('keydown.escape', ['$event'])

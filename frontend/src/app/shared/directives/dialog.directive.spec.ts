@@ -3,10 +3,21 @@ import { CommonModule } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { DialogDirective } from './dialog.directive';
 
-@Component({ standalone:true, imports:[CommonModule, DialogDirective], template:`<button (click)="open = true">Öffnen</button><div *ngIf="open" appDialog (dialogDismiss)="open = false" aria-label="Testdialog"><label>Name</label><input/><button>Speichern</button></div>` })
-class Host { open = false; }
+@Component({ standalone:true, imports:[CommonModule, DialogDirective], template:`<button (click)="open = true">Öffnen</button><div *ngIf="open" appDialog [dialogFocusInput]="focusInput" (dialogDismiss)="open = false" aria-label="Testdialog"><label>Name</label><input/><button>Speichern</button></div>` })
+class Host { open = false; focusInput = true; }
 
 describe('Shared dialog keyboard behavior', () => {
+  it('can focus the dialog without activating its input keyboard', async () => {
+    const fixture = TestBed.createComponent(Host);
+    fixture.componentInstance.focusInput = false;
+    await fixture.whenStable();
+    document.body.appendChild(fixture.nativeElement);
+    fixture.nativeElement.querySelector('button').click();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[role=dialog]'));
+    expect(document.activeElement).not.toBe(fixture.nativeElement.querySelector('input'));
+    fixture.destroy();
+  });
   it('focuses the field, labels it, and restores the opener after Escape', async () => {
     const fixture = TestBed.createComponent(Host); await fixture.whenStable();
     const opener = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
