@@ -8,7 +8,7 @@
  --ui-radius:14px;
 }
 * { box-sizing:border-box; scrollbar-width:thin; scrollbar-color:#526470 transparent; }
-html { color-scheme:dark; }
+html { color-scheme:dark; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 html,body { margin:0; min-height:100%; background:var(--color-bg-start); color:var(--color-text); }
 body { font-family:Inter,"Segoe UI",system-ui,sans-serif; line-height:1.5; }
 app-root,router-outlet + * { display:block; }
@@ -53,6 +53,15 @@ body .widget-entry[class] { display:flex; align-items:center; gap:12px; width:10
 .field-error,.form-error { color:#ffaaa6; }
 .error-notice { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:10000; width:min(560px,calc(100vw - 32px)); display:flex; align-items:center; gap:12px; padding:16px; background:#382922; border:1px solid #775146; border-radius:12px; color:#ffc0a4; box-shadow:0 8px 32px #193d3520; }.error-notice button { margin-left:auto; min-width:36px; min-height:36px; border:0; background:transparent; color:inherit; }
 @media(pointer:coarse) { button { min-height:44px; } }
+/* iOS zooms focused controls below 16px. Cover component styles and popovers
+   without disabling the user's pinch zoom. */
+@media(max-width:899px), (pointer:coarse) {
+  body :is(input,select,textarea) {
+    font-size:max(16px,1em) !important;
+    min-width:0;
+    max-width:100%;
+  }
+}
 @media(max-width:899px) { main.signed-in { margin-left:0; padding-bottom:calc(64px + env(safe-area-inset-bottom)); } main .app-page.app-page { padding:22px 16px; } .error-notice { bottom:80px; } }
 @media(max-width:699px) { body :is(.modal-panel,.picker-panel,.cook-panel)[class] { max-width:calc(100vw - 24px); max-height:calc(100dvh - 24px); border-radius:14px; } body :is(.modal-header,.modal-head,.modal-body,.modal-footer,.modal-foot,.cook-panel-body,.cook-panel-header,.cook-panel-footer)[class] { padding:16px; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
