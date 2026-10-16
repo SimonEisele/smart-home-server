@@ -30,10 +30,9 @@ npm ci
 npm run build
 
 echo "=== Angular Dateien kopieren ==="
-sudo mkdir -p /var/www/smarthome/browser
-sudo cp -a "$FRONTEND/dist/frontend/browser/." /var/www/smarthome/browser/
+cp -a "$FRONTEND/dist/frontend/browser/." /var/www/smarthome/browser/
 
 echo "=== Django neustarten ==="
-sudo systemctl restart smarthome.service
+sudo -n /usr/bin/systemctl restart smarthome.service
 
 echo "=== Deploy erfolgreich ==="
