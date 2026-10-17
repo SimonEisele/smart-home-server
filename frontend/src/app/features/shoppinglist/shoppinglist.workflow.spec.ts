@@ -47,7 +47,7 @@ describe('Shopping workflow', () => {
   it('limits catalog suggestions and preserves ingredient selection without a native datalist', () => {
     page.ingredients = Array.from({ length: 5000 }, (_, i) => ({ id: i, name: `Milch ${i}`, category: 'milch', subcategory: '', defaultUnit: 'l', imageUrl: 'https://example.com/milk.jpg' }));
     page.openAdd();
-    expect(page.catalogSuggestions).toEqual([]);
+    expect(page.catalogSuggestions).toHaveLength(8);
     page.addName = 'Milch';
     page.showCatalogSuggestions = true;
     expect(page.catalogSuggestions).toHaveLength(8);
@@ -57,6 +57,24 @@ describe('Shopping workflow', () => {
     expect(page.addCategory).toBe('Milchprodukte');
     expect(page.addImageUrl).toBe('https://example.com/milk.jpg');
     expect(page.catalogSuggestions).toEqual([]);
+  });
+  it('replaces catalog metadata when choosing a different ingredient and permits free text', () => {
+    const milk = { id: 1, name: 'Milch', category: 'milch', defaultUnit: 'l', subcategory: '', imageUrl: 'https://example.com/milk.jpg' };
+    const flour = { id: 2, name: 'Mehl', category: 'getreide', defaultUnit: 'g', subcategory: '', imageUrl: '' };
+    page.ingredients = [milk, flour];
+    page.openAdd();
+    page.selectCatalogIngredient(milk);
+    page.setArticleEntryMode('catalog');
+    page.selectCatalogIngredient(flour);
+    expect(page.addUnit).toBe('g');
+    expect(page.addCategory).toBe('Getreide & Backwaren');
+    expect(page.addImageUrl).toBe('');
+    page.setArticleEntryMode('free');
+    page.addName = 'Mein eigener Artikel';
+    page.addUnit = 'Packung';
+    service.createItem.mockReturnValue(of({ id: 'free', name: page.addName, checked: false }));
+    page.saveAdd();
+    expect(service.createItem).toHaveBeenCalledWith(expect.objectContaining({ name: 'Mein eigener Artikel', unit: 'Packung' }));
   });
   it('keeps sources separate but shows combined purchase quantities', () => {
     expect(page.allGroups[0].items.map((i) => i.id)).toEqual(['one', 'two']);

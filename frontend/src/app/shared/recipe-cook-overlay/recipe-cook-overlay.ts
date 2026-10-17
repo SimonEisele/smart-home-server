@@ -28,6 +28,7 @@ export class RecipeCookOverlay implements OnInit {
   @ViewChild('cookingBody') body?: ElementRef<HTMLElement>;
   @ViewChild('stepLaunch') stepLaunch?: ElementRef<HTMLButtonElement>;
   @ViewChild('preparation') preparation?: ElementRef<HTMLElement>;
+  readonly focusCookInput = !window.matchMedia?.('(pointer: coarse)').matches;
   private revision = 0;
   private exported = new Set<string>();
   slot: CookSlot | null = null;
