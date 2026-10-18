@@ -4,7 +4,6 @@ import { filter } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LoginPopover } from '../../popovers/login-popover/login-popover';
 import { AuthService } from '../auth/service/auth.service';
 import { Observable } from 'rxjs';
 import { User, Household } from '../auth/model/auth.model';
@@ -20,7 +19,7 @@ const ARROW_WIDTH = 20;
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [ CommonModule, FormsModule, RouterLink, RouterLinkActive, LoginPopover, AccountPopover ],
+  imports: [ CommonModule, FormsModule, RouterLink, RouterLinkActive, AccountPopover ],
   templateUrl: './navbar.html',
   styleUrls: ['./navbar.css']
 })

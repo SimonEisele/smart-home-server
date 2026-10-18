@@ -1,27 +1,69 @@
-<div class="account-popover-panel" aria-label="Konto" appDialog (dialogDismiss)="closePopover()">
-  <div class="popover-arrow" [style.left.px]="arrowLeft"></div>
+<div class="account-popover-panel" aria-label="Dein Konto" appDialog (dialogDismiss)="closePopover()">
+    <div class="popover-arrow" [style.left.px]="arrowLeft" aria-hidden="true"></div>
+    <header class="popover-heading">
+        <div>
+            <span class="eyebrow">Zuhause</span>
+            <h2>Dein Konto</h2>
+        </div>
+        <button type="button" class="close-button" (click)="closePopover()" aria-label="Schliessen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m6 6 12 12M18 6 6 18" />
+            </svg>
+        </button>
+    </header>
+    <div class="popover-content">
+        <section class="profile-card" *ngIf="user$ | async as user">
+            <div class="avatar" aria-hidden="true">
+                {{ (user.first_name || user.email || '?').slice(0, 1) | uppercase }}
+            </div>
 
-  <div class="popover-heading"><strong>Dein Konto</strong><button (click)="closePopover()" aria-label="Schliessen">×</button></div>
-  <!-- Header -->
-  <div class="account-header">
-    <div class="user-info" *ngIf="user$ | async as user">
-      <strong>{{ user.first_name }} {{ user.last_name }}</strong><br>
-      <small>{{ user.email }}</small>
+            <div class="profile-details">
+                <strong class="profile-name">
+                    {{ user.first_name }} {{ user.last_name }}
+                </strong>
+                <span class="profile-email">{{ user.email }}</span>
+                <span class="profile-status">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    Angemeldet
+                </span>
+            </div>
+        </section>
+
+        <section class="household-card" *ngIf="activeHousehold$ | async as hh">
+            <div class="household-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" />
+                    <path d="M9 21v-8h6v8" />
+                </svg>
+            </div>
+
+            <div class="household-details">
+                <span class="section-label">Aktive Wohngemeinschaft</span>
+                <strong>{{ hh.name }}</strong>
+            </div>
+        </section>
+
+        <a routerLink="/account" class="manage-link" (click)="closePopover()">
+            <div class="manage-copy">
+                <strong>Konto &amp; WG verwalten</strong>
+            </div>
+
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true">
+                <path d="m9 5 7 7-7 7" />
+            </svg>
+        </a>
     </div>
-    <div class="wg-info" *ngIf="activeHousehold$ | async as hh">
-      <small class="wg-label">WG: <strong>{{ hh.name }}</strong></small>
-    </div>
-  </div>
 
-  <hr>
-
-  <!-- Actions -->
-  <div class="account-actions">
-    <a routerLink="/account" class="btn btn-secondary" (click)="closePopover()">WG &amp; Konto</a>
-  </div>
-
-  <hr>
-
-  <!-- Footer -->
-  <button class="btn btn-primary w-100" (click)="logout()">Abmelden</button>
+    <footer class="popover-footer">
+        <button type="button" class="logout-button" (click)="logout()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M9 12h12m-4-4 4 4-4 4" />
+            </svg>
+            Abmelden
+        </button>
+    </footer>
 </div>

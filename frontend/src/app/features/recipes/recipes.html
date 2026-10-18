@@ -1,544 +1,338 @@
 <div class="recipes-page app-page">
-  <header class="recipes-header">
-    <div>
-      <span class="eyebrow">Küche · Rezeptsammlung</span>
-      <h1>Rezepte</h1>
-      <p>Von der Idee bis zum fertigen Essen.</p>
+    <header class="recipes-header">
+        <div>
+            <h2>Rezepte</h2>
+        </div>
+        <button class="btn-primary" type="button" (click)="openAdd()">+ Neues Rezept</button>
+    </header>
+    <div class="recipe-filters">
+        <label>Rezept suchen<input aria-label="Rezept suchen" type="search" [(ngModel)]="search"
+                placeholder="Name oder Zutat" /></label><label>Kategorie<select aria-label="Rezeptkategorie filtern"
+                [(ngModel)]="categoryFilter">
+                <option value="">Alle Kategorien</option>
+                <option *ngFor="let cat of recipeCategories" [value]="cat.value">{{ cat.label }}</option>
+            </select></label><label>Sortierung<select aria-label="Rezepte sortieren" [(ngModel)]="sort">
+                <option value="name">Name A–Z</option>
+                <option value="recent">Zuletzt bearbeitet</option>
+                <option value="duration">Kürzeste Dauer</option>
+            </select></label>
     </div>
-    <button class="btn-primary" type="button" (click)="openAdd()">+ Neues Rezept</button>
-  </header>
-  <div class="recipe-filters">
-    <label
-      >Rezept suchen<input
-        aria-label="Rezept suchen"
-        type="search"
-        [(ngModel)]="search"
-        placeholder="Name oder Zutat" /></label
-    ><label
-      >Kategorie<select aria-label="Rezeptkategorie filtern" [(ngModel)]="categoryFilter">
-        <option value="">Alle Kategorien</option>
-        <option *ngFor="let cat of recipeCategories" [value]="cat.value">{{ cat.label }}</option>
-      </select></label
-    ><label
-      >Sortierung<select aria-label="Rezepte sortieren" [(ngModel)]="sort">
-        <option value="name">Name A–Z</option>
-        <option value="recent">Zuletzt bearbeitet</option>
-        <option value="duration">Kürzeste Dauer</option>
-      </select></label
-    >
-  </div>
-  <div class="form-feedback" role="alert" *ngIf="loadError">
-    {{ loadError }} <button type="button" (click)="loadData()">Erneut laden</button>
-  </div>
-  <p class="state" role="status" *ngIf="loading">Rezepte werden geladen…</p>
-  <div class="list-caption" *ngIf="!loading && !loadError">
-    {{ filtered.length }} {{ filtered.length === 1 ? 'Rezept' : 'Rezepte'
-    }}<span>Alle Mengen beziehen sich auf die Basisportionen.</span>
-  </div>
-  <div class="recipes-grid" *ngIf="!loading && !loadError">
-    <article class="recipe-card" *ngFor="let recipe of filtered; trackBy: trackByRecipe">
-      <div class="card-top">
-        <span class="category-label">{{ categoryLabel(recipe.category) }}</span
-        ><span class="duration-badge" *ngIf="recipe.durationMinutes != null">{{
-          formatDuration(recipe.durationMinutes)
-        }}</span>
-      </div>
-      <h2>{{ recipe.name }}</h2>
-      <p class="card-desc">{{ recipe.description || 'Noch keine Kurzbeschreibung.' }}</p>
-      <div class="card-meta">
-        <span>{{ recipe.ingredients.length }} Zutaten</span
-        ><span>{{ recipe.steps.length }} Schritte</span
-        ><span>{{ recipe.baseServings || 4 }} {{ recipe.servingType || 'Portionen' }}</span>
-      </div>
-      <div class="card-footer">
-        <button
-          type="button"
-          class="btn-ghost"
-          (click)="openEdit(recipe)"
-          [attr.aria-label]="recipe.name + ' bearbeiten'"
-        >
-          Bearbeiten</button
-        ><button
-          type="button"
-          class="btn-primary"
-          (click)="startCooking(recipe)"
-          [attr.aria-label]="recipe.name + ' ansehen und kochen'"
-        >
-          Ansehen &amp; kochen →
+    <div class="form-feedback" role="alert" *ngIf="loadError">
+        {{ loadError }} <button type="button" (click)="loadData()">Erneut laden</button>
+    </div>
+    <p class="state" role="status" *ngIf="loading">Rezepte werden geladen…</p>
+    <div class="list-caption" *ngIf="!loading && !loadError">
+        {{ filtered.length }} {{ filtered.length === 1 ? 'Rezept' : 'Rezepte'
+        }}
+    </div>
+    <div class="recipes-grid" *ngIf="!loading && !loadError">
+        <article class="recipe-card" *ngFor="let recipe of filtered; trackBy: trackByRecipe">
+            <div class="card-top">
+                <span class="category-label">{{ categoryLabel(recipe.category) }}</span><span class="duration-badge"
+                    *ngIf="recipe.durationMinutes != null">{{
+                    formatDuration(recipe.durationMinutes)
+                    }}</span>
+            </div>
+            <h2>{{ recipe.name }}</h2>
+            <p class="card-desc">{{ recipe.description || 'Noch keine Kurzbeschreibung.' }}</p>
+            <div class="card-meta">
+                <span>{{ recipe.ingredients.length }} Zutaten</span><span>{{ recipe.steps.length }}
+                    Schritte</span><span>{{ recipe.baseServings || 4 }} {{ recipe.servingType || 'Portionen' }}</span>
+            </div>
+            <div class="card-footer">
+                <button type="button" class="btn-ghost" (click)="openEdit(recipe)"
+                    [attr.aria-label]="recipe.name + ' bearbeiten'">
+                    Bearbeiten</button><button type="button" class="btn-primary" (click)="startCooking(recipe)"
+                    [attr.aria-label]="recipe.name + ' ansehen und kochen'">
+                    Ansehen &amp; kochen →
+                </button>
+            </div>
+        </article>
+    </div>
+    <div class="state" *ngIf="!loading && !loadError && !filtered.length">
+        <h2>{{ recipes.length ? 'Keine passenden Rezepte' : 'Was möchtest du kochen?' }}</h2>
+        <p>
+            {{
+            recipes.length
+            ? 'Passe die Suche oder Kategorie an.'
+            : 'Lege dein erstes Rezept mit Zutaten und Zubereitungsschritten an.'
+            }}
+        </p>
+        <button type="button" class="btn-ghost" (click)="resetFilters()" *ngIf="recipes.length">
+            Filter zurücksetzen
         </button>
-      </div>
-    </article>
-  </div>
-  <div class="state" *ngIf="!loading && !loadError && !filtered.length">
-    <h2>{{ recipes.length ? 'Keine passenden Rezepte' : 'Was möchtest du kochen?' }}</h2>
-    <p>
-      {{
-        recipes.length
-          ? 'Passe die Suche oder Kategorie an.'
-          : 'Lege dein erstes Rezept mit Zutaten und Zubereitungsschritten an.'
-      }}
-    </p>
-    <button type="button" class="btn-ghost" (click)="resetFilters()" *ngIf="recipes.length">
-      Filter zurücksetzen
-    </button>
-  </div>
+    </div>
 </div>
 <datalist id="ingredient-catalog">
-  <option *ngFor="let ing of ingredientCatalog" [value]="ing.name"></option>
+    <option *ngFor="let ing of ingredientCatalog" [value]="ing.name"></option>
 </datalist>
 <datalist id="recipe-units">
-  <option *ngFor="let unit of ingredientUnits" [value]="unit"></option>
+    <option *ngFor="let unit of ingredientUnits" [value]="unit"></option>
 </datalist>
 <div class="recipe-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
-  <section
-    class="recipe-editor"
-    appDialog
-    aria-label="Rezept bearbeiten"
-    (dialogDismiss)="closeModal()"
-  >
-    <header class="editor-header">
-      <div>
-        <span class="eyebrow">Rezeptsammlung</span>
-        <h2>
-          {{
-            showDeleteConfirm ? 'Rezept löschen?' : modalMode === 'add' ? 'Neues Rezept' : form.name
-          }}
-        </h2>
-      </div>
-      <button
-        class="btn-ghost"
-        type="button"
-        aria-label="Rezeptdialog schließen"
-        (click)="closeModal()"
-        [disabled]="saving || ingredientSaving"
-      >
-        ✕
-      </button>
-    </header>
-    <ng-container *ngIf="!showDeleteConfirm">
-      <nav class="editor-tabs" aria-label="Rezeptbereiche">
-        <button
-          type="button"
-          [class.active]="editorTab === 'details'"
-          [attr.aria-pressed]="editorTab === 'details'"
-          (click)="editorTab = 'details'"
-        >
-          1 · Grundlagen</button
-        ><button
-          type="button"
-          [class.active]="editorTab === 'ingredients'"
-          [attr.aria-pressed]="editorTab === 'ingredients'"
-          (click)="editorTab = 'ingredients'"
-        >
-          2 · Zutaten</button
-        ><button
-          type="button"
-          [class.active]="editorTab === 'steps'"
-          [attr.aria-pressed]="editorTab === 'steps'"
-          (click)="editorTab = 'steps'"
-        >
-          3 · Zubereitung
-        </button>
-      </nav>
-      <div class="editor-body">
-        <div class="form-feedback" role="alert" *ngIf="formError">{{ formError }}</div>
-        <fieldset [disabled]="saving || ingredientSaving">
-          <section *ngIf="editorTab === 'details'" class="editor-section">
-            <h3>Das Rezept auf einen Blick</h3>
-            <div class="field-grid">
-              <label class="wide"
-                >Name *<input
-                  aria-label="Rezeptname"
-                  type="text"
-                  maxlength="200"
-                  [(ngModel)]="form.name"
-                  placeholder="Zum Beispiel Gemüse-Lasagne" /></label
-              ><label
-                >Kategorie<select aria-label="Rezeptkategorie" [(ngModel)]="form.category">
-                  <option *ngFor="let cat of recipeCategories" [value]="cat.value">
-                    {{ cat.label }}
-                  </option>
-                </select></label
-              ><label
-                >Dauer in Minuten<input
-                  aria-label="Dauer in Minuten"
-                  type="number"
-                  min="0"
-                  step="1"
-                  [(ngModel)]="form.durationMinutes"
-                  placeholder="Optional" /></label
-              ><label class="wide"
-                >Kurzbeschreibung<textarea
-                  aria-label="Kurzbeschreibung"
-                  rows="2"
-                  [(ngModel)]="form.description"
-                  placeholder="Was macht dieses Rezept aus?"
-                ></textarea>
-              </label>
+    <section class="recipe-editor" appDialog aria-label="Rezept bearbeiten" (dialogDismiss)="closeModal()">
+        <header class="editor-header">
+            <div>
+                <span class="eyebrow">Rezeptsammlung</span>
+                <h2>
+                    {{
+                    showDeleteConfirm ? 'Rezept löschen?' : modalMode === 'add' ? 'Neues Rezept' : form.name
+                    }}
+                </h2>
             </div>
-            <div class="portion-card">
-              <h3>Basis für alle Mengen</h3>
-              <p>
-                Die Zutatenliste ergibt diese Menge. Menüplan und Kochmodus rechnen daraus die
-                benötigten Mengen aus.
-              </p>
-              <div class="field-grid thirds">
-                <label
-                  >Ergibt<input
-                    aria-label="Basisportionen"
-                    type="number"
-                    min="1"
-                    step="1"
-                    [(ngModel)]="form.baseServings" /></label
-                ><label
-                  >Ausgabe-Einheit<select
-                    aria-label="Ausgabe-Einheit"
-                    [(ngModel)]="form.servingType"
-                  >
-                    <option value="Portionen">Portionen</option>
-                    <option value="Stücke">Stücke</option>
-                  </select></label
-                ><label
-                  >Je Person<input
-                    aria-label="Einheiten pro Person"
-                    type="number"
-                    min="0.01"
-                    step="0.1"
-                    [(ngModel)]="form.unitsPerPerson"
-                /></label>
-              </div>
-              <span class="helper">Beispiel: 12 Muffins im Rezept, 2 Stück je Person.</span>
-            </div>
-            <label
-              >Allgemeine Hinweise<textarea
-                aria-label="Allgemeine Hinweise"
-                rows="3"
-                [(ngModel)]="form.instructions"
-                placeholder="Vorbereitung, Varianten oder Hinweise zur Aufbewahrung"
-              ></textarea>
-            </label>
-            <div class="section-heading">
-              <div>
-                <h3>Rezeptabschnitte</h3>
-                <p>Optional, zum Beispiel Teig, Füllung und Sauce.</p>
-              </div>
-              <button type="button" class="btn-ghost" (click)="addSection()">+ Abschnitt</button>
-            </div>
-            <div class="definition-row" *ngFor="let sec of form.sections; let i = index">
-              <label
-                >Abschnitt {{ i + 1
-                }}<input
-                  [attr.aria-label]="'Abschnitt ' + (i + 1)"
-                  maxlength="150"
-                  [(ngModel)]="sec.title"
-                  placeholder="Zum Beispiel Sauce" /></label
-              ><button
-                type="button"
-                class="btn-ghost"
-                [attr.aria-label]="'Abschnitt ' + (i + 1) + ' entfernen'"
-                (click)="removeSection(sec.id)"
-              >
+            <button class="btn-ghost" type="button" aria-label="Rezeptdialog schließen" (click)="closeModal()"
+                [disabled]="saving || ingredientSaving">
                 ✕
-              </button>
-            </div>
-            <div class="section-heading">
-              <div>
-                <h3>Wichtige Infos beim Kochen</h3>
-                <p>Zum Beispiel Ofentemperatur oder Ruhezeit.</p>
-              </div>
-              <button type="button" class="btn-ghost" (click)="addSideNote()">+ Info</button>
-            </div>
-            <div class="note-row" *ngFor="let note of form.sideNotes; let i = index">
-              <label
-                >Bezeichnung<input
-                  [attr.aria-label]="'Info ' + (i + 1) + ' Bezeichnung'"
-                  maxlength="100"
-                  [(ngModel)]="note.label"
-                  placeholder="Backofen" /></label
-              ><label
-                >Wert<input
-                  [attr.aria-label]="'Info ' + (i + 1) + ' Wert'"
-                  maxlength="500"
-                  [(ngModel)]="note.value"
-                  placeholder="180 °C Umluft" /></label
-              ><button
-                type="button"
-                class="btn-ghost"
-                [attr.aria-label]="'Info ' + (i + 1) + ' entfernen'"
-                (click)="removeSideNote(i)"
-              >
-                ✕
-              </button>
-            </div>
-          </section>
-          <section *ngIf="editorTab === 'ingredients'" class="editor-section">
-            <div class="section-heading">
-              <div>
-                <h3>Zutaten für {{ form.baseServings }} {{ form.servingType }}</h3>
-                <p>
-                  Erfasse die Gesamtmengen des Rezepts. Eine leere Menge bedeutet „nach Bedarf“.
-                </p>
-              </div>
-              <button type="button" class="btn-ghost" (click)="addIngredient()">+ Zutat</button>
-            </div>
-            <p class="helper" *ngIf="catalogError">{{ catalogError }}</p>
-            <div class="ingredient-edit" *ngFor="let ing of form.ingredients; let i = index">
-              <label class="ingredient-name"
-                >Zutat {{ i + 1
-                }}<input
-                  [attr.aria-label]="'Zutat ' + (i + 1) + ' Name'"
-                  list="ingredient-catalog"
-                  maxlength="100"
-                  [(ngModel)]="ing.name"
-                  (focus)="ingredientPrevNames[i] = ing.name"
-                  (input)="onIngredientNameInput(i)"
-                  (change)="onIngredientNameChange(i)"
-                  placeholder="Zutat wählen oder frei eingeben" /></label
-              ><label
-                >Menge<input
-                  [attr.aria-label]="'Zutat ' + (i + 1) + ' Menge'"
-                  type="number"
-                  min="0"
-                  step="any"
-                  [(ngModel)]="ing.quantityPerPerson"
-                  (change)="onRecipeIngredientQtyUnitChange(i)"
-                  placeholder="Nach Bedarf" /></label
-              ><label
-                >Einheit<input
-                  [attr.aria-label]="'Zutat ' + (i + 1) + ' Einheit'"
-                  list="recipe-units"
-                  maxlength="20"
-                  [(ngModel)]="ing.unit"
-                  (change)="onRecipeIngredientQtyUnitChange(i)"
-                  placeholder="g, ml, Stück" /></label
-              ><label *ngIf="form.sections.length"
-                >Abschnitt<select
-                  [attr.aria-label]="'Zutat ' + (i + 1) + ' Abschnitt'"
-                  [(ngModel)]="ing.sectionId"
-                >
-                  <option [ngValue]="undefined">Allgemein</option>
-                  <option *ngFor="let sec of form.sections" [ngValue]="sec.id">
-                    {{ sec.title || 'Unbenannter Abschnitt' }}
-                  </option>
-                </select></label
-              ><button
-                type="button"
-                class="btn-ghost remove"
-                [attr.aria-label]="'Zutat ' + (i + 1) + ' entfernen'"
-                (click)="removeIngredient(i)"
-              >
-                ✕
-              </button>
-            </div>
-            <p class="empty-inline" *ngIf="!form.ingredients.length">
-              Noch keine Zutaten. Füge die erste Gesamtmenge hinzu.
-            </p>
-            <div class="catalog-prompt" *ngIf="newIngredientPrompt">
-              <p>
-                „{{ newIngredientPrompt.name }}“ ist noch nicht im Katalog. Du kannst sie frei
-                verwenden oder zentral anlegen.
-              </p>
-              <div class="field-grid">
-                <label
-                  >Kategorie<select
-                    aria-label="Neue Zutat Kategorie"
-                    [(ngModel)]="newIngredientPrompt.category"
-                  >
-                    <option *ngFor="let cat of INGREDIENT_CATEGORIES" [value]="cat.value">
-                      {{ cat.label }}
-                    </option>
-                  </select></label
-                ><label
-                  >Standard-Einheit<select
-                    aria-label="Neue Zutat Standard-Einheit"
-                    [(ngModel)]="newIngredientPrompt.defaultUnit"
-                  >
-                    <option *ngFor="let unit of ingredientUnits" [value]="unit">
-                      {{ unit || 'Keine Vorgabe' }}
-                    </option>
-                  </select></label
-                >
-              </div>
-              <div class="prompt-actions">
-                <button type="button" class="btn-ghost" (click)="dismissNewIngredient()">
-                  Frei verwenden</button
-                ><button type="button" class="btn-primary" (click)="confirmNewIngredient()">
-                  Zum Katalog hinzufügen
+            </button>
+        </header>
+        <ng-container *ngIf="!showDeleteConfirm">
+            <nav class="editor-tabs" aria-label="Rezeptbereiche">
+                <button type="button" [class.active]="editorTab === 'details'"
+                    [attr.aria-pressed]="editorTab === 'details'" (click)="editorTab = 'details'">
+                    1 · Grundlagen</button><button type="button" [class.active]="editorTab === 'ingredients'"
+                    [attr.aria-pressed]="editorTab === 'ingredients'" (click)="editorTab = 'ingredients'">
+                    2 · Zutaten</button><button type="button" [class.active]="editorTab === 'steps'"
+                    [attr.aria-pressed]="editorTab === 'steps'" (click)="editorTab = 'steps'">
+                    3 · Zubereitung
                 </button>
-              </div>
+            </nav>
+            <div class="editor-body">
+                <div class="form-feedback" role="alert" *ngIf="formError">{{ formError }}</div>
+                <fieldset [disabled]="saving || ingredientSaving">
+                    <section *ngIf="editorTab === 'details'" class="editor-section">
+                        <div class="field-grid">
+                            <label class="wide">Name *<input aria-label="Rezeptname" type="text" maxlength="200"
+                                    [(ngModel)]="form.name"
+                                    placeholder="Zum Beispiel Gemüse-Lasagne" /></label><label>Kategorie<select
+                                    aria-label="Rezeptkategorie" [(ngModel)]="form.category">
+                                    <option *ngFor="let cat of recipeCategories" [value]="cat.value">
+                                        {{ cat.label }}
+                                    </option>
+                                </select></label><label>Dauer in Minuten<input aria-label="Dauer in Minuten"
+                                    type="number" min="0" step="1" [(ngModel)]="form.durationMinutes"
+                                    placeholder="Optional" /></label><label class="wide">Kurzbeschreibung<textarea
+                                    aria-label="Kurzbeschreibung" rows="2" [(ngModel)]="form.description"
+                                    placeholder="Was macht dieses Rezept aus?"></textarea>
+                            </label>
+                        </div>
+                        <div class="portion-card">
+                            <h3>Basis für alle Mengen</h3>
+                            <div class="field-grid thirds">
+                                <label>Ergibt<input aria-label="Basisportionen" type="number" min="1" step="1"
+                                        [(ngModel)]="form.baseServings" /></label><label>Einheit<select
+                                        aria-label="Ausgabe-Einheit" [(ngModel)]="form.servingType">
+                                        <option value="Portionen">Portionen</option>
+                                        <option value="Stücke">Stücke</option>
+                                    </select></label><label>Anzahl pro Person<input aria-label="Einheiten pro Person"
+                                        type="number" min="0.01" step="0.1" [(ngModel)]="form.unitsPerPerson" /></label>
+                            </div>
+                        </div>
+                        <label>Allgemeine Hinweise<textarea aria-label="Allgemeine Hinweise" rows="3"
+                                [(ngModel)]="form.instructions"
+                                placeholder="Vorbereitung, Varianten oder Hinweise zur Aufbewahrung"></textarea>
+                        </label>
+                        <div class="section-heading">
+                            <div>
+                                <h3>Rezeptabschnitte</h3>
+                            </div>
+                            <button type="button" class="btn-ghost" (click)="addSection()">+ Abschnitt</button>
+                        </div>
+                        <div class="definition-row" *ngFor="let sec of form.sections; let i = index">
+                            <label>Abschnitt {{ i + 1
+                                }}<input [attr.aria-label]="'Abschnitt ' + (i + 1)" maxlength="150"
+                                    [(ngModel)]="sec.title" placeholder="Zum Beispiel Sauce" /></label><button
+                                type="button" class="btn-ghost"
+                                [attr.aria-label]="'Abschnitt ' + (i + 1) + ' entfernen'"
+                                (click)="removeSection(sec.id)">
+                                ✕
+                            </button>
+                        </div>
+                        <div class="section-heading">
+                            <div>
+                                <h3>Wichtige Infos beim Kochen</h3>
+                            </div>
+                            <button type="button" class="btn-ghost" (click)="addSideNote()">+ Info</button>
+                        </div>
+                        <div class="note-row" *ngFor="let note of form.sideNotes; let i = index">
+                            <label>Bezeichnung<input [attr.aria-label]="'Info ' + (i + 1) + ' Bezeichnung'"
+                                    maxlength="100" [(ngModel)]="note.label"
+                                    placeholder="Backofen" /></label><label>Wert<input
+                                    [attr.aria-label]="'Info ' + (i + 1) + ' Wert'" maxlength="500"
+                                    [(ngModel)]="note.value" placeholder="180 °C Umluft" /></label><button type="button"
+                                class="btn-ghost" [attr.aria-label]="'Info ' + (i + 1) + ' entfernen'"
+                                (click)="removeSideNote(i)">
+                                ✕
+                            </button>
+                        </div>
+                    </section>
+                    <section *ngIf="editorTab === 'ingredients'" class="editor-section">
+                        <div class="section-heading">
+                            <div>
+                                <h3>Zutaten für {{ form.baseServings }} {{ form.servingType }}</h3>
+                            </div>
+                            <button type="button" class="btn-ghost" (click)="addIngredient()">+ Zutat</button>
+                        </div>
+                        <p class="helper" *ngIf="catalogError">{{ catalogError }}</p>
+                        <div class="ingredient-edit" *ngFor="let ing of form.ingredients; let i = index">
+                            <label class="ingredient-name">Zutat {{ i + 1
+                                }}<input [attr.aria-label]="'Zutat ' + (i + 1) + ' Name'" list="ingredient-catalog"
+                                    maxlength="100" [(ngModel)]="ing.name" (focus)="ingredientPrevNames[i] = ing.name"
+                                    (input)="onIngredientNameInput(i)" (change)="onIngredientNameChange(i)"
+                                    placeholder="Zutat wählen oder frei eingeben" /></label><label>Menge<input
+                                    [attr.aria-label]="'Zutat ' + (i + 1) + ' Menge'" type="number" min="0" step="any"
+                                    [(ngModel)]="ing.quantityPerPerson" (change)="onRecipeIngredientQtyUnitChange(i)"
+                                    placeholder="Nach Bedarf" /></label><label>Einheit<input
+                                    [attr.aria-label]="'Zutat ' + (i + 1) + ' Einheit'" list="recipe-units"
+                                    maxlength="20" [(ngModel)]="ing.unit" (change)="onRecipeIngredientQtyUnitChange(i)"
+                                    placeholder="g, ml, Stück" /></label><label
+                                *ngIf="form.sections.length">Abschnitt<select
+                                    [attr.aria-label]="'Zutat ' + (i + 1) + ' Abschnitt'" [(ngModel)]="ing.sectionId">
+                                    <option [ngValue]="undefined">Allgemein</option>
+                                    <option *ngFor="let sec of form.sections" [ngValue]="sec.id">
+                                        {{ sec.title || 'Unbenannter Abschnitt' }}
+                                    </option>
+                                </select></label><button type="button" class="btn-ghost remove"
+                                [attr.aria-label]="'Zutat ' + (i + 1) + ' entfernen'" (click)="removeIngredient(i)">
+                                ✕
+                            </button>
+                        </div>
+                        <p class="empty-inline" *ngIf="!form.ingredients.length">
+                            Noch keine Zutaten. Füge die erste Gesamtmenge hinzu.
+                        </p>
+                        <div class="catalog-prompt" *ngIf="newIngredientPrompt">
+                            <p>
+                                „{{ newIngredientPrompt.name }}“ ist noch nicht im Katalog. Du kannst sie frei
+                                verwenden oder zentral anlegen.
+                            </p>
+                            <div class="field-grid">
+                                <label>Kategorie<select aria-label="Neue Zutat Kategorie"
+                                        [(ngModel)]="newIngredientPrompt.category">
+                                        <option *ngFor="let cat of INGREDIENT_CATEGORIES" [value]="cat.value">
+                                            {{ cat.label }}
+                                        </option>
+                                    </select></label><label>Standard-Einheit<select
+                                        aria-label="Neue Zutat Standard-Einheit"
+                                        [(ngModel)]="newIngredientPrompt.defaultUnit">
+                                        <option *ngFor="let unit of ingredientUnits" [value]="unit">
+                                            {{ unit || 'Keine Vorgabe' }}
+                                        </option>
+                                    </select></label>
+                            </div>
+                            <div class="prompt-actions">
+                                <button type="button" class="btn-ghost" (click)="dismissNewIngredient()">
+                                    Frei verwenden</button><button type="button" class="btn-primary"
+                                    (click)="confirmNewIngredient()">
+                                    Zum Katalog hinzufügen
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                    <section *ngIf="editorTab === 'steps'" class="editor-section">
+                        <div class="section-heading">
+                            <div>
+                                <h3>Schritt für Schritt</h3>
+                            </div>
+                            <button type="button" class="btn-ghost" (click)="addStep()">+ Schritt</button>
+                        </div>
+                        <article class="step-edit" *ngFor="let step of form.steps; let i = index">
+                            <header>
+                                <strong>Schritt {{ i + 1 }}</strong>
+                                <div class="step-actions">
+                                    <button type="button" class="btn-ghost"
+                                        [attr.aria-label]="'Schritt ' + (i + 1) + ' nach oben'" [disabled]="i === 0"
+                                        (click)="moveStep(i, -1)">
+                                        ↑</button><button type="button" class="btn-ghost"
+                                        [attr.aria-label]="'Schritt ' + (i + 1) + ' nach unten'"
+                                        [disabled]="i === form.steps.length - 1" (click)="moveStep(i, 1)">
+                                        ↓</button><button type="button" class="btn-ghost"
+                                        [attr.aria-label]="'Schritt ' + (i + 1) + ' entfernen'" (click)="removeStep(i)">
+                                        ✕
+                                    </button>
+                                </div>
+                            </header>
+                            <label>Zubereitung<textarea [attr.aria-label]="'Schritt ' + (i + 1) + ' Beschreibung'"
+                                    rows="3" [(ngModel)]="step.description"
+                                    placeholder="Beschreibe die Zubereitung dieses Schritts."></textarea></label><label
+                                *ngIf="form.sections.length">Abschnitt<select
+                                    [attr.aria-label]="'Schritt ' + (i + 1) + ' Abschnitt'"
+                                    [(ngModel)]="step.sectionId">
+                                    <option [ngValue]="undefined">Allgemein</option>
+                                    <option *ngFor="let sec of form.sections" [ngValue]="sec.id">
+                                        {{ sec.title }}
+                                    </option>
+                                </select></label>
+                            <div class="step-links">
+                                <div class="section-heading compact">
+                                    <span>Zutaten dieses Schritts</span><button type="button" class="btn-ghost"
+                                        (click)="addStepIngredient(i)" [disabled]="!form.ingredients.length">
+                                        + Verknüpfen
+                                    </button>
+                                </div>
+                                <div class="step-link" *ngFor="let link of step.ingredients; let j = index">
+                                    <label>Zutat<select [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1)"
+                                            [(ngModel)]="link.recipeIngredientId"
+                                            (ngModelChange)="linkStepIngredient(i, j)">
+                                            <option [ngValue]="undefined">Zutat wählen</option>
+                                            <option *ngFor="let ing of form.ingredients" [ngValue]="ing.id"
+                                                [disabled]="!ing.name.trim() || ingredientLinked(step, j, ing)">
+                                                {{ ingredientOptionLabel(ing) }}
+                                            </option>
+                                        </select></label><label>Menge in diesem Schritt<input
+                                            [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1) + ' Menge'"
+                                            type="number" min="0" step="any" [(ngModel)]="link.quantityPerPerson"
+                                            [placeholder]="stepAmountLabel(link)" /></label><label>Einheit<input
+                                            [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1) + ' Einheit'"
+                                            list="recipe-units" maxlength="20" [(ngModel)]="link.unit"
+                                            [placeholder]="stepUnit(link)"
+                                            [disabled]="link.quantityPerPerson == null" /></label><button type="button"
+                                        class="btn-ghost"
+                                        [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1) + ' lösen'"
+                                        (click)="unlinkStepIngredient(i, j)">
+                                        ✕
+                                    </button>
+                                </div>
+                                <span class="helper" *ngIf="step.ingredients.length">Menge leer lassen, um die
+                                    Gesamtmenge zu verwenden. Eigene Schrittmengen können
+                                    eine eigene Einheit haben.</span>
+                            </div>
+                        </article>
+                        <p class="empty-inline" *ngIf="!form.steps.length">
+                            Noch keine Schritte. Allgemeine Hinweise bleiben auch ohne Schritte im Kochmodus
+                            sichtbar.
+                        </p>
+                    </section>
+                </fieldset>
             </div>
-          </section>
-          <section *ngIf="editorTab === 'steps'" class="editor-section">
-            <div class="section-heading">
-              <div>
-                <h3>Schritt für Schritt</h3>
+            <footer class="editor-footer">
+                <button type="button" class="delete-action" *ngIf="modalMode === 'edit'"
+                    (click)="showDeleteConfirm = true" [disabled]="saving">
+                    Löschen
+                </button>
+                <div>
+                    <button type="button" class="btn-ghost" (click)="closeModal()"
+                        [disabled]="saving || ingredientSaving">
+                        Abbrechen</button><button type="button" class="btn-primary" (click)="save()"
+                        [disabled]="saving || ingredientSaving">
+                        {{ saving ? 'Wird gespeichert…' : 'Rezept speichern' }}
+                    </button>
+                </div>
+            </footer>
+        </ng-container>
+        <ng-container *ngIf="showDeleteConfirm">
+            <div class="editor-body">
                 <p>
-                  Verknüpfe Zutaten aus der Gesamtzutatenliste. Eine eigene Schrittmenge verändert
-                  die Gesamtmenge nicht.
+                    „{{ form.name }}“ wird dauerhaft gelöscht. Zutatenpositionen und Kochschritte dieses
+                    Rezepts werden ebenfalls entfernt.
                 </p>
-              </div>
-              <button type="button" class="btn-ghost" (click)="addStep()">+ Schritt</button>
+                <p>Das Rezept wird aus bestehenden Menüplan-Verknüpfungen entfernt.</p>
+                <div class="form-feedback" role="alert" *ngIf="formError">{{ formError }}</div>
             </div>
-            <article class="step-edit" *ngFor="let step of form.steps; let i = index">
-              <header>
-                <strong>Schritt {{ i + 1 }}</strong>
-                <div class="step-actions">
-                  <button
-                    type="button"
-                    class="btn-ghost"
-                    [attr.aria-label]="'Schritt ' + (i + 1) + ' nach oben'"
-                    [disabled]="i === 0"
-                    (click)="moveStep(i, -1)"
-                  >
-                    ↑</button
-                  ><button
-                    type="button"
-                    class="btn-ghost"
-                    [attr.aria-label]="'Schritt ' + (i + 1) + ' nach unten'"
-                    [disabled]="i === form.steps.length - 1"
-                    (click)="moveStep(i, 1)"
-                  >
-                    ↓</button
-                  ><button
-                    type="button"
-                    class="btn-ghost"
-                    [attr.aria-label]="'Schritt ' + (i + 1) + ' entfernen'"
-                    (click)="removeStep(i)"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </header>
-              <label
-                >Zubereitung<textarea
-                  [attr.aria-label]="'Schritt ' + (i + 1) + ' Beschreibung'"
-                  rows="3"
-                  [(ngModel)]="step.description"
-                  placeholder="Beschreibe die Zubereitung dieses Schritts."
-                ></textarea></label
-              ><label *ngIf="form.sections.length"
-                >Abschnitt<select
-                  [attr.aria-label]="'Schritt ' + (i + 1) + ' Abschnitt'"
-                  [(ngModel)]="step.sectionId"
-                >
-                  <option [ngValue]="undefined">Allgemein</option>
-                  <option *ngFor="let sec of form.sections" [ngValue]="sec.id">
-                    {{ sec.title }}
-                  </option>
-                </select></label
-              >
-              <div class="step-links">
-                <div class="section-heading compact">
-                  <span>Zutaten dieses Schritts</span
-                  ><button
-                    type="button"
-                    class="btn-ghost"
-                    (click)="addStepIngredient(i)"
-                    [disabled]="!form.ingredients.length"
-                  >
-                    + Verknüpfen
-                  </button>
-                </div>
-                <div class="step-link" *ngFor="let link of step.ingredients; let j = index">
-                  <label
-                    >Zutat<select
-                      [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1)"
-                      [(ngModel)]="link.recipeIngredientId"
-                      (ngModelChange)="linkStepIngredient(i, j)"
-                    >
-                      <option [ngValue]="undefined">Zutat wählen</option>
-                      <option *ngFor="let ing of form.ingredients" [ngValue]="ing.id" [disabled]="!ing.name.trim() || ingredientLinked(step, j, ing)">
-                        {{ ingredientOptionLabel(ing) }}
-                      </option>
-                    </select></label
-                  ><label
-                    >Menge in diesem Schritt<input
-                      [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1) + ' Menge'"
-                      type="number"
-                      min="0"
-                      step="any"
-                      [(ngModel)]="link.quantityPerPerson"
-                      [placeholder]="stepAmountLabel(link)" /></label
-                  ><label
-                    >Einheit<input
-                      [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1) + ' Einheit'"
-                      list="recipe-units"
-                      maxlength="20"
-                      [(ngModel)]="link.unit"
-                      [placeholder]="stepUnit(link)"
-                      [disabled]="link.quantityPerPerson == null" /></label
-                  ><button
-                    type="button"
-                    class="btn-ghost"
-                    [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1) + ' lösen'"
-                    (click)="unlinkStepIngredient(i, j)"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <span class="helper" *ngIf="step.ingredients.length"
-                  >Menge leer lassen, um die Gesamtmenge zu verwenden. Eigene Schrittmengen können
-                  eine eigene Einheit haben.</span
-                >
-              </div>
-            </article>
-            <p class="empty-inline" *ngIf="!form.steps.length">
-              Noch keine Schritte. Allgemeine Hinweise bleiben auch ohne Schritte im Kochmodus
-              sichtbar.
-            </p>
-          </section>
-        </fieldset>
-      </div>
-      <footer class="editor-footer">
-        <button
-          type="button"
-          class="delete-action"
-          *ngIf="modalMode === 'edit'"
-          (click)="showDeleteConfirm = true"
-          [disabled]="saving"
-        >
-          Löschen
-        </button>
-        <div>
-          <button
-            type="button"
-            class="btn-ghost"
-            (click)="closeModal()"
-            [disabled]="saving || ingredientSaving"
-          >
-            Abbrechen</button
-          ><button
-            type="button"
-            class="btn-primary"
-            (click)="save()"
-            [disabled]="saving || ingredientSaving"
-          >
-            {{ saving ? 'Wird gespeichert…' : 'Rezept speichern' }}
-          </button>
-        </div>
-      </footer>
-    </ng-container>
-    <ng-container *ngIf="showDeleteConfirm"
-      ><div class="editor-body">
-        <p>
-          „{{ form.name }}“ wird dauerhaft gelöscht. Zutatenpositionen und Kochschritte dieses
-          Rezepts werden ebenfalls entfernt.
-        </p>
-        <p>Das Rezept wird aus bestehenden Menüplan-Verknüpfungen entfernt.</p>
-        <div class="form-feedback" role="alert" *ngIf="formError">{{ formError }}</div>
-      </div>
-      <footer class="editor-footer">
-        <button
-          type="button"
-          class="btn-ghost"
-          (click)="showDeleteConfirm = false"
-          [disabled]="saving"
-        >
-          Zurück</button
-        ><button type="button" class="delete-action" (click)="delete()" [disabled]="saving">
-          {{ saving ? 'Wird gelöscht…' : 'Rezept endgültig löschen' }}
-        </button>
-      </footer></ng-container
-    >
-  </section>
+            <footer class="editor-footer">
+                <button type="button" class="btn-ghost" (click)="showDeleteConfirm = false" [disabled]="saving">
+                    Zurück</button><button type="button" class="delete-action" (click)="delete()" [disabled]="saving">
+                    {{ saving ? 'Wird gelöscht…' : 'Rezept endgültig löschen' }}
+                </button>
+            </footer>
+        </ng-container>
+    </section>
 </div>

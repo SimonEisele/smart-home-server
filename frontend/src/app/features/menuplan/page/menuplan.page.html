@@ -1,93 +1,206 @@
 <section class="menuplan-page app-page">
-  <header class="page-header">
-    <div><h2>Menüplan</h2><p class="page-subtitle">Die Woche gemeinsam planen und passend einkaufen.</p></div>
-    <div class="week-nav" aria-label="Woche wählen"><button class="nav-arrow" [disabled]="menuSaving" (click)="prevWeek()" aria-label="Vorherige Woche">‹</button><strong>{{ weekRange }}</strong><button class="nav-arrow" [disabled]="menuSaving" (click)="nextWeek()" aria-label="Nächste Woche">›</button><button class="today-btn" [disabled]="menuSaving" (click)="goToday()">Diese Woche</button></div>
-    <button class="btn-primary" [disabled]="loading || !!loadError || menuSaving" (click)="openExportModal()">Einkauf vorbereiten</button>
-  </header>
-  <div class="planning-summary"><span><strong>{{ plannedCount }}</strong> von 21 Mahlzeiten geplant</span><span><strong>{{ extrasCount }}</strong> Extras</span><a routerLink="/calendar">Anwesenheiten im Kalender pflegen →</a></div>
-  @if (loading) { <p class="loading-state" role="status">Menüplan wird geladen …</p> }
-  @if (loadError) { <div class="form-feedback" role="alert">{{ loadError }} <button class="btn-ghost" (click)="loadWeek()">Erneut versuchen</button></div> }
-  @if (menuError && !activePicker) { <div class="form-feedback" role="alert">{{ menuError }}</div> }
-  @if (!loading && !loadError) {
+    <header class="page-header">
+        <div>
+            <h2>Menüplan</h2>
+        </div>
+        <div class="week-nav" aria-label="Woche wählen"><button class="nav-arrow" [disabled]="menuSaving"
+                (click)="prevWeek()" aria-label="Vorherige Woche">‹</button><strong>{{ weekRange }}</strong><button
+                class="nav-arrow" [disabled]="menuSaving" (click)="nextWeek()"
+                aria-label="Nächste Woche">›</button><button class="today-btn" [disabled]="menuSaving"
+                (click)="goToday()">Diese Woche</button></div>
+        <button class="btn-primary" [disabled]="loading || !!loadError || menuSaving"
+            (click)="openExportModal()">Einkauf vorbereiten</button>
+    </header>
+    <div class="planning-summary"><span><strong>{{ plannedCount }}</strong> von 21 Mahlzeiten
+            geplant</span><span><strong>{{ extrasCount }}</strong> Extras</span><a routerLink="/calendar">Anwesenheiten
+            im Kalender pflegen →</a></div>
+    @if (loading) { <p class="loading-state" role="status">Menüplan wird geladen …</p> }
+    @if (loadError) { <div class="form-feedback" role="alert">{{ loadError }} <button class="btn-ghost"
+            (click)="loadWeek()">Erneut versuchen</button></div> }
+    @if (menuError && !activePicker) { <div class="form-feedback" role="alert">{{ menuError }}</div> }
+    @if (!loading && !loadError) {
     <div class="week-grid">
-      @for (day of days; track day.dateStr) {
+        @for (day of days; track day.dateStr) {
         <article class="day-col" [class.today]="day.isToday">
-          <header class="day-head"><h3>{{ DAY_NAMES[day.date.getDay()] }} <span>{{ day.date | date:'d.M.' }}</span></h3>@if (day.isToday) { <small>Heute</small> }</header>
-          @for (meal of MEALS; track meal) {
-            <section class="meal-slot" [class.filled]="getMealRecipe(day.dateStr,meal)" [class.is-leftovers]="getMealLeftoversRef(day.dateStr,meal)">
-              <header class="meal-label"><span>{{ MEAL_LABELS[meal] }}</span><small>{{ getMealPersons(day.dateStr,meal) }} Pers.</small></header>
-              <button class="meal-choice" [disabled]="menuSaving" (click)="openPicker(day.dateStr,meal)" [attr.aria-label]="MEAL_LABELS[meal] + ' am ' + day.dateStr + ' planen'">
-                @if (getMealRecipe(day.dateStr,meal); as recipe) { <strong>{{ recipe.name }}</strong><span class="meal-meta">@if (recipe.durationMinutes) { {{ recipe.durationMinutes }} Min. · } Rezept ändern</span> }
-                @else if (getMealLeftoversRef(day.dateStr,meal); as ref) { <strong>Reste essen</strong><span class="meal-meta">{{ formatLeftoversRef(ref) }}</span> }
-                @else { <span class="meal-empty"><span aria-hidden="true">+</span> Mahlzeit wählen</span> }
-              </button>
-              @if (getMealRecipe(day.dateStr,meal) || getMealLeftoversRef(day.dateStr,meal)) {
-                <div class="meal-foot"><span>@if (getMealRecipe(day.dateStr,meal)) { @if (getMealLeftoverPersons(day.dateStr,meal)>0) { + {{ getMealLeftoverPersons(day.dateStr,meal) }} Pers. für Reste } @else if (getMealPersons(day.dateStr,meal)===0) { Keine Anwesenheiten } } @else { Kein zusätzlicher Einkauf }</span><button [disabled]="menuSaving" (click)="clearMeal(day.dateStr,meal,$event)" [attr.aria-label]="MEAL_LABELS[meal] + ' am ' + day.dateStr + ' entfernen'">×</button></div>
-              }
+            <header class="day-head">
+                <h3>{{ DAY_NAMES[day.date.getDay()] }} <span>{{ day.date | date:'d.M.' }}</span></h3>@if (day.isToday) {
+                <small>Heute</small> }
+            </header>
+            @for (meal of MEALS; track meal) {
+            <section class="meal-slot" [class.filled]="getMealRecipe(day.dateStr,meal)"
+                [class.is-leftovers]="getMealLeftoversRef(day.dateStr,meal)">
+                <header class="meal-label"><span>{{ MEAL_LABELS[meal] }}</span><small>{{
+                        getMealPersons(day.dateStr,meal) }} Pers.</small></header>
+                <button class="meal-choice" [disabled]="menuSaving" (click)="openPicker(day.dateStr,meal)"
+                    [attr.aria-label]="MEAL_LABELS[meal] + ' am ' + day.dateStr + ' planen'">
+                    @if (getMealRecipe(day.dateStr,meal); as recipe) { <strong>{{ recipe.name }}</strong><span
+                        class="meal-meta">@if (recipe.durationMinutes) { {{ recipe.durationMinutes }} Min. · } Rezept
+                        ändern</span> }
+                    @else if (getMealLeftoversRef(day.dateStr,meal); as ref) { <strong>Reste essen</strong><span
+                        class="meal-meta">{{ formatLeftoversRef(ref) }}</span> }
+                    @else { <span class="meal-empty"><span aria-hidden="true">+</span> Mahlzeit wählen</span> }
+                </button>
+                @if (getMealRecipe(day.dateStr,meal) || getMealLeftoversRef(day.dateStr,meal)) {
+                <div class="meal-foot"><span>@if (getMealRecipe(day.dateStr,meal)) { @if
+                        (getMealLeftoverPersons(day.dateStr,meal)>0) { + {{ getMealLeftoverPersons(day.dateStr,meal) }}
+                        Pers. für Reste } @else if (getMealPersons(day.dateStr,meal)===0) { Keine Anwesenheiten } }
+                        @else { Kein zusätzlicher Einkauf }</span><button [disabled]="menuSaving"
+                        (click)="clearMeal(day.dateStr,meal,$event)"
+                        [attr.aria-label]="MEAL_LABELS[meal] + ' am ' + day.dateStr + ' entfernen'">×</button></div>
+                }
             </section>
-          }
-          <section class="extras-section"><h4>Extras</h4>@for (recipe of getExtras(day.dateStr); track recipe.id) { <div class="extra-chip"><span>{{ recipe.name }}</span><button [disabled]="menuSaving" (click)="removeExtra(day.dateStr,recipe.id,$event)" [attr.aria-label]="recipe.name + ' entfernen'">×</button></div> }<button class="extra-add-btn" [disabled]="menuSaving" (click)="openPicker(day.dateStr,'extra')" [attr.aria-label]="'Extra am ' + day.dateStr + ' hinzufügen'">+ Extra hinzufügen</button></section>
+            }
+            <section class="extras-section">
+                <h4>Extras</h4>@for (recipe of getExtras(day.dateStr); track recipe.id) { <div class="extra-chip">
+                    <span>{{ recipe.name }}</span><button [disabled]="menuSaving"
+                        (click)="removeExtra(day.dateStr,recipe.id,$event)"
+                        [attr.aria-label]="recipe.name + ' entfernen'">×</button>
+                </div> }<button class="extra-add-btn" [disabled]="menuSaving" (click)="openPicker(day.dateStr,'extra')"
+                    [attr.aria-label]="'Extra am ' + day.dateStr + ' hinzufügen'">+ Extra hinzufügen</button>
+            </section>
         </article>
-      }
+        }
     </div>
-    <p class="planning-note">Personenzahlen kommen aus den Anwesenheiten. Bei Resten wird die zusätzliche Menge beim ursprünglichen Kochtermin berücksichtigt – auch über das Wochenende.</p>
-  }
+    }
 </section>
 
 @if (activePicker; as picker) {
-  <div class="picker-backdrop" (click)="onPickerBackdropClick($event)"><section class="picker-panel" appDialog aria-label="Mahlzeit planen" (dialogDismiss)="closePicker()">
-    <header class="picker-head"><div><h3>{{ MEAL_LABELS[picker.meal] }} planen</h3><p>{{ pickerDayLabel }}</p></div><button class="picker-close" [disabled]="menuSaving" (click)="closePicker()" aria-label="Schliessen">×</button></header>
-    @if (picker.meal !== 'extra') { <div class="picker-tabs" role="group" aria-label="Art der Mahlzeit"><button [class.active]="pickerTab==='recipe'" [attr.aria-pressed]="pickerTab==='recipe'" [disabled]="menuSaving" (click)="pickerTab='recipe'">Frisch kochen</button><button [class.active]="pickerTab==='leftovers'" [attr.aria-pressed]="pickerTab==='leftovers'" [disabled]="menuSaving" (click)="pickerTab='leftovers'">Reste essen</button></div> }
-    <div class="picker-body">
-      @if (menuError) { <div class="form-feedback" role="alert">{{ menuError }}</div> }
-      @if (menuSaving) { <p role="status">Planung wird gespeichert …</p> }
-      @if (pickerTab==='recipe') {
-        <label for="recipe-search">Rezept suchen</label><input id="recipe-search" class="picker-search" [(ngModel)]="pickerSearch" placeholder="Name oder Beschreibung" [disabled]="menuSaving" />
-        <div class="recipe-list">@for (recipe of filteredRecipes; track recipe.id) { <button class="recipe-item" [disabled]="menuSaving" (click)="selectRecipe(recipe)"><strong>{{ recipe.name }}</strong>@if (recipe.description) { <span class="ri-desc">{{ recipe.description }}</span> }<span class="ri-badges">@if (recipe.durationMinutes) { {{ recipe.durationMinutes }} Min. · }{{ recipe.baseServings }} {{ recipe.servingType || 'Portionen' }}</span></button> }@empty { <p class="picker-empty">Keine passenden Rezepte. <a routerLink="/recipes" (click)="closePicker()">Rezepte verwalten →</a></p> }</div>
-      } @else {
-        <p class="picker-explanation">Wähle einen früheren Kochtermin aus den letzten sieben Tagen. Die Personenzahl dieser Mahlzeit wird dort zusätzlich eingeplant.</p>
-        <div class="leftover-list">@for (option of leftoversOptions; track option.ref) { <button class="leftover-item" [disabled]="menuSaving" (click)="selectLeftovers(option.ref)"><strong>{{ option.recipeName }}</strong><span>{{ option.label }}</span></button> }@empty { <p class="picker-empty">Noch kein früherer Kochtermin vorhanden. Plane zuerst ein Rezept ein.</p> }</div>
-      }
-    </div>
-  </section></div>
+<div class="picker-backdrop" (click)="onPickerBackdropClick($event)">
+    <section class="picker-panel" appDialog aria-label="Mahlzeit planen" (dialogDismiss)="closePicker()">
+        <header class="picker-head">
+            <div>
+                <h3>{{ MEAL_LABELS[picker.meal] }} planen</h3>
+                <p>{{ pickerDayLabel }}</p>
+            </div><button class="picker-close" [disabled]="menuSaving" (click)="closePicker()"
+                aria-label="Schliessen">×</button>
+        </header>
+        @if (picker.meal !== 'extra') { <div class="picker-tabs" role="group" aria-label="Art der Mahlzeit"><button
+                [class.active]="pickerTab==='recipe'" [attr.aria-pressed]="pickerTab==='recipe'" [disabled]="menuSaving"
+                (click)="pickerTab='recipe'">Frisch kochen</button><button [class.active]="pickerTab==='leftovers'"
+                [attr.aria-pressed]="pickerTab==='leftovers'" [disabled]="menuSaving"
+                (click)="pickerTab='leftovers'">Reste essen</button></div> }
+        <div class="picker-body">
+            @if (menuError) { <div class="form-feedback" role="alert">{{ menuError }}</div> }
+            @if (menuSaving) { <p role="status">Planung wird gespeichert …</p> }
+            @if (pickerTab==='recipe') {
+            <label for="recipe-search">Rezept suchen</label><input id="recipe-search" class="picker-search"
+                [(ngModel)]="pickerSearch" placeholder="Name oder Beschreibung" [disabled]="menuSaving" />
+            <div class="recipe-list">@for (recipe of filteredRecipes; track recipe.id) { <button class="recipe-item"
+                    [disabled]="menuSaving" (click)="selectRecipe(recipe)"><strong>{{ recipe.name }}</strong>@if
+                    (recipe.description) { <span class="ri-desc">{{ recipe.description }}</span> }<span
+                        class="ri-badges">@if (recipe.durationMinutes) { {{ recipe.durationMinutes }} Min. · }{{
+                        recipe.baseServings }} {{ recipe.servingType || 'Portionen' }}</span></button> }@empty { <p
+                    class="picker-empty">Keine passenden Rezepte. <a routerLink="/recipes"
+                        (click)="closePicker()">Rezepte verwalten →</a></p> }</div>
+            } @else {
+            <div class="leftover-list">@for (option of leftoversOptions; track option.ref) { <button
+                    class="leftover-item" [disabled]="menuSaving" (click)="selectLeftovers(option.ref)"><strong>{{
+                        option.recipeName }}</strong><span>{{ option.label }}</span></button> }@empty { <p
+                    class="picker-empty">Noch kein früherer Kochtermin vorhanden. Plane zuerst ein Rezept ein.</p> }
+            </div>
+            }
+        </div>
+    </section>
+</div>
 }
 
 @if (showExportModal) {
-  <div class="picker-backdrop" (click)="onExportBackdropClick($event)"><section class="picker-panel export-panel" appDialog aria-label="Einkauf vorbereiten" (dialogDismiss)="closeExportModal()">
-    <header class="picker-head"><div><h3>Einkauf vorbereiten</h3><p>{{ exportWeekRange }}</p></div><button class="picker-close" [disabled]="exporting" (click)="closeExportModal()" aria-label="Schliessen">×</button></header>
-    <div class="export-body">
-      <p class="export-explanation">Wähle die Kochtermine und Extras. Die Vorschau zeigt die Zutaten mit Mengen für alle Personen und geplanten Reste.</p>
-      <p class="export-update-note">Dieser Export aktualisiert die Menüplan-Einträge dieser Woche. Frühere, jetzt abgewählte Positionen werden entfernt. Manuelle Einkäufe und andere Wochen bleiben erhalten.</p>
-      @if (exportLoading) { <p role="status">Planung wird geladen …</p> }
-      @if (exportError) { <div class="form-feedback" role="alert">{{ exportError }} <button class="btn-ghost" [disabled]="exporting" (click)="exportMenus.length ? refreshPreview() : loadExportMenus()">Vorschau neu laden</button></div> }
-      @if (!exportLoading) {
-        <div class="export-step-tabs" role="group" aria-label="Export-Schritte"><button [class.active]="exportStep==='selection'" [attr.aria-pressed]="exportStep==='selection'" (click)="exportStep='selection'">1 · Auswahl</button><button [class.active]="exportStep==='preview'" [attr.aria-pressed]="exportStep==='preview'" (click)="exportStep='preview'">2 · Zutaten prüfen</button></div>
-        <div class="export-layout" [class.show-preview]="exportStep==='preview'">
-          <section class="export-selection"><header class="export-section-head"><h4>Auswahl</h4><button [disabled]="exporting" (click)="selectAllExport(true)">Alle</button><button [disabled]="exporting" (click)="selectAllExport(false)">Keine</button></header>
-            @for (day of exportDays; track day.dateStr) {
-              <div class="export-day" [hidden]="!exportDayHasRecipes(day.dateStr)"><h5>{{ day.date | date:'EEEE, d.M.' }}</h5>
-                @for (meal of MEALS; track meal) {
-                  @if (exportMealRecipe(day.dateStr,meal); as recipe) {
-                    <label class="export-choice" [class.unavailable]="exportMealEffectivePersons(day.dateStr,meal)===0"><input type="checkbox" [disabled]="exporting || exportMealEffectivePersons(day.dateStr,meal)===0" [checked]="isExportSelected(day.dateStr,meal)" (change)="toggleExportMeal(day.dateStr,meal)" /><span><small>{{ MEAL_LABELS[meal] }}</small><strong>{{ recipe.name }}</strong><small>@if (exportMealEffectivePersons(day.dateStr,meal)>0) { {{ exportMealPersons(day.dateStr,meal) }} Pers.@if (exportMealLeftoverPersons(day.dateStr,meal)>0) { + {{ exportMealLeftoverPersons(day.dateStr,meal) }} für Reste } } @else { Keine Anwesenheiten · wird nicht exportiert }</small></span></label>
-                  }
-                }
-                @for (extra of exportExtras; track extra.key) { @if (extra.date===day.dateStr) { <div class="export-extra"><label class="export-choice"><input type="checkbox" [disabled]="exporting" [checked]="exportSelected.has(extra.key)" (change)="toggleExportKey(extra.key)" /><span><small>Extra</small><strong>{{ extra.recipe.name }}</strong></span></label><label class="extra-quantity">{{ extra.recipe.servingType || 'Portionen' }}<input type="number" min="0.1" step="0.5" [disabled]="exporting || !exportSelected.has(extra.key)" [ngModel]="extraServings[extra.key]" (ngModelChange)="setExtraServings(extra.key,$event)" [attr.aria-label]="extra.recipe.name + ': Menge'" /></label></div> } }
-              </div>
+<div class="picker-backdrop" (click)="onExportBackdropClick($event)">
+    <section class="picker-panel export-panel" appDialog aria-label="Einkauf vorbereiten"
+        (dialogDismiss)="closeExportModal()">
+        <header class="picker-head">
+            <div>
+                <h3>Einkauf vorbereiten</h3>
+                <p>{{ exportWeekRange }}</p>
+            </div><button class="picker-close" [disabled]="exporting" (click)="closeExportModal()"
+                aria-label="Schliessen">×</button>
+        </header>
+        <div class="export-body">
+            @if (exportLoading) { <p role="status">Planung wird geladen …</p> }
+            @if (exportError) { <div class="form-feedback" role="alert">{{ exportError }} <button class="btn-ghost"
+                    [disabled]="exporting" (click)="exportMenus.length ? refreshPreview() : loadExportMenus()">Vorschau
+                    neu laden</button></div> }
+            @if (!exportLoading) {
+            <div class="export-step-tabs" role="group" aria-label="Export-Schritte"><button
+                    [class.active]="exportStep==='selection'" [attr.aria-pressed]="exportStep==='selection'"
+                    (click)="exportStep='selection'">1 · Auswahl</button><button [class.active]="exportStep==='preview'"
+                    [attr.aria-pressed]="exportStep==='preview'" (click)="exportStep='preview'">2 · Zutaten
+                    prüfen</button></div>
+            <div class="export-layout" [class.show-preview]="exportStep==='preview'">
+                <section class="export-selection">
+                    <header class="export-section-head">
+                        <h4>Auswahl</h4><button [disabled]="exporting"
+                            (click)="selectAllExport(true)">Alle</button><button [disabled]="exporting"
+                            (click)="selectAllExport(false)">Keine</button>
+                    </header>
+                    @for (day of exportDays; track day.dateStr) {
+                    <div class="export-day" [hidden]="!exportDayHasRecipes(day.dateStr)">
+                        <h5>{{ day.date | date:'EEEE, d.M.' }}</h5>
+                        @for (meal of MEALS; track meal) {
+                        @if (exportMealRecipe(day.dateStr,meal); as recipe) {
+                        <label class="export-choice"
+                            [class.unavailable]="exportMealEffectivePersons(day.dateStr,meal)===0"><input
+                                type="checkbox"
+                                [disabled]="exporting || exportMealEffectivePersons(day.dateStr,meal)===0"
+                                [checked]="isExportSelected(day.dateStr,meal)"
+                                (change)="toggleExportMeal(day.dateStr,meal)" /><span><small>{{ MEAL_LABELS[meal]
+                                    }}</small><strong>{{ recipe.name }}</strong><small>@if
+                                    (exportMealEffectivePersons(day.dateStr,meal)>0) { {{
+                                    exportMealPersons(day.dateStr,meal) }} Pers.@if
+                                    (exportMealLeftoverPersons(day.dateStr,meal)>0) { + {{
+                                    exportMealLeftoverPersons(day.dateStr,meal) }} für Reste } } @else { Keine
+                                    Anwesenheiten · wird nicht exportiert }</small></span></label>
+                        }
+                        }
+                        @for (extra of exportExtras; track extra.key) { @if (extra.date===day.dateStr) { <div
+                            class="export-extra"><label class="export-choice"><input type="checkbox"
+                                    [disabled]="exporting" [checked]="exportSelected.has(extra.key)"
+                                    (change)="toggleExportKey(extra.key)" /><span><small>Extra</small><strong>{{
+                                        extra.recipe.name }}</strong></span></label><label class="extra-quantity">{{
+                                extra.recipe.servingType || 'Portionen' }}<input type="number" min="0.1" step="0.5"
+                                    [disabled]="exporting || !exportSelected.has(extra.key)"
+                                    [ngModel]="extraServings[extra.key]"
+                                    (ngModelChange)="setExtraServings(extra.key,$event)"
+                                    [attr.aria-label]="extra.recipe.name + ': Menge'" /></label></div> } }
+                    </div>
+                    }
+                    <a [routerLink]="exporting ? null : '/calendar'" [attr.aria-disabled]="exporting"
+                        (click)="closeExportModal()">Anwesenheiten prüfen →</a>
+                </section>
+                <section class="export-preview" aria-live="polite">
+                    <header class="export-section-head">
+                        <h4>Zutatenvorschau</h4><span>{{ preview?.count || 0 }} Positionen</span>
+                    </header>
+                    @if (previewLoading) { <p role="status">Mengen werden berechnet …</p> }
+                    @if (!exportSelected.size) { <p class="picker-empty">Wähle mindestens eine Mahlzeit oder ein Extra.
+                    </p> }
+                    @if (preview; as plan) {
+                    @if (plan.warnings.length) { <div class="form-feedback" role="alert">@for (warning of plan.warnings;
+                        track $index) { <p>{{ warning }}</p> }</div> }
+                    @if (plan.meals.length) { <div class="export-serving-summary">@for (row of plan.meals; track
+                        row.key) { <span>{{ row.recipe }}: <strong>{{ row.servings }} {{ row.servingType
+                                }}</strong></span> }</div> }
+                    <ul class="preview-ingredients">@for (item of plan.data; track item.name+':'+item.unit) { <li>
+                            <span><strong>{{ item.name }}</strong><small>{{ item.sources.join(' · ')
+                                    }}</small></span><span class="preview-quantity">@if (item.quantity!==null) { {{
+                                item.quantity | number:'1.0-2' }} {{ item.unit }} } @else { Nach Bedarf }@if
+                                (item.quantityIncomplete) { <small>Menge im Rezept prüfen</small> }</span>
+                        </li> }</ul>
+                    }
+                </section>
+            </div>
             }
-            <a [routerLink]="exporting ? null : '/calendar'" [attr.aria-disabled]="exporting" (click)="closeExportModal()">Anwesenheiten prüfen →</a>
-          </section>
-          <section class="export-preview" aria-live="polite"><header class="export-section-head"><h4>Zutatenvorschau</h4><span>{{ preview?.count || 0 }} Positionen</span></header>
-            @if (previewLoading) { <p role="status">Mengen werden berechnet …</p> }
-            @if (!exportSelected.size) { <p class="picker-empty">Wähle mindestens eine Mahlzeit oder ein Extra.</p> }
-            @if (preview; as plan) {
-              @if (plan.warnings.length) { <div class="form-feedback" role="alert">@for (warning of plan.warnings; track $index) { <p>{{ warning }}</p> }</div> }
-              @if (plan.meals.length) { <div class="export-serving-summary">@for (row of plan.meals; track row.key) { <span>{{ row.recipe }}: <strong>{{ row.servings }} {{ row.servingType }}</strong></span> }</div> }
-              <ul class="preview-ingredients">@for (item of plan.data; track item.name+':'+item.unit) { <li><span><strong>{{ item.name }}</strong><small>{{ item.sources.join(' · ') }}</small></span><span class="preview-quantity">@if (item.quantity!==null) { {{ item.quantity | number:'1.0-2' }} {{ item.unit }} } @else { Nach Bedarf }@if (item.quantityIncomplete) { <small>Menge im Rezept prüfen</small> }</span></li> }</ul>
-            }
-          </section>
         </div>
-      }
-    </div>
-    <footer class="export-footer" [class.show-preview]="exportStep==='preview'"><span role="status">{{ exportDone || (exportSelected.size + ' Kochtermine / Extras ausgewählt') }}</span>@if (exportApplied) { <a routerLink="/shoppinglist" class="btn-primary" (click)="closeExportModal()">Zur Einkaufsliste</a> } @else { <button class="btn-ghost" [disabled]="exporting" (click)="closeExportModal()">Abbrechen</button><button class="btn-primary btn-review" [disabled]="exportLoading || previewLoading || !preview" (click)="exportStep='preview'">Zutaten prüfen</button><button class="btn-primary export-apply" [disabled]="exportLoading || previewLoading || exporting || !preview || preview.blocked" (click)="doExport()">{{ exporting ? 'Wird aktualisiert …' : 'Einkaufsliste aktualisieren' }}</button> }</footer>
-  </section></div>
+        <footer class="export-footer" [class.show-preview]="exportStep==='preview'"><span role="status">{{ exportDone ||
+                (exportSelected.size + ' Kochtermine / Extras ausgewählt') }}</span>@if (exportApplied) { <a
+                routerLink="/shoppinglist" class="btn-primary" (click)="closeExportModal()">Zur Einkaufsliste</a> }
+            @else { <button class="btn-ghost" [disabled]="exporting"
+                (click)="closeExportModal()">Abbrechen</button><button class="btn-primary btn-review"
+                [disabled]="exportLoading || previewLoading || !preview" (click)="exportStep='preview'">Zutaten
+                prüfen</button><button class="btn-primary export-apply"
+                [disabled]="exportLoading || previewLoading || exporting || !preview || preview.blocked"
+                (click)="doExport()">{{ exporting ? 'Wird aktualisiert …' : 'Einkaufsliste aktualisieren' }}</button> }
+        </footer>
+    </section>
+</div>
 }

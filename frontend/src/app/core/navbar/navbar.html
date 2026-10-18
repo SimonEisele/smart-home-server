@@ -1,42 +1,60 @@
 <a class="skip-link" href="#main-content">Zum Inhalt</a>
 <header class="workspace-header">
-  <a class="workspace-brand" routerLink="/home" aria-label="Zuhause – Übersicht">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg>
-    <span>Zuhause<small>Gemeinsam organisiert</small></span>
-  </a>
-  <ng-container *ngIf="user$ | async as user; else guest">
-    <button class="mobile-menu icon-control" (click)="toggleMenu()" aria-controls="main-navigation" [attr.aria-expanded]="menuOpen" aria-label="Navigation öffnen">☰</button>
-    <div class="workspace-context"><span class="context-caption">DEIN HAUSHALT</span><strong>{{ (activeHousehold$ | async)?.name || 'Haushalt einrichten' }}</strong></div>
-    <div class="workspace-actions">
-      <ng-container *ngIf="households$ | async as households">
-        <select *ngIf="households.length > 1" class="household-select" aria-label="Aktiven Haushalt wechseln" [ngModel]="(activeHousehold$ | async)?.id" (ngModelChange)="switchHousehold($event)">
-          <option *ngFor="let household of households" [value]="household.id">{{ household.name }}</option>
-        </select>
-      </ng-container>
-      <button *ngIf="isDashboard" class="edit-control" (click)="dashboardService.toggleEditMode()" [attr.aria-pressed]="editMode$ | async" aria-label="Bearbeiten umschalten">{{ (editMode$ | async) ? 'Fertig' : 'Anpassen' }}</button>
-      <button class="icon-control fullscreen-button" (click)="toggleFullscreen()" [attr.aria-label]="isFullscreen ? 'Vollbild beenden' : 'Vollbild'">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>
-      </button>
-      <button #accountButton class="profile-control" (click)="toggleAccount()" aria-label="Konto" [attr.aria-expanded]="showAccount"><span class="profile-initial">{{ user.first_name.charAt(0) || 'K' }}</span><span class="profile-label">{{ user.first_name || 'Konto' }}</span></button>
-    </div>
-  </ng-container>
-  <ng-template #guest><button #loginButton class="login-control" (click)="toggleLogin()">Anmelden</button></ng-template>
+    <a class="workspace-brand" routerLink="/home" aria-label="Zuhause – Übersicht">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="m3 10 9-7 9 7v10H3z" />
+            <path d="M9 20v-7h6v7" />
+        </svg>
+        <span>Zuhause<small>Gemeinsam organisiert</small></span>
+    </a>
+    <ng-container *ngIf="user$ | async as user; else guest">
+        <button class="mobile-menu icon-control" (click)="toggleMenu()" aria-controls="main-navigation"
+            [attr.aria-expanded]="menuOpen" aria-label="Navigation öffnen">☰</button>
+        <div class="workspace-context"><span class="context-caption">DEIN HAUSHALT</span><strong>{{ (activeHousehold$ |
+                async)?.name || 'Haushalt einrichten' }}</strong></div>
+        <div class="workspace-actions">
+            <ng-container *ngIf="households$ | async as households">
+                <select *ngIf="households.length > 1" class="household-select" aria-label="Aktiven Haushalt wechseln"
+                    [ngModel]="(activeHousehold$ | async)?.id" (ngModelChange)="switchHousehold($event)">
+                    <option *ngFor="let household of households" [value]="household.id">{{ household.name }}</option>
+                </select>
+            </ng-container>
+            <button *ngIf="isDashboard" class="edit-control" (click)="dashboardService.toggleEditMode()"
+                [attr.aria-pressed]="editMode$ | async" aria-label="Bearbeiten umschalten">{{ (editMode$ | async) ?
+                'Fertig' : 'Anpassen' }}</button>
+            <button class="icon-control fullscreen-button" (click)="toggleFullscreen()"
+                [attr.aria-label]="isFullscreen ? 'Vollbild beenden' : 'Vollbild'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />
+                </svg>
+            </button>
+            <button #accountButton class="profile-control" (click)="toggleAccount()" aria-label="Konto"
+                [attr.aria-expanded]="showAccount"><span class="profile-initial">{{ user.first_name.charAt(0) || 'K'
+                    }}</span><span class="profile-label">{{ user.first_name || 'Konto' }}</span></button>
+        </div>
+    </ng-container>
+    <ng-template #guest></ng-template>
 </header>
 <ng-container *ngIf="user$ | async">
-  <div *ngIf="menuOpen" class="navigation-scrim" (click)="closeMenu()"></div>
-  <nav id="main-navigation" class="workspace-navigation" [class.menu-open]="menuOpen" aria-label="Hauptnavigation">
-    <div class="navigation-intro">Alles an einem Ort.<small>Planen. Erledigen. Zusammenleben.</small></div>
-    <section *ngFor="let group of navGroups" class="navigation-group">
-      <h2>{{ group.label }}</h2>
-      <a *ngFor="let item of group.items" [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="closeMenu()"><img [src]="'/icons/' + item.icon" alt=""/><span>{{ item.label }}</span></a>
-    </section>
-    <a class="account-navigation" routerLink="/account" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="closeMenu()">Konto &amp; Haushalt <span aria-hidden="true">↗</span></a>
-  </nav>
-  <nav class="mobile-dock" aria-label="Schnellnavigation">
-    <a *ngFor="let item of mobileItems" [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="closeMenu()"><img [src]="'/icons/' + item.icon" alt=""/>{{ item.label }}</a>
-    <button (click)="toggleMenu()" [attr.aria-expanded]="menuOpen" aria-controls="main-navigation"><span aria-hidden="true">•••</span>Mehr</button>
-  </nav>
+    <div *ngIf="menuOpen" class="navigation-scrim" (click)="closeMenu()"></div>
+    <nav id="main-navigation" class="workspace-navigation" [class.menu-open]="menuOpen" aria-label="Hauptnavigation">
+        <section *ngFor="let group of navGroups" class="navigation-group">
+            <h2>{{ group.label }}</h2>
+            <a *ngFor="let item of group.items" [routerLink]="item.path" routerLinkActive="active"
+                ariaCurrentWhenActive="page" (click)="closeMenu()"><img [src]="'/icons/' + item.icon" alt="" /><span>{{
+                    item.label }}</span></a>
+        </section>
+        <a class="account-navigation" routerLink="/account" routerLinkActive="active" ariaCurrentWhenActive="page"
+            (click)="closeMenu()">Konto &amp; Haushalt <span aria-hidden="true">↗</span></a>
+    </nav>
+    <nav class="mobile-dock" aria-label="Schnellnavigation">
+        <a *ngFor="let item of mobileItems" [routerLink]="item.path" routerLinkActive="active"
+            ariaCurrentWhenActive="page" (click)="closeMenu()"><img [src]="'/icons/' + item.icon" alt="" />{{ item.label
+            }}</a>
+        <button (click)="toggleMenu()" [attr.aria-expanded]="menuOpen" aria-controls="main-navigation"><span
+                aria-hidden="true">•••</span>Mehr</button>
+    </nav>
 </ng-container>
-<div *ngIf="showLogin || showAccount" class="popover-backdrop" (click)="closePopovers()"></div>
-<login-popover *ngIf="showLogin" class="login-popover-container" [style.top.px]="loginPopoverTop" [style.left.px]="loginPopoverLeft" [arrowLeft]="loginPopoverArrowLeft" (loginSuccess)="onLoginSuccess()" (close)="showLogin = false"></login-popover>
-<account-popover *ngIf="showAccount" class="account-popover-container" [style.top.px]="accountPopoverTop" [style.left.px]="accountPopoverLeft" [arrowLeft]="accountPopoverArrowLeft" (close)="showAccount = false"></account-popover>
+<account-popover *ngIf="showAccount" class="account-popover-container" [style.top.px]="accountPopoverTop"
+    [style.left.px]="accountPopoverLeft" [arrowLeft]="accountPopoverArrowLeft"
+    (close)="showAccount = false"></account-popover>
