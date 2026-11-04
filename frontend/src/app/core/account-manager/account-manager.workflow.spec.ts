@@ -10,7 +10,7 @@ const household: Household = { id: 'a', name: 'Biel', description: '', invite_co
 const member: HouseholdMember = { id: 'm', user_id: 'u', user_first_name: 'Simon', user_last_name: 'Eisele', user_email: 's@example.com', user_is_household_account: false, role: 'member', joined_at: '' };
 function setup() {
   const active = new BehaviorSubject<Household | null>(household);
-  const service = { activeHousehold$: active, households$: of([household]), get activeHousehold() { return active.value; }, getMembers: vi.fn(() => of([member])), updateMemberRole: vi.fn(), switchHousehold: vi.fn(), createHousehold: vi.fn(), updateHousehold: vi.fn() };
+  const service = { activeHousehold$: active, households$: of([household]), get activeHousehold() { return active.value; }, getMembers: vi.fn(() => of([member])), updateMemberRole: vi.fn(), transferOwnership: vi.fn(() => of([])), regenerateInviteCode: vi.fn(() => of(household)), switchHousehold: vi.fn(), createHousehold: vi.fn(), updateHousehold: vi.fn() };
   TestBed.configureTestingModule({ providers: [{ provide: AuthService, useValue: { user$: of(null) } }, { provide: HouseholdService, useValue: service }] });
   const page = TestBed.createComponent(AccountManager).componentInstance;
   return { page, service, active };
@@ -50,4 +50,26 @@ it('searches names and emails without hiding shared device accounts from the cou
 it('reports switch failures and permits retry', () => {
   const { page, service } = setup(); service.switchHousehold.mockReturnValue(throwError(() => new Error('offline')));
   page.switchTo('b'); expect(page.switchError).toBeTruthy(); expect(page.switching).toBe(false);
+});
+it('transfers ownership only after confirmation and never to shared devices', () => {
+  const { page, service } = setup();
+  const device = { ...member, user_id: 'tablet', user_is_household_account: true };
+  page.members = [member, device];
+  const confirm = vi.spyOn(window, 'confirm');
+  confirm.mockReturnValueOnce(false); page.transferOwnership('u');
+  expect(service.transferOwnership).not.toHaveBeenCalled();
+  page.transferOwnership('tablet'); expect(service.transferOwnership).not.toHaveBeenCalled();
+  confirm.mockReturnValueOnce(true); page.transferOwnership('u');
+  expect(service.transferOwnership).toHaveBeenCalledWith('a', 'u');
+  confirm.mockRestore();
+});
+it('regenerates the invite code for admins and reports the result', () => {
+  const { page, service } = setup();
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  page.regenerateInviteCode({ ...household, role: 'member' });
+  expect(service.regenerateInviteCode).not.toHaveBeenCalled();
+  page.regenerateInviteCode(household);
+  expect(service.regenerateInviteCode).toHaveBeenCalledWith('a');
+  expect(page.inviteFeedback).toContain('Neuer Einladungscode'); expect(page.regeneratingInvite).toBe(false);
+  confirm.mockRestore();
 });

@@ -258,6 +258,35 @@ export class AccountManager implements OnInit {
     this.memberAction(userId, this.householdService.removeMember(hh.id, userId), () => this.loadMembers(hh.id));
   }
 
+  transferOwnership(userId: string) {
+    const hh = this.householdService.activeHousehold;
+    const member = this.members.find(m => m.user_id === userId);
+    if (!hh || hh.role !== 'owner' || !member || member.role === 'owner' || member.user_is_household_account || this.memberPending.has(userId)) return;
+    const name = member.user_first_name || member.user_email;
+    if (!confirm(`${name} zum Eigentümer von "${hh.name}" machen? Du wirst danach Admin und kannst das nicht selbst rückgängig machen.`)) return;
+    this.memberAction(userId, this.householdService.transferOwnership(hh.id, userId), () => this.loadMembers(hh.id));
+  }
+
+  regeneratingInvite = false;
+
+  regenerateInviteCode(hh: Household) {
+    if (this.regeneratingInvite || !['owner', 'admin'].includes(hh.role)) return;
+    if (!confirm('Neuen Einladungscode erzeugen? Der bisherige Code funktioniert danach nicht mehr.')) return;
+    this.regeneratingInvite = true;
+    this.householdService.regenerateInviteCode(hh.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.regeneratingInvite = false;
+        this.inviteFeedback = 'Neuer Einladungscode erstellt. Der alte Code ist ungültig.';
+        this.cdr.markForCheck();
+      },
+      error: err => {
+        this.regeneratingInvite = false;
+        this.inviteFeedback = err?.error?.error || err?.error?.detail || 'Einladungscode konnte nicht erneuert werden.';
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
   startEditName(hh: Household) {
     this.editName = hh.name;
     this.editDescription = hh.description;

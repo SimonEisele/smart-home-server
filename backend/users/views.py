@@ -1,4 +1,8 @@
+import uuid
+
 from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -237,6 +241,50 @@ class HouseholdMembersView(APIView):
         m.delete()
         _leave_active_household(target, hh)
         return Response({"success": True})
+
+
+class TransferOwnershipView(APIView):
+    """The owner hands the WG to another member and becomes an admin."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        hh = get_object_or_404(Household, memberships__user=request.user, id=id)
+        target_user_id = request.data.get('user_id')
+        if not target_user_id:
+            return Response({'error': 'user_id ist erforderlich'}, status=400)
+        with transaction.atomic():
+            caller = HouseholdMembership.objects.select_for_update().get(household=hh, user=request.user)
+            if caller.role != 'owner':
+                raise PermissionDenied("Nur der Eigentümer kann die WG übertragen")
+            try:
+                target = HouseholdMembership.objects.select_for_update().select_related('user').get(
+                    household=hh, user_id=target_user_id
+                )
+            except (HouseholdMembership.DoesNotExist, ValueError, DjangoValidationError):
+                return Response({'error': 'Diese Person ist kein Mitglied der WG'}, status=404)
+            if target.pk == caller.pk:
+                return Response({'error': 'Du bist bereits Eigentümer'}, status=400)
+            if target.user.is_household_account:
+                return Response({'error': 'Ein WG-Konto kann nicht Eigentümer werden'}, status=400)
+            caller.role = 'admin'
+            caller.save(update_fields=['role'])
+            target.role = 'owner'
+            target.save(update_fields=['role'])
+        return Response({'data': HouseholdMembershipSerializer(hh.memberships.select_related('user'), many=True).data})
+
+
+class RegenerateInviteCodeView(APIView):
+    """Invalidate the current invite code, e.g. after it was shared too widely."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, id):
+        hh = get_object_or_404(Household, memberships__user=request.user, id=id)
+        caller = hh.memberships.filter(user=request.user).first()
+        if not caller or caller.role not in ('owner', 'admin'):
+            raise PermissionDenied("Nur Admins können den Einladungscode erneuern")
+        hh.invite_code = uuid.uuid4()
+        hh.save(update_fields=['invite_code', 'updated_at'])
+        return Response({'data': HouseholdSerializer(hh, context={'request': request}).data})
 
 
 class LeaveHouseholdView(APIView):

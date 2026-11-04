@@ -170,6 +170,10 @@
           <button class="btn-copy" (click)="copyInviteCode(hh.invite_code)" title="Einladungscode kopieren" aria-label="Einladungscode kopieren">
             <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
+          <button *ngIf="hh.role === 'owner' || hh.role === 'admin'" class="btn-copy" (click)="regenerateInviteCode(hh)"
+                  [disabled]="regeneratingInvite" title="Neuen Einladungscode erzeugen" aria-label="Neuen Einladungscode erzeugen">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+          </button>
         </div>
         <p class="section-help" role="status" *ngIf="inviteFeedback">{{ inviteFeedback }}</p>
       </div>
@@ -223,6 +227,9 @@
                 <option value="admin">Admin</option>
                 <option value="member">Mitglied</option>
               </select>
+              <button *ngIf="hh.role === 'owner' && m.role !== 'owner' && !m.user_is_household_account" class="btn-sm-ghost"
+                      [disabled]="memberPending.has(m.user_id)" (click)="transferOwnership(m.user_id)"
+                      title="Zum Eigentümer machen">Eigentümer machen</button>
               <button *ngIf="m.role !== 'owner' && !m.user_is_household_account" class="btn-remove" [disabled]="memberPending.has(m.user_id)"
                       (click)="removeMember(m.user_id)" title="Entfernen">
                 <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>

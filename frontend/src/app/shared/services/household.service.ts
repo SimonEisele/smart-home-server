@@ -78,14 +78,35 @@ export class HouseholdService {
   updateHousehold(id: string, data: Partial<Household>): Observable<Household> {
     return this.http.patch<{ data: Household }>(`${environment.apiUrl}/users/households/${id}/`, data).pipe(
       map(res => res.data),
-      tap(updated => {
-        const list = this.householdsSubject.value.map(h => h.id === updated.id ? { ...h, ...updated } : h);
-        this.householdsSubject.next(list);
-        if (this.activeHouseholdSubject.value?.id === updated.id) {
-          this.activeHouseholdSubject.next({ ...this.activeHouseholdSubject.value, ...updated });
-        }
-      })
+      tap(updated => this.patchLocal(updated.id, updated))
     );
+  }
+
+  /** Hand the WG to another member; the current owner becomes admin. */
+  transferOwnership(householdId: string, userId: string): Observable<HouseholdMember[]> {
+    return this.http.post<{ data: HouseholdMember[] }>(
+      `${environment.apiUrl}/users/households/${householdId}/transfer-ownership/`, { user_id: userId }
+    ).pipe(
+      map(res => res.data),
+      tap(() => this.patchLocal(householdId, { role: 'admin' }))
+    );
+  }
+
+  /** Replace the invite code; the old code stops working immediately. */
+  regenerateInviteCode(householdId: string): Observable<Household> {
+    return this.http.post<{ data: Household }>(
+      `${environment.apiUrl}/users/households/${householdId}/invite-code/`, {}
+    ).pipe(
+      map(res => res.data),
+      tap(updated => this.patchLocal(householdId, { invite_code: updated.invite_code }))
+    );
+  }
+
+  /** Merge changes into the cached household list and the active household. */
+  private patchLocal(id: string, changes: Partial<Household>): void {
+    this.householdsSubject.next(this.householdsSubject.value.map(h => h.id === id ? { ...h, ...changes } : h));
+    const active = this.activeHouseholdSubject.value;
+    if (active?.id === id) this.activeHouseholdSubject.next({ ...active, ...changes });
   }
 
   /** Get members of a WG */

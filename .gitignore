@@ -79,3 +79,6 @@ Thumbs.db
 *.tmp
 # Generated Django secret key (see backend/backend/settings.py)
 .secret_key
+
+# Deploy state on the server
+.deploy/

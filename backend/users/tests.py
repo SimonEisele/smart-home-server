@@ -81,6 +81,52 @@ class HouseholdAccessTests(APITestCase):
         self.member.refresh_from_db()
         self.assertEqual(self.member.active_household, self.hh)
 
+    def test_owner_transfers_ownership_and_can_then_leave(self):
+        self.client.force_authenticate(self.owner)
+        url = f'/api/users/households/{self.hh.id}/transfer-ownership/'
+        r = self.client.post(url, {'user_id': str(self.member.id)}, format='json')
+        self.assertEqual(r.status_code, 200)
+        roles = dict(HouseholdMembership.objects.filter(household=self.hh).values_list('user__email', 'role'))
+        self.assertEqual(roles['member@example.com'], 'owner')
+        self.assertEqual(roles['owner@example.com'], 'admin')
+        self.assertEqual(list(roles.values()).count('owner'), 1)
+        r = self.client.post(f'/api/users/households/{self.hh.id}/leave/')
+        self.assertEqual(r.status_code, 200)
+
+    def test_only_owner_can_transfer_and_only_to_real_members(self):
+        url = f'/api/users/households/{self.hh.id}/transfer-ownership/'
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(self.client.post(url, {'user_id': str(self.admin.id)}, format='json').status_code, 403)
+
+        self.client.force_authenticate(self.owner)
+        stranger = self._user('stranger@example.com', 'owner', household=self.other)
+        self.assertEqual(self.client.post(url, {'user_id': str(stranger.id)}, format='json').status_code, 404)
+        self.assertEqual(self.client.post(url, {'user_id': 'kein-uuid'}, format='json').status_code, 404)
+        self.assertEqual(self.client.post(url, {'user_id': str(self.owner.id)}, format='json').status_code, 400)
+        device = User.objects.create_user('tablet@wg.local', 'testpassword', is_household_account=True)
+        HouseholdMembership.objects.create(user=device, household=self.hh, role='member')
+        self.assertEqual(self.client.post(url, {'user_id': str(device.id)}, format='json').status_code, 400)
+        self.assertTrue(HouseholdMembership.objects.filter(user=self.owner, household=self.hh, role='owner').exists())
+
+    def test_regenerated_invite_code_replaces_the_old_one(self):
+        old_code = self.hh.invite_code
+        url = f'/api/users/households/{self.hh.id}/invite-code/'
+        self.client.force_authenticate(self.member)
+        self.assertEqual(self.client.post(url).status_code, 403)
+
+        self.client.force_authenticate(self.admin)
+        r = self.client.post(url)
+        self.assertEqual(r.status_code, 200)
+        self.hh.refresh_from_db()
+        self.assertNotEqual(self.hh.invite_code, old_code)
+        self.assertEqual(str(r.data['data']['invite_code']), str(self.hh.invite_code))
+
+        newcomer = User.objects.create_user('new@example.com', 'testpassword')
+        self.client.force_authenticate(newcomer)
+        join = '/api/users/households/join/'
+        self.assertEqual(self.client.post(join, {'invite_code': str(old_code)}, format='json').status_code, 404)
+        self.assertEqual(self.client.post(join, {'invite_code': str(self.hh.invite_code)}, format='json').status_code, 200)
+
     def test_ingredient_catalog_permissions(self):
         ing = Ingredient.objects.create(name='Testzutat', category='gemuese')
         url = f'/api/ingredients/{ing.id}/'

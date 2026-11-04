@@ -16,6 +16,8 @@ from .views import (
     HouseholdMembersView,
     HouseholdAccountView,
     LeaveHouseholdView,
+    TransferOwnershipView,
+    RegenerateInviteCodeView,
 )
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
@@ -36,6 +38,8 @@ urlpatterns = [
     path("households/<uuid:id>/members/", HouseholdMembersView.as_view()),
     path("households/<uuid:id>/accounts/", HouseholdAccountView.as_view()),
     path("households/<uuid:id>/leave/", LeaveHouseholdView.as_view()),
+    path("households/<uuid:id>/transfer-ownership/", TransferOwnershipView.as_view()),
+    path("households/<uuid:id>/invite-code/", RegenerateInviteCodeView.as_view()),
 
     # Dashboard-Items
     path("dashboard/", DashboardView.as_view()),
