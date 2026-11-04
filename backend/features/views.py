@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 from django.db.models import Q
 from django.db.models import Count
 from django.db.models.deletion import ProtectedError
+from users.models import HouseholdMembership
 from .models import (
     CalendarEvent,
     CleaningLog,
@@ -44,14 +45,46 @@ from .serializers import (
 
 
 class HasActiveHousehold(permissions.BasePermission):
+    """The active household must be one the user is still a member of.
+
+    `active_household` is only a preference; a user removed from a WG may still
+    point at it, so membership is checked on every request.
+    """
     message = 'Bitte zuerst eine WG erstellen oder einer WG beitreten.'
 
     def has_permission(self, request, view):
-        return bool(request.user.is_authenticated and request.user.active_household_id)
+        user = request.user
+        if not (user.is_authenticated and user.active_household_id):
+            return False
+        return HouseholdMembership.objects.filter(
+            user=user, household_id=user.active_household_id
+        ).exists()
+
+
+class CanEditIngredientCatalog(permissions.BasePermission):
+    """The ingredient catalog is shared by all WGs.
+
+    Reading needs a login; changing it needs an active WG membership, and
+    deleting needs the owner or admin role in that WG (or staff).
+    """
+    message = 'Nur WG-Mitglieder dürfen den Zutatenkatalog ändern; löschen dürfen nur Admins.'
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS or user.is_staff:
+            return True
+        memberships = HouseholdMembership.objects.filter(
+            user=user, household_id=user.active_household_id
+        )
+        if request.method == 'DELETE':
+            memberships = memberships.filter(role__in=('owner', 'admin'))
+        return bool(user.active_household_id) and memberships.exists()
 
 
 class IngredientListView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [CanEditIngredientCatalog]
     serializer_class = IngredientSerializer
     queryset = Ingredient.objects.annotate(usage_count=Count('recipe_rows__recipe', distinct=True))
 
@@ -68,7 +101,7 @@ class IngredientListView(generics.ListCreateAPIView):
 
 
 class IngredientDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [CanEditIngredientCatalog]
     serializer_class = IngredientSerializer
     queryset = Ingredient.objects.annotate(usage_count=Count('recipe_rows__recipe', distinct=True))
     lookup_field = 'id'
@@ -87,6 +120,17 @@ class IngredientDetailView(generics.RetrieveUpdateDestroyAPIView):
         except ProtectedError:
             return Response({'detail': 'Diese Zutat wird in Rezepten verwendet. Bitte archivieren statt löschen.'}, status=status.HTTP_409_CONFLICT)
         return Response({'success': True}, status=status.HTTP_200_OK)
+
+
+def _parse_bool(value):
+    """Return True/False for JSON booleans and their common string forms, else None."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.strip().lower() in ('true', 'false', '1', '0'):
+        return value.strip().lower() in ('true', '1')
+    if value in (0, 1):
+        return bool(value)
+    return None
 
 
 def recalculate_menu_persons_for_range(household, week_start, week_end):
@@ -618,6 +662,11 @@ class MemberAvailabilityListCreateView(generics.ListCreateAPIView):
         start_raw = self.request.query_params.get('start')
         end_raw = self.request.query_params.get('end')
         if member_id:
+            import uuid
+            try:
+                member_id = uuid.UUID(str(member_id))
+            except ValueError:
+                raise ValidationError({'memberId': 'Ungültige Mitglieds-ID.'})
             queryset = queryset.filter(member_id=member_id)
         if start_raw:
             queryset = queryset.filter(date__gte=parse_date(start_raw) or date.min)
@@ -692,9 +741,13 @@ class UserMealAttendanceView(APIView):
         d = parse_date(date_str)
         if not d:
             return Response({'error': 'Invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
-        breakfast = request.data.get('breakfastPresent', False)
-        lunch = request.data.get('lunchPresent', False)
-        dinner = request.data.get('dinnerPresent', False)
+        flags = {}
+        for key in ('breakfastPresent', 'lunchPresent', 'dinnerPresent'):
+            value = _parse_bool(request.data.get(key, False))
+            if value is None:
+                return Response({'error': f'{key} muss true oder false sein'}, status=status.HTTP_400_BAD_REQUEST)
+            flags[key] = value
+        breakfast, lunch, dinner = flags['breakfastPresent'], flags['lunchPresent'], flags['dinnerPresent']
         obj, _ = UserMealAttendance.objects.update_or_create(
             household=hh,
             user=request.user,

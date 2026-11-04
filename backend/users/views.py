@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,12 +17,27 @@ from .serializers import (
 from .auth_serializers import EmailTokenObtainPairSerializer
 
 
+def _leave_active_household(user, household):
+    """After `user` lost membership of `household`, move their active WG elsewhere.
+
+    Only touches the user if `household` was the active one.
+    """
+    if user.active_household_id != household.id:
+        return
+    user.active_household = Household.objects.filter(memberships__user=user).first()
+    user.save(update_fields=['active_household'])
+
+
 # User
 class UserCreateView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserCreateSerializer
+    permission_classes = [AllowAny]
+    throttle_scope = 'auth'
 
     def create(self, request, *args, **kwargs):
+        if not settings.ALLOW_REGISTRATION:
+            raise PermissionDenied("Die Registrierung ist auf diesem Server deaktiviert")
         response = super().create(request, *args, **kwargs)
         user = User.objects.get(id=response.data['id'])
         hh = Household.objects.create(name="Meine WG", created_by=user)
@@ -62,9 +78,12 @@ class CurrentUserView(generics.RetrieveAPIView):
 
 class CheckEmailView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = 'auth'
 
     def post(self, request):
         email = request.data.get("email")
+        if not isinstance(email, str) or not email.strip():
+            return Response({"error": "email ist erforderlich"}, status=400)
         exists = User.objects.filter(email__iexact=email).exists()
         return Response({"data": {"exists": exists}})
 
@@ -72,6 +91,7 @@ class CheckEmailView(APIView):
 class EmailTokenObtainPairView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = EmailTokenObtainPairSerializer
+    throttle_scope = 'login'
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -194,6 +214,10 @@ class HouseholdMembersView(APIView):
         if new_role not in ('admin', 'member'):
             return Response({"error": "Ungültige Rolle"}, status=400)
         m = get_object_or_404(HouseholdMembership, household=hh, user_id=target_user_id)
+        if m.role == 'owner':
+            return Response({"error": "Die Rolle des Eigentümers kann nicht geändert werden"}, status=400)
+        if m.role == 'admin' and caller.role != 'owner' and m.user_id != request.user.id:
+            raise PermissionDenied("Nur der Eigentümer kann andere Admins ändern")
         m.role = new_role
         m.save()
         return Response({"data": HouseholdMembershipSerializer(m).data})
@@ -207,7 +231,11 @@ class HouseholdMembersView(APIView):
         m = get_object_or_404(HouseholdMembership, household=hh, user_id=target_user_id)
         if m.role == 'owner':
             return Response({"error": "Eigentümer kann nicht entfernt werden"}, status=400)
+        if m.role == 'admin' and caller.role != 'owner' and m.user_id != request.user.id:
+            raise PermissionDenied("Nur der Eigentümer kann Admins entfernen")
+        target = m.user
         m.delete()
+        _leave_active_household(target, hh)
         return Response({"success": True})
 
 
@@ -226,10 +254,7 @@ class LeaveHouseholdView(APIView):
                 status=400
             )
         membership.delete()
-        # Switch to another household if available
-        other_hh = Household.objects.filter(memberships__user=request.user).first()
-        request.user.active_household = other_hh
-        request.user.save(update_fields=['active_household'])
+        _leave_active_household(request.user, hh)
         return Response({'data': CurrentUserSerializer(request.user, context={'request': request}).data})
 
 

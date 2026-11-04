@@ -2,7 +2,7 @@ from django.test import TestCase, TransactionTestCase
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from rest_framework.test import APIClient
-from users.models import Household, User
+from users.models import Household, User, HouseholdMembership
 from .models import Recipe, ShoppingItem
 from .serializers import ShoppingItemSerializer
 
@@ -12,6 +12,7 @@ class ShoppingWorkflowTests(TestCase):
         self.household = Household.objects.create(name='Shopping')
         self.other = Household.objects.create(name='Other')
         self.user = User.objects.create_user('shopping@example.com', 'password', active_household=self.household)
+        HouseholdMembership.objects.create(user=self.user, household=self.household)
         self.client = APIClient()
         self.client.force_authenticate(self.user)
 

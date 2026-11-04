@@ -17,7 +17,7 @@ from .views import (
     HouseholdAccountView,
     LeaveHouseholdView,
 )
-from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
 urlpatterns = [
     # User
@@ -25,6 +25,7 @@ urlpatterns = [
     path("create/", UserCreateView.as_view()),
     path("token/", EmailTokenObtainPairView.as_view()),
     path("token/refresh/", TokenRefreshView.as_view()),
+    path("token/logout/", TokenBlacklistView.as_view()),
     path("check-email/", CheckEmailView.as_view()),
 
     # Households

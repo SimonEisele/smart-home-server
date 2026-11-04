@@ -121,6 +121,13 @@ export class AuthService {
 
   // Logout: Delete tokens
   logout() {
+    // Invalidate the refresh token on the server; local logout must not wait for or depend on it.
+    const refresh = localStorage.getItem('refresh') || sessionStorage.getItem('refresh');
+    if (refresh) {
+      this.http.post(`${environment.apiUrl}/users/token/logout/`, { refresh }).pipe(
+        catchError(() => of(null))
+      ).subscribe();
+    }
     localStorage.removeItem('access');
     localStorage.removeItem('refresh');
     localStorage.removeItem('user');

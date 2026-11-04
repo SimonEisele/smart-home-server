@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from django.utils import timezone
 from django.test import TestCase
 from rest_framework.test import APIClient
-from users.models import Household, User
+from users.models import Household, User, HouseholdMembership
 from .models import CalendarEvent, HouseholdMember, MemberAvailability, Menu, Recipe, ShoppingItem, Todo, UserMealAttendance
 from .views import recalculate_menu_persons_for_range
 
@@ -12,7 +12,9 @@ class FeatureRegressionTests(TestCase):
         self.household = Household.objects.create(name='Test household')
         self.other_household = Household.objects.create(name='Other household')
         self.owner = User.objects.create_user('owner@example.com', 'testpassword', active_household=self.household)
+        HouseholdMembership.objects.create(user=self.owner, household=self.household)
         self.member = User.objects.create_user('member@example.com', 'testpassword', active_household=self.household)
+        HouseholdMembership.objects.create(user=self.member, household=self.household)
         self.client = APIClient()
         self.client.force_authenticate(self.member)
         self.day = date(2026, 10, 4)
@@ -127,6 +129,7 @@ class TaskInputTests(TestCase):
     def setUp(self):
         household = Household.objects.create(name='Test')
         user = User.objects.create_user('task@example.com', 'testpassword', active_household=household)
+        HouseholdMembership.objects.create(user=user, household=household)
         self.client = APIClient()
         self.client.force_authenticate(user)
         self.task = Todo.objects.create(household=household, created_by=user, title='Task', global_todo=True, duration_minutes=90,
@@ -155,6 +158,7 @@ class RecipeShoppingTests(TestCase):
     def setUp(self):
         self.household = Household.objects.create(name='Cooking')
         user = User.objects.create_user('cook@example.com', 'testpassword', active_household=self.household)
+        HouseholdMembership.objects.create(user=user, household=self.household)
         self.client = APIClient()
         self.client.force_authenticate(user)
         self.recipe = Recipe.objects.create(household=self.household, name='Recipe', base_servings=2,
@@ -177,7 +181,9 @@ class TaskCalendarLinkTests(TestCase):
         self.household = Household.objects.create(name='Tasks')
         self.other_household = Household.objects.create(name='Other')
         self.member = User.objects.create_user('planner@example.com','testpassword',active_household=self.household)
+        HouseholdMembership.objects.create(user=self.member, household=self.household)
         self.owner = User.objects.create_user('other@example.com','testpassword',active_household=self.household)
+        HouseholdMembership.objects.create(user=self.owner, household=self.household)
         self.client = APIClient()
         self.client.force_authenticate(self.member)
         self.task = Todo.objects.create(household=self.household, created_by=self.member, title='Plan task', description='Task details', duration_minutes=180)
@@ -221,6 +227,7 @@ class MenuExportWorkflowTests(TestCase):
     def setUp(self):
         self.household=Household.objects.create(name='Export')
         self.user=User.objects.create_user('export@example.com','testpassword',active_household=self.household)
+        HouseholdMembership.objects.create(user=self.user, household=self.household)
         self.client=APIClient();self.client.force_authenticate(self.user)
         self.monday=date(2026,10,5)
         self.recipe=Recipe.objects.create(household=self.household,name='Pasta',base_servings=4,units_per_person=2,ingredients=[{'name':'Pasta','quantityPerPerson':200,'unit':'g'}])

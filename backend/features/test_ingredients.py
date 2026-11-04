@@ -1,6 +1,6 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
-from users.models import Household, User
+from users.models import Household, User, HouseholdMembership
 from .models import Ingredient, Recipe, RecipeIngredient
 
 
@@ -8,6 +8,7 @@ class IngredientWorkflowTests(TestCase):
     def setUp(self):
         self.household = Household.objects.create(name='Kitchen')
         self.user = User.objects.create_user('kitchen@example.com', 'password', active_household=self.household)
+        HouseholdMembership.objects.create(user=self.user, household=self.household, role='owner')
         self.client = APIClient()
         self.client.force_authenticate(self.user)
         self.flour, _ = Ingredient.objects.get_or_create(normalized_name='weizenmehl', defaults={'name': 'Weizenmehl', 'category': 'getreide', 'default_unit': 'g'})

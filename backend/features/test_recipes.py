@@ -2,7 +2,7 @@ from django.test import TestCase, TransactionTestCase
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from rest_framework.test import APIClient
-from users.models import User, Household
+from users.models import User, Household, HouseholdMembership
 from .models import Recipe, Ingredient, RecipeStepIngredient
 
 
@@ -10,6 +10,7 @@ class RecipeWorkflowTests(TestCase):
     def setUp(self):
         self.household = Household.objects.create(name='Recipes')
         self.user = User.objects.create_user('recipes@example.com', 'password', active_household=self.household)
+        HouseholdMembership.objects.create(user=self.user, household=self.household)
         self.client = APIClient(); self.client.force_authenticate(self.user)
         self.data = {'name':'Testbrot', 'baseServings':4, 'servingType':'Portionen', 'unitsPerPerson':1,
             'sections':[{'id':1,'title':'Teig'}], 'sideNotes':[{'label':'Ofen','value':'180 °C'}],

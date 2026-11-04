@@ -11,7 +11,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const api = new URL(environment.apiUrl + '/', window.location.origin);
   const url = new URL(req.url, window.location.origin);
   const isBackend = url.origin === api.origin && url.pathname.startsWith(api.pathname);
-  const publicPaths = ['users/token/', 'users/token/refresh/', 'users/check-email/', 'users/create/'];
+  const publicPaths = ['users/token/', 'users/token/refresh/', 'users/token/logout/','users/check-email/', 'users/create/'];
   if (!isBackend || publicPaths.some(path => url.pathname === api.pathname + path)) return next(req);
 
   const session = inject(TokenSessionService);
