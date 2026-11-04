@@ -82,3 +82,7 @@ Thumbs.db
 
 # Deploy state on the server
 .deploy/
+
+# Local data exports (manage.py dumpdata); may contain personal data
+backend/smarthome-transfer.json
+*.dump.json

@@ -71,7 +71,7 @@ describe('Ingredient management workflow', () => {
     page.startEdit(flour);
     page.form.name = 'Weizenmehl';
     service.updateIngredient.mockReturnValue(
-      throwError(() => ({ error: { name: ['Name bereits vorhanden.'] } })),
+      throwError(() => ({ error: { error: { code: 'VALIDATION_ERROR', message: 'Name bereits vorhanden.', details: { name: ['Name bereits vorhanden.'] } } } })),
     );
     page.save();
     expect(page.form.name).toBe('Weizenmehl');
@@ -114,7 +114,7 @@ describe('Ingredient management workflow', () => {
     page.startEdit(archived);
     page.confirmDelete();
     service.deleteIngredient.mockReturnValue(
-      throwError(() => ({ error: { detail: 'Wird inzwischen verwendet.' } })),
+      throwError(() => ({ error: { error: { code: 'CONFLICT', message: 'Wird inzwischen verwendet.', details: null } } })),
     );
     page.delete();
     expect(page.formError).toContain('verwendet');

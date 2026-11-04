@@ -35,10 +35,10 @@ export class ShoppinglistService {
 
   clearChecked(ids: string[]): Observable<string[]> {
     return this.http
-      .post<{ deletedIds: string[] }>(`${environment.apiUrl}/shopping-items/clear-checked/`, {
+      .post<{ data: { deletedIds: string[] } }>(`${environment.apiUrl}/shopping-items/clear-checked/`, {
         ids,
       })
-      .pipe(map((res) => res.deletedIds));
+      .pipe(map((res) => res.data.deletedIds));
   }
 
   getSuggestions(query: string): Observable<Array<Partial<ShoppingItem>>> {

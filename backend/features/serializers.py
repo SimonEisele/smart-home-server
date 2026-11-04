@@ -304,7 +304,7 @@ class MenuSerializer(serializers.ModelSerializer):
         for field in ('breakfast_recipe_id', 'lunch_recipe_id', 'dinner_recipe_id'):
             recipe_id = attrs.get(field)
             if recipe_id and not Recipe.objects.filter(id=recipe_id, household=household).exists():
-                raise serializers.ValidationError({field: 'Recipe is not available in this household.'})
+                raise serializers.ValidationError({field: 'Dieses Rezept gibt es in deiner WG nicht.'})
         extra_ids = attrs.get('extra_recipe_ids')
         if extra_ids is not None:
             if not isinstance(extra_ids, list):
@@ -315,7 +315,7 @@ class MenuSerializer(serializers.ModelSerializer):
                 except (ValueError, TypeError, DjangoValidationError):
                     available = False
                 if not available:
-                    raise serializers.ValidationError({'extraRecipeIds': 'Recipe is not available in this household.'})
+                    raise serializers.ValidationError({'extraRecipeIds': 'Dieses Rezept gibt es in deiner WG nicht.'})
         if self.instance:
             for meal in ('breakfast','lunch','dinner'):
                 if meal+'_recipe_id' in attrs and attrs[meal+'_recipe_id'] is None and getattr(self.instance,meal+'_recipe_id'):
@@ -454,7 +454,7 @@ class CalendarEventSerializer(serializers.ModelSerializer):
                 Q(global_todo=True) | Q(created_by=user)
             ).first()
             if not todo:
-                raise serializers.ValidationError({'todoRefId': 'Task is unavailable in this household.'})
+                raise serializers.ValidationError({'todoRefId': 'Diese Aufgabe gibt es in deiner WG nicht.'})
             title = attrs.get('title', getattr(self.instance, 'title', ''))
             suffix = re.search(r' \(\d+/\d+\)$', title)
             attrs['title'] = todo.title + (suffix.group() if suffix else '')
@@ -550,5 +550,6 @@ class CleaningTaskSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'logs', 'lastDoneAt', 'createdAt', 'updatedAt']
 
     def get_lastDoneAt(self, obj):
-        last_log = obj.logs.order_by('-done_at').first()
-        return str(last_log.done_at) if last_log else None
+        # Uses the prefetched logs instead of one query per task.
+        dates = [log.done_at for log in obj.logs.all()]
+        return str(max(dates)) if dates else None

@@ -29,12 +29,12 @@ export class DashboardService {
   }
 
   getDashboard(): Observable<DashboardItem[]> {
-    return this.http.get<DashboardItem[]>(`${environment.apiUrl}/users/dashboard/`);
+    return this.http.get<{ data: DashboardItem[] }>(`${environment.apiUrl}/users/dashboard/`).pipe(map(r => r.data));
   }
 
   saveItem(item: DashboardItem): Observable<DashboardItem> {
     if(item.id) {
-      return this.http.patch<DashboardItem>(`${environment.apiUrl}/users/dashboard/${item.id}/`,
+      return this.http.patch<{ data: DashboardItem }>(`${environment.apiUrl}/users/dashboard/${item.id}/`,
         {
           x: item.x,
           y: item.y,
@@ -42,9 +42,9 @@ export class DashboardService {
           rows: item.rows,
           config: item.config
         }
-      );
+      ).pipe(map(r => r.data));
     } else {
-      return this.http.post<DashboardItem>(`${environment.apiUrl}/users/dashboard/`, item);
+      return this.http.post<{ data: DashboardItem }>(`${environment.apiUrl}/users/dashboard/`, item).pipe(map(r => r.data));
     }
   }
 

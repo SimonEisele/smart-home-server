@@ -86,7 +86,7 @@ describe('Recipe editing workflow', () => {
     page.closeModal();
     expect(service.updateRecipe).toHaveBeenCalledTimes(1);
     expect(page.showModal).toBe(true);
-    result.error({ error: { steps: ['Bitte eine eindeutige Zutat auswählen.'] } });
+    result.error({ error: { error: { code: 'VALIDATION_ERROR', message: 'Bitte eine eindeutige Zutat auswählen.', details: { steps: ['Bitte eine eindeutige Zutat auswählen.'] } } } });
     expect(page.form.name).toBe('Neu');
     expect(page.formError).toContain('eindeutige');
     expect(page.saving).toBe(false);

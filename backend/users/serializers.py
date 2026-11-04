@@ -1,3 +1,4 @@
+from django.db.models import Count, OuterRef, Subquery
 from rest_framework import serializers
 from .models import User, DashboardItem, Household, HouseholdMembership
 
@@ -13,6 +14,8 @@ class HouseholdSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'invite_code', 'created_at', 'updated_at']
 
     def get_role(self, obj):
+        if hasattr(obj, 'my_role'):  # annotated by with_member_info()
+            return obj.my_role
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             m = obj.memberships.filter(user=request.user).first()
@@ -20,7 +23,18 @@ class HouseholdSerializer(serializers.ModelSerializer):
         return None
 
     def get_member_count(self, obj):
+        if hasattr(obj, 'member_count_value'):
+            return obj.member_count_value
         return obj.memberships.count()
+
+
+def with_member_info(queryset, user):
+    """Annotate households with the member count and `user`'s role in one query."""
+    role = HouseholdMembership.objects.filter(household=OuterRef('pk'), user=user).values('role')[:1]
+    return queryset.annotate(
+        member_count_value=Count('memberships', distinct=True),
+        my_role=Subquery(role),
+    )
 
 
 class HouseholdMembershipSerializer(serializers.ModelSerializer):
@@ -75,8 +89,9 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         return str(obj.active_household_id) if obj.active_household_id else None
 
     def get_households(self, obj):
-        memberships = obj.memberships.select_related('household').all()
-        request = self.context.get('request')
+        memberships = obj.memberships.select_related('household').annotate(
+            member_count_value=Count('household__memberships', distinct=True)
+        )
         return [
             {
                 'id': str(m.household.id),
@@ -84,7 +99,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
                 'description': m.household.description,
                 'invite_code': str(m.household.invite_code),
                 'role': m.role,
-                'member_count': m.household.memberships.count(),
+                'member_count': m.member_count_value,
             }
             for m in memberships
         ]

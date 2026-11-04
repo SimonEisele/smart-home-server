@@ -55,6 +55,21 @@ ALLOWED_HOSTS = _env_list('DJANGO_ALLOWED_HOSTS', '*')
 # Open sign-up; set to false once every WG member has an account.
 ALLOW_REGISTRATION = _env_bool('DJANGO_ALLOW_REGISTRATION', True)
 
+# HTTPS: set DJANGO_HTTPS=true once the server is only reached via https
+# (e.g. Caddy/nginx with Let's Encrypt in front of Django).
+HTTPS = _env_bool('DJANGO_HTTPS', False)
+if HTTPS:
+    # The reverse proxy terminates TLS and tells Django via this header.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = _env_bool('DJANGO_SSL_REDIRECT', True)
+    # Start small; browsers remember HSTS, so raise it only once https works.
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '3600'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+# Needed for the Django admin login behind https, e.g. https://smarthome.example.de
+CSRF_TRUSTED_ORIGINS = _env_list('DJANGO_CSRF_TRUSTED_ORIGINS', '')
+
 
 # Application definition
 
@@ -79,6 +94,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    # One error shape for every response, see backend/api_errors.py.
+    'EXCEPTION_HANDLER': 'backend.api_errors.exception_handler',
     # Secure by default: views that should be public say so with AllowAny.
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',

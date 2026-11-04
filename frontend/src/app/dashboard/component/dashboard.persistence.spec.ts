@@ -24,10 +24,10 @@ describe('Dashboard persistence', () => {
     dashboard.addWidget('weather');
     const first = http.expectOne(endpoint);
     expect(first.request.body.widget_type).toBe('todos');
-    first.flush({ ...first.request.body, id: 'first-id' });
+    first.flush({ data: { ...first.request.body, id: 'first-id' } });
     const second = http.expectOne(endpoint);
     expect(second.request.body.widget_type).toBe('weather');
-    second.flush({ ...second.request.body, id: 'second-id' });
+    second.flush({ data: { ...second.request.body, id: 'second-id' } });
     expect(dashboard.dashboard.map(item => item.id)).toEqual(['first-id', 'second-id']);
   });
 
@@ -35,10 +35,10 @@ describe('Dashboard persistence', () => {
     vi.useFakeTimers();
     dashboard.addWidget('todos');
     const first = http.expectOne(endpoint);
-    first.flush({ ...first.request.body, id: 'first-id' });
+    first.flush({ data: { ...first.request.body, id: 'first-id' } });
     dashboard.addWidget('weather');
     const second = http.expectOne(endpoint);
-    second.flush({ ...second.request.body, id: 'second-id' });
+    second.flush({ data: { ...second.request.body, id: 'second-id' } });
     const [a, b] = dashboard.dashboard;
     a.x = 1; b.x = 4;
     (dashboard as any).saveItem(a);
@@ -46,9 +46,9 @@ describe('Dashboard persistence', () => {
     vi.advanceTimersByTime(300);
     const patchA = http.expectOne(endpoint + 'first-id/');
     expect(patchA.request.body.x).toBe(1);
-    patchA.flush({ ...a });
+    patchA.flush({ data: { ...a } });
     const patchB = http.expectOne(endpoint + 'second-id/');
     expect(patchB.request.body.x).toBe(4);
-    patchB.flush({ ...b });
+    patchB.flush({ data: { ...b } });
   });
 });

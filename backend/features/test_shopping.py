@@ -58,7 +58,7 @@ class ShoppingWorkflowTests(TestCase):
         foreign=ShoppingItem.objects.create(household=self.other,name='Foreign',checked=True)
         response=self.client.post('/api/shopping-items/clear-checked/',{'ids':[str(selected.id),str(open_item.id),str(foreign.id)]},format='json')
         self.assertEqual(response.status_code,200)
-        self.assertEqual(response.data['deletedIds'],[str(selected.id)])
+        self.assertEqual(response.data['data']['deletedIds'],[str(selected.id)])
         self.assertSetEqual(set(ShoppingItem.objects.values_list('name',flat=True)),{'Open','Hidden','Foreign'})
         response=self.client.post('/api/shopping-items/clear-checked/',{'ids':['bad']},format='json')
         self.assertEqual(response.status_code,400)

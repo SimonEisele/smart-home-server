@@ -7,6 +7,7 @@ import { AuthService } from '../auth/service/auth.service';
 import { HouseholdService } from '../../shared/services/household.service';
 import { Household, HouseholdMember, User } from '../auth/model/auth.model';
 import { Observable } from 'rxjs';
+import { apiErrorMessage } from '../../shared/utils/api-error';
 
 @Component({
   selector: 'app-account-manager',
@@ -200,7 +201,7 @@ export class AccountManager implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.joinError = err?.error?.error || 'Ungültiger Code';
+        this.joinError = apiErrorMessage(err, 'Ungültiger Code');
         this.joining = false;
         this.cdr.detectChanges();
       },
@@ -231,7 +232,7 @@ export class AccountManager implements OnInit {
       error: err => {
         this.memberPending.delete(userId);
         if (this.householdService.activeHousehold?.id === householdId) {
-          this.memberError = err?.error?.error || err?.error?.detail || 'Änderung konnte nicht gespeichert werden. Bitte erneut versuchen.';
+          this.memberError = apiErrorMessage(err, 'Änderung konnte nicht gespeichert werden. Bitte erneut versuchen.');
           this.members = [...this.members];
         }
         this.cdr.markForCheck();
@@ -281,7 +282,7 @@ export class AccountManager implements OnInit {
       },
       error: err => {
         this.regeneratingInvite = false;
-        this.inviteFeedback = err?.error?.error || err?.error?.detail || 'Einladungscode konnte nicht erneuert werden.';
+        this.inviteFeedback = apiErrorMessage(err, 'Einladungscode konnte nicht erneuert werden.');
         this.cdr.markForCheck();
       },
     });
@@ -318,7 +319,7 @@ export class AccountManager implements OnInit {
         this.loadMembers(hh.id);
       },
       error: (err) => {
-        this.createAccountError = err?.error?.error || 'Fehler beim Erstellen';
+        this.createAccountError = apiErrorMessage(err, 'Fehler beim Erstellen');
         this.creatingAccount = false;
         this.cdr.detectChanges();
       }
@@ -361,7 +362,7 @@ export class AccountManager implements OnInit {
         setTimeout(() => { this.editingPasswordFor = null; this.changePasswordSuccess = ''; this.cdr.detectChanges(); }, 2000);
       },
       error: (err) => {
-        this.changePasswordError = err?.error?.error || 'Fehler beim Ändern des Passworts';
+        this.changePasswordError = apiErrorMessage(err, 'Fehler beim Ändern des Passworts');
         this.changePasswordLoading = false;
         this.cdr.detectChanges();
       }
@@ -383,7 +384,7 @@ export class AccountManager implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.leaveError = err?.error?.error || 'Fehler beim Verlassen der WG';
+        this.leaveError = apiErrorMessage(err, 'Fehler beim Verlassen der WG');
         this.leavingHousehold = false;
         this.cdr.detectChanges();
       }
@@ -422,7 +423,7 @@ export class AccountManager implements OnInit {
         setTimeout(() => { this.profileSuccess = ''; this.cdr.detectChanges(); }, 3000);
       },
       error: (err) => {
-        this.profileError = err?.error?.error || 'Fehler beim Speichern';
+        this.profileError = apiErrorMessage(err, 'Fehler beim Speichern');
         this.profileSaving = false;
         this.cdr.detectChanges();
       }
@@ -457,7 +458,7 @@ export class AccountManager implements OnInit {
         setTimeout(() => { this.passwordSuccess = ''; this.cdr.detectChanges(); }, 3000);
       },
       error: (err) => {
-        this.passwordError = err?.error?.error || 'Fehler beim Ändern des Passworts';
+        this.passwordError = apiErrorMessage(err, 'Fehler beim Ändern des Passworts');
         this.passwordSaving = false;
         this.cdr.detectChanges();
       }

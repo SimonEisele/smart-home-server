@@ -199,3 +199,47 @@ class AuthEndpointTests(APITestCase):
             'email': 'new@example.com', 'password': 'testpassword', 'first_name': 'N', 'last_name': 'N',
         }, format='json')
         self.assertEqual(r.status_code, 200)
+
+
+class ErrorFormatTests(APITestCase):
+    """Every error uses {"error": {"code", "message", "details"}} (docs/api-conventions.md)."""
+
+    def setUp(self):
+        self.hh = Household.objects.create(name='WG')
+        self.user = User.objects.create_user('err@example.com', 'testpassword', active_household=self.hh)
+        HouseholdMembership.objects.create(user=self.user, household=self.hh, role='member')
+
+    def assertError(self, response, status_code, code):
+        self.assertEqual(response.status_code, status_code)
+        self.assertEqual(set(response.data), {'error'})
+        self.assertEqual(response.data['error']['code'], code)
+        self.assertIsInstance(response.data['error']['message'], str)
+        self.assertTrue(response.data['error']['message'])
+        return response.data['error']
+
+    def test_unauthenticated(self):
+        self.assertError(self.client.get('/api/todos/'), 401, 'UNAUTHORIZED')
+
+    def test_validation_error_keeps_field_details(self):
+        self.client.force_authenticate(self.user)
+        err = self.assertError(self.client.post('/api/todos/', {'title': ''}, format='json'), 400, 'VALIDATION_ERROR')
+        self.assertIn('title', err['details'])
+
+    def test_view_errors_forbidden_and_not_found(self):
+        self.client.force_authenticate(self.user)
+        err = self.assertError(self.client.post('/api/users/households/join/', {}, format='json'), 400, 'VALIDATION_ERROR')
+        self.assertEqual(err['message'], 'invite_code ist erforderlich')
+        self.assertError(self.client.post(f'/api/users/households/{self.hh.id}/invite-code/'), 403, 'FORBIDDEN')
+        err = self.assertError(self.client.get('/api/todos/00000000-0000-0000-0000-000000000000/'), 404, 'NOT_FOUND')
+        self.assertEqual(err['message'], 'Nicht gefunden.')
+
+    def test_dashboard_items_use_the_data_envelope(self):
+        self.client.force_authenticate(self.user)
+        created = self.client.post('/api/users/dashboard/', {
+            'widget_type': 'todos', 'x': 0, 'y': 0, 'cols': 2, 'rows': 2, 'minItemCols': 1, 'minItemRows': 1,
+        }, format='json')
+        self.assertEqual(created.status_code, 201)
+        item_id = created.data['data']['id']
+        self.assertEqual([i['id'] for i in self.client.get('/api/users/dashboard/').data['data']], [item_id])
+        deleted = self.client.delete(f'/api/users/dashboard/{item_id}/')
+        self.assertEqual((deleted.status_code, deleted.data), (200, {'success': True}))

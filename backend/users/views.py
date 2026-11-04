@@ -5,6 +5,9 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework import generics, permissions
 from rest_framework.response import Response
+
+from backend.api import DataEnvelopeMixin
+from backend.api_errors import api_error
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny
@@ -17,6 +20,7 @@ from .serializers import (
     DashboardItemSerializer,
     HouseholdSerializer,
     HouseholdMembershipSerializer,
+    with_member_info,
 )
 from .auth_serializers import EmailTokenObtainPairSerializer
 
@@ -72,9 +76,9 @@ class CurrentUserView(generics.RetrieveAPIView):
         if new_password:
             current_password = request.data.get('current_password', '')
             if not user.check_password(current_password):
-                return Response({'error': 'Aktuelles Passwort ist falsch'}, status=400)
+                return api_error('Aktuelles Passwort ist falsch', 400)
             if len(new_password) < 8:
-                return Response({'error': 'Passwort muss mindestens 8 Zeichen lang sein'}, status=400)
+                return api_error('Passwort muss mindestens 8 Zeichen lang sein', 400)
             user.set_password(new_password)
         user.save()
         return Response({"data": CurrentUserSerializer(user, context={'request': request}).data})
@@ -87,7 +91,7 @@ class CheckEmailView(APIView):
     def post(self, request):
         email = request.data.get("email")
         if not isinstance(email, str) or not email.strip():
-            return Response({"error": "email ist erforderlich"}, status=400)
+            return api_error("email ist erforderlich", 400)
         exists = User.objects.filter(email__iexact=email).exists()
         return Response({"data": {"exists": exists}})
 
@@ -118,7 +122,8 @@ class HouseholdListCreateView(generics.ListCreateAPIView):
     serializer_class = HouseholdSerializer
 
     def get_queryset(self):
-        return Household.objects.filter(memberships__user=self.request.user).distinct()
+        mine = HouseholdMembership.objects.filter(user=self.request.user).values('household')
+        return with_member_info(Household.objects.filter(id__in=mine), self.request.user)
 
     def list(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_queryset(), many=True)
@@ -184,10 +189,10 @@ class JoinHouseholdView(APIView):
     def post(self, request):
         invite_code = request.data.get('invite_code')
         if not invite_code:
-            return Response({"error": "invite_code ist erforderlich"}, status=400)
+            return api_error("invite_code ist erforderlich", 400)
         hh = get_object_or_404(Household, invite_code=invite_code)
         if hh.memberships.filter(user=request.user).exists():
-            return Response({"error": "Du bist bereits Mitglied dieser WG"}, status=400)
+            return api_error("Du bist bereits Mitglied dieser WG", 400)
         HouseholdMembership.objects.create(user=request.user, household=hh, role='member')
         if not request.user.active_household:
             request.user.active_household = hh
@@ -216,10 +221,10 @@ class HouseholdMembersView(APIView):
         target_user_id = request.data.get('user_id')
         new_role = request.data.get('role')
         if new_role not in ('admin', 'member'):
-            return Response({"error": "Ungültige Rolle"}, status=400)
+            return api_error("Ungültige Rolle", 400)
         m = get_object_or_404(HouseholdMembership, household=hh, user_id=target_user_id)
         if m.role == 'owner':
-            return Response({"error": "Die Rolle des Eigentümers kann nicht geändert werden"}, status=400)
+            return api_error("Die Rolle des Eigentümers kann nicht geändert werden", 400)
         if m.role == 'admin' and caller.role != 'owner' and m.user_id != request.user.id:
             raise PermissionDenied("Nur der Eigentümer kann andere Admins ändern")
         m.role = new_role
@@ -234,7 +239,7 @@ class HouseholdMembersView(APIView):
         target_user_id = request.data.get('user_id')
         m = get_object_or_404(HouseholdMembership, household=hh, user_id=target_user_id)
         if m.role == 'owner':
-            return Response({"error": "Eigentümer kann nicht entfernt werden"}, status=400)
+            return api_error("Eigentümer kann nicht entfernt werden", 400)
         if m.role == 'admin' and caller.role != 'owner' and m.user_id != request.user.id:
             raise PermissionDenied("Nur der Eigentümer kann Admins entfernen")
         target = m.user
@@ -251,7 +256,7 @@ class TransferOwnershipView(APIView):
         hh = get_object_or_404(Household, memberships__user=request.user, id=id)
         target_user_id = request.data.get('user_id')
         if not target_user_id:
-            return Response({'error': 'user_id ist erforderlich'}, status=400)
+            return api_error('user_id ist erforderlich', 400)
         with transaction.atomic():
             caller = HouseholdMembership.objects.select_for_update().get(household=hh, user=request.user)
             if caller.role != 'owner':
@@ -261,11 +266,11 @@ class TransferOwnershipView(APIView):
                     household=hh, user_id=target_user_id
                 )
             except (HouseholdMembership.DoesNotExist, ValueError, DjangoValidationError):
-                return Response({'error': 'Diese Person ist kein Mitglied der WG'}, status=404)
+                return api_error('Diese Person ist kein Mitglied der WG', 404)
             if target.pk == caller.pk:
-                return Response({'error': 'Du bist bereits Eigentümer'}, status=400)
+                return api_error('Du bist bereits Eigentümer', 400)
             if target.user.is_household_account:
-                return Response({'error': 'Ein WG-Konto kann nicht Eigentümer werden'}, status=400)
+                return api_error('Ein WG-Konto kann nicht Eigentümer werden', 400)
             caller.role = 'admin'
             caller.save(update_fields=['role'])
             target.role = 'owner'
@@ -295,12 +300,9 @@ class LeaveHouseholdView(APIView):
         hh = get_object_or_404(Household, memberships__user=request.user, id=id)
         membership = hh.memberships.filter(user=request.user).first()
         if not membership:
-            return Response({'error': 'Du bist kein Mitglied dieser WG'}, status=400)
+            return api_error('Du bist kein Mitglied dieser WG', 400)
         if membership.role == 'owner':
-            return Response(
-                {'error': 'Als Eigentümer kannst du die WG nicht verlassen. Übertrage zuerst die Eigentümerschaft.'},
-                status=400
-            )
+            return api_error('Als Eigentümer kannst du die WG nicht verlassen. Übertrage zuerst die Eigentümerschaft.', 400)
         membership.delete()
         _leave_active_household(request.user, hh)
         return Response({'data': CurrentUserSerializer(request.user, context={'request': request}).data})
@@ -323,9 +325,9 @@ class HouseholdAccountView(APIView):
         name = (request.data.get('name') or 'WG Konto').strip()
         password = (request.data.get('password') or '').strip()
         if not name or not password:
-            return Response({'error': 'Name und Passwort sind erforderlich'}, status=400)
+            return api_error('Name und Passwort sind erforderlich', 400)
         if len(password) < 6:
-            return Response({'error': 'Passwort muss mindestens 6 Zeichen lang sein'}, status=400)
+            return api_error('Passwort muss mindestens 6 Zeichen lang sein', 400)
         # Auto-generate a unique internal email
         slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')[:20] or 'konto'
         base = f"wg-{slug}-{str(hh.id)[:8]}@wg.local"
@@ -358,11 +360,11 @@ class HouseholdAccountView(APIView):
         user_id = request.data.get('user_id')
         new_password = (request.data.get('password') or '').strip()
         if not user_id:
-            return Response({'error': 'user_id ist erforderlich'}, status=400)
+            return api_error('user_id ist erforderlich', 400)
         if not new_password:
-            return Response({'error': 'Passwort ist erforderlich'}, status=400)
+            return api_error('Passwort ist erforderlich', 400)
         if len(new_password) < 6:
-            return Response({'error': 'Passwort muss mindestens 6 Zeichen lang sein'}, status=400)
+            return api_error('Passwort muss mindestens 6 Zeichen lang sein', 400)
         target = get_object_or_404(User, id=user_id, is_household_account=True)
         get_object_or_404(HouseholdMembership, user=target, household=hh)
         target.set_password(new_password)
@@ -371,7 +373,7 @@ class HouseholdAccountView(APIView):
 
 
 # Dashboard-Items
-class DashboardView(generics.ListCreateAPIView):
+class DashboardView(DataEnvelopeMixin, generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = DashboardItemSerializer
 
@@ -382,7 +384,7 @@ class DashboardView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 
-class DashboardDetailView(generics.RetrieveUpdateDestroyAPIView):
+class DashboardDetailView(DataEnvelopeMixin, generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = DashboardItemSerializer
     lookup_field = "id"
@@ -411,7 +413,7 @@ class DashboardLayoutListCreateView(APIView):
     def post(self, request):
         name = (request.data.get('name') or '').strip()
         if not name:
-            return Response({'error': 'Name ist erforderlich'}, status=400)
+            return api_error('Name ist erforderlich', 400)
         # Snapshot current dashboard items
         current = DashboardItem.objects.filter(user=request.user)
         snapshot = DashboardItemSerializer(current, many=True).data

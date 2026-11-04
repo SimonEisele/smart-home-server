@@ -11,6 +11,7 @@ import { Menu } from '../model/menuplan.model';
 import { RecipesService } from '../../recipes/service/recipes.service';
 import { Recipe } from '../../recipes/model/recipes.model';
 import { ShoppinglistService, MenuExportPlan, MenuExportRequest } from '../../shoppinglist/service/shoppinglist.service';
+import { apiErrorMessage } from '../../../shared/utils/api-error';
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner';
 export type PickerMode = MealType | 'extra';
@@ -449,7 +450,7 @@ export class MenuplanPage implements OnInit {
     const request = existing?.id ? this.menuService.updateMenu(existing.id, patch) : this.menuService.createMenu({ date:dateStr, ...patch });
     request.pipe(finalize(() => { this.menuSaving = false; this.cdr.markForCheck(); })).subscribe({
       next: saved => { this.menus = { ...this.menus, [dateStr]: saved }; this.leftoverMenus = {...this.leftoverMenus,[dateStr]:saved}; this.menuSaving = false; onSaved?.(); this.cdr.markForCheck(); },
-      error: error => { const detail=error.error?.detail; this.menuError = typeof detail==='string' ? detail : Array.isArray(detail) ? detail.join(' ') : 'Die Planung konnte nicht gespeichert werden. Bitte erneut versuchen.'; this.cdr.markForCheck(); },
+      error: error => { this.menuError = apiErrorMessage(error, 'Die Planung konnte nicht gespeichert werden. Bitte erneut versuchen.'); this.cdr.markForCheck(); },
     });
   }
 

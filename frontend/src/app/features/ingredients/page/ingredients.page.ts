@@ -11,6 +11,7 @@ import {
   INGREDIENT_UNITS,
   ingredientKey,
 } from '../model/ingredient.model';
+import { apiErrorMessage } from '../../../shared/utils/api-error';
 
 interface IngredientForm {
   name: string;
@@ -249,15 +250,8 @@ export class IngredientsPage implements OnInit {
   private upsert(ingredient: Ingredient): void {
     this.ingredients = [...this.ingredients.filter((i) => i.id !== ingredient.id), ingredient];
   }
-  private errorText(error: any, fallback: string): string {
-    const details = error?.error;
-    if (!details || typeof details !== 'object') return fallback;
-    return (
-      Object.values(details)
-        .flat()
-        .filter((v) => typeof v === 'string')
-        .join(' ') || fallback
-    );
+  private errorText(error: unknown, fallback: string): string {
+    return apiErrorMessage(error, fallback);
   }
   private emptyForm(): IngredientForm {
     return { name: '', category: 'sonstiges', subcategory: '', defaultUnit: '' };

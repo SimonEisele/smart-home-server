@@ -12,16 +12,15 @@ import { TodosService } from '../todos/service/todos.service';
 import { Todo } from '../todos/model/todos.model';
 import { AuthService } from '../../core/auth/service/auth.service';
 import { CleaningTask } from '../cleaning/model/cleaning.model';
+import {
+  DayEntry, END_HOUR, HOUR_PX, START_HOUR, buildWeek, cleaningEntriesForDay, formatDuration, gridHeight, gridTop,
+  pad, todoOccurrences, weekLabel,
+} from './calendar.utils';
 
-interface DayEntry { date: Date; dateStr: string; isToday: boolean; dayName: string; dayNum: number; month: number; }
 interface DropPreview { dateStr: string; top: number; h: number; label: string; hour: number; minute: number; }
 interface EvModalForm { title: string; date: string; startTime: string; endTime: string; calendarType: string; description: string; location: string; color: string; allDay: boolean; }
 interface ResizePreview { evId: string; newH: number; newEnd: string; }
 
-const DAY_NAMES = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-const START_HOUR = 6;
-const END_HOUR   = 23;
-const HOUR_PX    = 64; // px per hour
 
 @Component({
   selector: 'app-calendar',
@@ -159,25 +158,12 @@ export class Calendar implements OnInit, OnDestroy {
   }
 
   private initWeek(d: Date): void {
-    const day  = d.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    const mon  = new Date(d);
-    mon.setDate(d.getDate() + diff);
-    this.weekStart = new Date(mon);
-    const today = this.iso(new Date());
-    this.weekDays = Array.from({ length: 7 }, (_, i) => {
-      const di = new Date(mon); di.setDate(mon.getDate() + i);
-      return { date: di, dateStr: this.iso(di), isToday: this.iso(di) === today,
-               dayName: DAY_NAMES[di.getDay()], dayNum: di.getDate(), month: di.getMonth() + 1 };
-    });
+    const week = buildWeek(d);
+    this.weekStart = week.weekStart;
+    this.weekDays = week.days;
   }
 
-  get weekLabel(): string {
-    if (!this.weekDays.length) return '';
-    const [s, e] = [this.weekDays[0].date, this.weekDays[6].date];
-    const fmt = (d: Date) => `${d.getDate()}.${d.getMonth() + 1}.`;
-    return `${fmt(s)} – ${fmt(e)}${e.getFullYear()}`;
-  }
+  get weekLabel(): string { return weekLabel(this.weekDays); }
 
   // â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   private load(): void {
@@ -205,27 +191,7 @@ export class Calendar implements OnInit, OnDestroy {
   }
 
   private rebuildTodoOcc(): void {
-    const occ: Record<string, string[]> = {};
-    for (const t of this.todos) {
-      if (t.done) continue;
-      const anchor = t.startDate || t.dueDate;
-      if (!anchor) continue;
-      const base = new Date(anchor);
-      if (isNaN(base.getTime())) continue;
-      if (!t.recurrence) {
-        const ds = this.iso(base);
-        if (this.weekDays.some(w => w.dateStr === ds)) occ[ds] = [...(occ[ds] ?? []), t.title];
-      } else {
-        const interval = Math.max(1, t.recurrenceInterval ?? 1);
-        for (const wd of this.weekDays) {
-          const diff = Math.floor((new Date(wd.dateStr).getTime() - base.getTime()) / 86400000);
-          if (diff < 0) continue;
-          if (t.recurrence === 'daily' && diff % interval === 0)        occ[wd.dateStr] = [...(occ[wd.dateStr] ?? []), t.title];
-          if (t.recurrence === 'weekly' && diff % (7 * interval) === 0) occ[wd.dateStr] = [...(occ[wd.dateStr] ?? []), t.title];
-        }
-      }
-    }
-    this.todoOccurrences = occ;
+    this.todoOccurrences = todoOccurrences(this.todos, this.weekDays);
   }
 
   // â”€â”€ Computed views â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -239,37 +205,7 @@ export class Calendar implements OnInit, OnDestroy {
   // ── Cleaning ─────────────────────────────────────────────────────────────
 
   cleaningEventsForDay(dateStr: string): { task: CleaningTask; overdue: boolean }[] {
-    const day = new Date(dateStr);
-    day.setHours(0, 0, 0, 0);
-    return this.cleaningTasks.filter(task => {
-      if (!task.isActive) return false;
-      const due = this.cleaningNextDue(task);
-      if (!due) return false;
-      due.setHours(0, 0, 0, 0);
-      return due.getTime() === day.getTime();
-    }).map(task => ({ task, overdue: false })).concat(
-      this.cleaningTasks.filter(task => {
-        if (!task.isActive) return false;
-        const due = this.cleaningNextDue(task);
-        if (!due) return false;
-        due.setHours(0, 0, 0, 0);
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        // Show overdue tasks on today
-        return due < today && day.getTime() === today.getTime();
-      }).map(task => ({ task, overdue: true }))
-    );
-  }
-
-  private cleaningNextDue(task: CleaningTask): Date | null {
-    if (!task.lastDoneAt) {
-      // Never done: show as due today
-      return new Date();
-    }
-    const last = new Date(task.lastDoneAt);
-    last.setHours(0, 0, 0, 0);
-    const d = new Date(last);
-    d.setDate(d.getDate() + task.intervalDays);
-    return d;
+    return cleaningEntriesForDay(this.cleaningTasks, dateStr);
   }
 
   mealAttendeesForDay(dateStr: string, meal: 'breakfast' | 'lunch' | 'dinner'): UserMealAttendance[] {
@@ -406,17 +342,11 @@ export class Calendar implements OnInit, OnDestroy {
     return this.events.filter(ev => ev.allDay && ev.start && localIsoDate(new Date(ev.start)) === dateStr && (ev.calendarType === 'private' ? this.showPrivate : this.showHousehold));
   }
 
-  evTop(ev: CalendarEvent): number {
-    const d = new Date(ev.start);
-    const mins = (d.getHours() - START_HOUR) * 60 + d.getMinutes();
-    return Math.max(0, mins * (HOUR_PX / 60));
-  }
+  evTop(ev: CalendarEvent): number { return gridTop(new Date(ev.start)); }
 
   evHeight(ev: CalendarEvent): number {
     if (this.resizePreview?.evId === ev.id) return this.resizePreview.newH;
-    if (!ev.end) return HOUR_PX;
-    const mins = (new Date(ev.end).getTime() - new Date(ev.start).getTime()) / 60000;
-    return Math.max(20, mins * (HOUR_PX / 60));
+    return gridHeight(ev.start, ev.end);
   }
 
   evClass(ev: CalendarEvent): string {
@@ -427,16 +357,11 @@ export class Calendar implements OnInit, OnDestroy {
 
   evColor(ev: CalendarEvent): string { return ev.color ?? ''; }
 
-  formatDuration(min?: number | null): string {
-    if (!min) return '';
-    const h = Math.floor(min / 60), m = min % 60;
-    return m ? `${h}h${m}` : `${h}h`;
-  }
+  formatDuration(min?: number | null): string { return formatDuration(min); }
 
   updateNow(): void {
     const now = new Date();
-    const mins = (now.getHours() - START_HOUR) * 60 + now.getMinutes();
-    this.nowTop = Math.max(0, mins * (HOUR_PX / 60));
+    this.nowTop = gridTop(now);
     this.nowVisible = now.getHours() >= START_HOUR && now.getHours() < END_HOUR;
     this.updateActiveProgress(now);
   }
@@ -993,6 +918,4 @@ export class Calendar implements OnInit, OnDestroy {
     };
   }
 }
-
-function pad(n: number): string { return String(n).padStart(2, '0'); }
 

@@ -23,6 +23,7 @@ import {
   RecipeStep,
 } from './model/recipes.model';
 import { RecipesService } from './service/recipes.service';
+import { apiErrorMessage } from '../../shared/utils/api-error';
 
 type RecipeForm = Partial<Recipe> & {
   ingredients: RecipeIngredient[];
@@ -602,14 +603,8 @@ export class Recipes implements OnInit {
       });
   }
 
-  private errorText(error: any, fallback: string): string {
-    const collect = (value: any): string[] =>
-      typeof value === 'string'
-        ? [value]
-        : value && typeof value === 'object'
-          ? Object.values(value).flatMap(collect)
-          : [];
-    return collect(error?.error).join(' ') || fallback;
+  private errorText(error: unknown, fallback: string): string {
+    return apiErrorMessage(error, fallback);
   }
 
   private emptyForm(): RecipeForm {
