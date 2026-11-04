@@ -25,6 +25,8 @@ export class WeatherWidget implements OnInit, AfterViewInit, OnDestroy {
   data: WeatherData | null = null;
   error = '';
   loading = false;
+  /** No location saved on this device yet: show a hint instead of an error. */
+  noLocation = false;
   visibleHourlyData: HourlyWeather[] = [];
   visibleDailyData: DailyWeather[] = [];
 
@@ -38,8 +40,10 @@ export class WeatherWidget implements OnInit, AfterViewInit, OnDestroy {
 
   load(): void {
     if (this.loading) return;
-    this.loading = true;
     this.error = '';
+    this.noLocation = !this.weatherService.getSavedLocation();
+    if (this.noLocation) return;
+    this.loading = true;
     this.weatherService.getWeather().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: weather => {
         this.data = weather;
@@ -49,9 +53,7 @@ export class WeatherWidget implements OnInit, AfterViewInit, OnDestroy {
       },
       error: () => {
         this.loading = false;
-        this.error = this.weatherService.getSavedLocation()
-          ? 'Wetter nicht verfügbar. Bitte erneut laden.'
-          : 'Wähle zuerst deinen Wetterort.';
+        this.error = 'Wetter nicht verfügbar.';
         this.cdr.markForCheck();
       },
     });

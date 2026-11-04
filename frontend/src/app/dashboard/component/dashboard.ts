@@ -89,7 +89,10 @@ export class Dashboard implements OnInit, OnDestroy {
   private initGrid() {
     this.options = {
       gridType: GridType.VerticalFixed,
-      mobileBreakpoint: 1100,
+      // Below 1100px window width the dashboard shows its own mobile list (isMobile).
+      // Gridster measures its own width (without the sidebar), so its breakpoint must
+      // stay lower, or laptops around 1280px get a single stacked column.
+      mobileBreakpoint: 640,
       keepFixedHeightInMobile: true,
       compactType: CompactType.None,
       margin: 8,

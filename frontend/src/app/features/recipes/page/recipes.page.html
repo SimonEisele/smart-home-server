@@ -1,9 +1,12 @@
 <div class="recipes-page app-page">
-    <header class="recipes-header">
-        <div>
-            <h2>Rezepte</h2>
+    <header class="page-header">
+        <div class="page-heading">
+            <p class="eyebrow">Essen &amp; Einkauf</p>
+            <h1 class="page-title">Rezepte</h1>
         </div>
-        <button class="btn-primary" type="button" (click)="openAdd()">+ Neues Rezept</button>
+        <div class="page-actions">
+            <button class="btn-primary" type="button" (click)="openAdd()">+ Neues Rezept</button>
+        </div>
     </header>
     <div class="recipe-filters">
         <label>Rezept suchen<input aria-label="Rezept suchen" type="search" [(ngModel)]="search"
@@ -18,9 +21,9 @@
             </select></label>
     </div>
     <div class="form-feedback" role="alert" *ngIf="loadError">
-        {{ loadError }} <button type="button" (click)="loadData()">Erneut laden</button>
+        {{ loadError }} <button class="btn-secondary" type="button" (click)="loadData()">Erneut laden</button>
     </div>
-    <p class="state" role="status" *ngIf="loading">Rezepte werden geladen…</p>
+    <p class="loading-state" role="status" *ngIf="loading">Rezepte werden geladen…</p>
     <div class="list-caption" *ngIf="!loading && !loadError">
         {{ filtered.length }} {{ filtered.length === 1 ? 'Rezept' : 'Rezepte'
         }}
@@ -87,11 +90,11 @@
         </header>
         <ng-container *ngIf="!showDeleteConfirm">
             <nav class="editor-tabs" aria-label="Rezeptbereiche">
-                <button type="button" [class.active]="editorTab === 'details'"
+                <button class="btn-secondary" type="button" [class.active]="editorTab === 'details'"
                     [attr.aria-pressed]="editorTab === 'details'" (click)="editorTab = 'details'">
-                    1 · Grundlagen</button><button type="button" [class.active]="editorTab === 'ingredients'"
+                    1 · Grundlagen</button><button class="btn-secondary" type="button" [class.active]="editorTab === 'ingredients'"
                     [attr.aria-pressed]="editorTab === 'ingredients'" (click)="editorTab = 'ingredients'">
-                    2 · Zutaten</button><button type="button" [class.active]="editorTab === 'steps'"
+                    2 · Zutaten</button><button class="btn-secondary" type="button" [class.active]="editorTab === 'steps'"
                     [attr.aria-pressed]="editorTab === 'steps'" (click)="editorTab = 'steps'">
                     3 · Zubereitung
                 </button>

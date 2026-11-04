@@ -87,12 +87,12 @@
 }
 
 .field-group.has-error .glass-input {
-  border-color: #fc8181;
+  border-color: var(--color-danger);
 }
 
 .field-error {
   font-size: 0.78rem;
-  color: #fc8181;
+  color: var(--color-danger);
 }
 
 .pw-row {

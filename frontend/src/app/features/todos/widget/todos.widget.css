@@ -80,8 +80,8 @@
   flex-shrink: 0;
 }
 
-.todo-widget-list li.overdue .todo-title { color: #ff8080; }
-.todo-widget-list li.overdue .todo-date  { color: #ff8080; }
+.todo-widget-list li.overdue .todo-title { color: var(--color-danger); }
+.todo-widget-list li.overdue .todo-date  { color: var(--color-danger); }
 .todo-widget-list li.due-today .todo-title { color: #ffbe50; }
 
 .progress-bar-row {

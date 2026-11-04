@@ -1,15 +1,15 @@
 <section class="app-page weather-page" [attr.aria-busy]="loading || locating">
-  <header class="page-heading">
-    <div><p class="eyebrow">Zuhause · Wetter</p><h1>Wetter</h1><p class="page-intro">Heute im Blick. Die nächsten Tage planen.</p></div>
-    <div class="heading-actions">
-      <button type="button" class="secondary" (click)="toggleSearch()" [attr.aria-expanded]="showSearch" aria-controls="location-search">{{ showSearch ? 'Ortssuche schliessen' : 'Ort ändern' }}</button>
-      <button type="button" class="secondary" (click)="refresh()" [disabled]="!weather || loading || locating">{{ loading ? 'Lädt…' : 'Aktualisieren' }}</button>
+  <header class="page-header">
+    <div class="page-heading"><p class="eyebrow">Unterwegs</p><h1 class="page-title">Wetter</h1><p class="page-subtitle">Heute im Blick. Die nächsten Tage planen.</p></div>
+    <div class="page-actions">
+      <button type="button" class="btn-secondary" (click)="toggleSearch()" [attr.aria-expanded]="showSearch" aria-controls="location-search">{{ showSearch ? 'Ortssuche schliessen' : 'Ort ändern' }}</button>
+      <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="!weather || loading || locating">{{ loading ? 'Lädt…' : 'Aktualisieren' }}</button>
     </div>
   </header>
 
   @if (showSearch) {
     <section class="panel location-search" id="location-search" aria-labelledby="search-title">
-      <div class="section-heading"><div><h2 id="search-title">Wetter für deinen Ort</h2><p>Ort auswählen oder den Standort dieses Geräts verwenden.</p></div><button type="button" class="secondary" (click)="useGeolocation()" [disabled]="loading || locating">{{ locating ? 'Standort wird ermittelt…' : 'Meinen Standort verwenden' }}</button></div>
+      <div class="section-heading"><div><h2 id="search-title">Wetter für deinen Ort</h2><p>Ort auswählen oder den Standort dieses Geräts verwenden.</p></div><button type="button" class="btn-secondary" (click)="useGeolocation()" [disabled]="loading || locating">{{ locating ? 'Standort wird ermittelt…' : 'Meinen Standort verwenden' }}</button></div>
       <label for="city-search">Ort suchen</label>
       <input id="city-search" type="search" autocomplete="off" [(ngModel)]="citySearch" (input)="onSearchInput()" placeholder="Zum Beispiel Biel oder Thun" />
       <div class="search-status" role="status">@if (searching) { Suche läuft… } @else if (searchCompleted && !cityResults.length) { Kein Ort gefunden. Versuche einen anderen Namen. } @else if (citySearch.trim().length < 2) { Mindestens zwei Zeichen eingeben. }</div>
@@ -19,7 +19,7 @@
       </div>
     </section>
   }
-  @if (error) { <div class="feedback" role="alert"><span>{{ error }}</span>@if (weather) { <button type="button" class="secondary" (click)="refresh()" [disabled]="loading">Erneut versuchen</button> }</div> }
+  @if (error) { <div class="feedback" role="alert"><span>{{ error }}</span>@if (weather) { <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading">Erneut versuchen</button> }</div> }
   @if (loading || locating) { <p class="load-status" role="status">{{ locating ? 'Standort wird ermittelt…' : 'Wetterdaten werden geladen…' }}@if (weather) { Bisherige Daten bleiben sichtbar. }</p> }
   @if (weather; as w) {
     <div class="weather-overview">
@@ -64,7 +64,7 @@
       </div></section>
     }
     <details class="panel measurements"><summary>Weitere aktuelle Wetterwerte</summary><dl><div><dt>Bewölkung</dt><dd>{{ value(w.current.cloudCover) }} %</dd></div><div><dt>Luftdruck am Standort</dt><dd>{{ value(w.current.pressure) }} hPa</dd></div><div><dt>UV-Index der aktuellen Stunde</dt><dd>{{ value(w.current.uvIndex, 1) }}</dd></div></dl></details>
-    <section class="panel map-panel" aria-labelledby="map-title"><div class="section-heading"><div><h2 id="map-title">Wetterkarte</h2><p>Niederschlags-, Wind- und Wolkenvorhersage von Windy.</p></div>@if (!mapVisible) { <button type="button" class="primary" (click)="showMap()">Karte laden</button> }</div>
+    <section class="panel map-panel" aria-labelledby="map-title"><div class="section-heading"><div><h2 id="map-title">Wetterkarte</h2><p>Niederschlags-, Wind- und Wolkenvorhersage von Windy.</p></div>@if (!mapVisible) { <button type="button" class="btn-primary" (click)="showMap()">Karte laden</button> }</div>
       @if (mapVisible) {
         <div class="map-controls"><div class="segmented" role="group" aria-label="Kartenausschnitt"><button type="button" [class.active]="mapRegion === 'local'" [attr.aria-pressed]="mapRegion === 'local'" (click)="changeMapRegion('local')">Am Ort</button><button type="button" [class.active]="mapRegion === 'europe'" [attr.aria-pressed]="mapRegion === 'europe'" (click)="changeMapRegion('europe')">Europa</button></div><div class="segmented" role="group" aria-label="Kartenebene">@for (layer of mapLayers; track layer.key) { <button type="button" [class.active]="mapLayer === layer.key" [attr.aria-pressed]="mapLayer === layer.key" (click)="changeMapLayer(layer.key)">{{ layer.label }}</button> }</div></div>
         <iframe [src]="mapUrl" title="Windy Wettervorhersage" allowfullscreen></iframe><p class="data-note">Die Karte verwendet eine eigene Datenquelle und kann von der Vorhersage oben abweichen. <a href="https://www.windy.com/" target="_blank" rel="noopener noreferrer">Windy öffnen</a></p>

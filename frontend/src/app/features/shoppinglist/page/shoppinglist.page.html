@@ -11,7 +11,7 @@
         <span class="item-qty">{{ quantityLabel(item.quantity, item.unit)
             }}<small *ngIf="item.quantityIncomplete && item.quantity != null">+ nach Bedarf</small></span>
         <div class="item-actions">
-            <button [disabled]="busy || pending.has(item.id)" (click)="startEdit(item)"
+            <button class="btn-secondary" [disabled]="busy || pending.has(item.id)" (click)="startEdit(item)"
                 [attr.aria-label]="item.name + ' bearbeiten'">
                 Bearbeiten</button><button class="delete" [disabled]="busy || pending.has(item.id)"
                 (click)="remove(item)" [attr.aria-label]="item.name + ' entfernen'">
@@ -22,17 +22,18 @@
 </ng-template>
 <div class="shopping-page app-page">
     <header class="page-header">
-        <div>
-            <h2>Einkaufsliste</h2>
+        <div class="page-heading">
+            <p class="eyebrow">Essen &amp; Einkauf</p>
+            <h1 class="page-title">Einkaufsliste</h1>
         </div>
-        <div class="header-actions">
-            <button class="primary" [disabled]="loading || loadFailed || busy" (click)="openAdd()">
-                + Artikel</button><button [disabled]="loading || loadFailed || busy" (click)="openRecipePicker()">
-                Aus Rezept</button><a routerLink="/menuplan" [queryParams]="{ export: true }">Aus Menüplan</a>
+        <div class="page-actions">
+            <button class="btn-secondary" [disabled]="loading || loadFailed || busy" (click)="openRecipePicker()">
+                Aus Rezept</button><a class="btn-secondary" routerLink="/menuplan" [queryParams]="{ export: true }">Aus Menüplan</a><button class="btn-primary" [disabled]="loading || loadFailed || busy" (click)="openAdd()">
+                + Artikel</button>
         </div>
     </header>
     <section class="toolbar" aria-label="Einkauf filtern">
-        <div class="tabs">
+        <div class="segmented" role="group" aria-label="Ansicht">
             <button *ngFor="let tab of ['all', 'manual', 'menuplan']" [class.active]="activeTab === tab"
                 [attr.aria-pressed]="activeTab === tab"
                 (click)="activeTab = $any(tab); weekFilter = ''; confirmClear = false">
@@ -57,11 +58,11 @@
         <span>{{ completedCount }} abgehakt</span>
     </div>
     <div class="error" *ngIf="error" role="alert">
-        {{ error }}<button *ngIf="loadFailed" (click)="reload()">Erneut laden</button>
+        {{ error }}<button class="btn-secondary" *ngIf="loadFailed" (click)="reload()">Erneut laden</button>
     </div>
-    <p class="empty" *ngIf="loading" role="status">Einkaufsliste wird geladen…</p>
-    <div class="shopping-layout" *ngIf="!loading && !loadFailed">
-        <main class="shopping-main">
+    <p class="loading-state" *ngIf="loading" role="status">Einkaufsliste wird geladen…</p>
+    <div class="shopping-layout" [class.has-summary]="purchaseSummary.length" *ngIf="!loading && !loadFailed">
+        <div class="shopping-main">
             <ng-container *ngIf="activeTab !== 'menuplan'">
                 <section class="category-card" *ngFor="let group of allGroups">
                     <h2>
@@ -82,7 +83,7 @@
                     </section>
                 </section>
             </ng-container>
-            <section class="empty" *ngIf="!uncheckedCount">
+            <section class="empty-state" *ngIf="!uncheckedCount">
                 <strong>{{ completedCount ? 'Alles abgehakt' : 'Keine offenen Artikel' }}</strong>
                 <p>
                     {{
@@ -97,7 +98,7 @@
                     Abgehakt <span>{{ completedCount }}</span>
                 </summary>
                 <div class="completed-toolbar">
-                    <span>Jeder Artikel lässt sich wieder öffnen.</span><button [disabled]="busy || !!pending.size"
+                    <span>Jeder Artikel lässt sich wieder öffnen.</span><button class="btn-secondary" [disabled]="busy || !!pending.size"
                         (click)="confirmClear = true">
                         Abgehakte entfernen
                     </button>
@@ -105,7 +106,7 @@
                 <ng-container *ngFor="let item of checkedItems"><ng-container
                         *ngTemplateOutlet="itemRow; context: { item: item }"></ng-container></ng-container>
             </details>
-        </main>
+        </div>
         <aside class="summary-panel" *ngIf="purchaseSummary.length">
             <span class="eyebrow">MENGENÜBERSICHT</span>
             <div class="summary-row" *ngFor="let row of purchaseSummary">
@@ -126,7 +127,7 @@
                 <span class="eyebrow">EINKAUFSLISTE</span>
                 <h2>{{ editId ? 'Artikel bearbeiten' : 'Artikel hinzufügen' }}</h2>
             </div>
-            <button aria-label="Schließen" [disabled]="busy" (click)="cancelAdd()">×</button>
+            <button class="btn-secondary" aria-label="Schließen" [disabled]="busy" (click)="cancelAdd()">×</button>
         </header>
         <form (ngSubmit)="saveAdd()">
             <fieldset [disabled]="busy" class="modal-body">
@@ -136,7 +137,7 @@
                     <option *ngFor="let i of ingredients" [value]="i.name"></option>
                 </datalist>
                 <div class="suggestions" *ngIf="addSuggestions.length">
-                    <span>Schon einmal eingekauft</span><button type="button" *ngFor="let s of addSuggestions"
+                    <span>Schon einmal eingekauft</span><button class="btn-secondary" type="button" *ngFor="let s of addSuggestions"
                         (click)="applySuggestion(s)">
                         {{ s.name }} <small>{{ s.unit }}</small>
                     </button>
@@ -165,8 +166,8 @@
                 <p class="error" role="alert" *ngIf="error">{{ error }}</p>
             </fieldset>
             <footer class="modal-footer">
-                <button type="button" [disabled]="busy" (click)="cancelAdd()">Abbrechen</button><button type="submit"
-                    class="primary" [disabled]="busy || !addName.trim()">
+                <button class="btn-secondary" type="button" [disabled]="busy" (click)="cancelAdd()">Abbrechen</button><button type="submit"
+                    class="btn-primary" [disabled]="busy || !addName.trim()">
                     {{ busy ? 'Wird gespeichert…' : editId ? 'Änderungen speichern' : 'Hinzufügen' }}
                 </button>
             </footer>
@@ -181,13 +182,13 @@
                 <span class="eyebrow">ZUTATEN ÜBERNEHMEN</span>
                 <h2>Aus einem Rezept</h2>
             </div>
-            <button aria-label="Schließen" [disabled]="busy" (click)="closeRecipePicker()">×</button>
+            <button class="btn-secondary" aria-label="Schließen" [disabled]="busy" (click)="closeRecipePicker()">×</button>
         </header>
         <div class="modal-body">
             <label>Rezept suchen<input type="search" [(ngModel)]="recipeSearch" [disabled]="busy"
                     placeholder="Name eingeben…" /></label>
             <div class="recipe-list">
-                <button *ngFor="let recipe of filteredPickerRecipes" [disabled]="busy"
+                <button class="btn-secondary" *ngFor="let recipe of filteredPickerRecipes" [disabled]="busy"
                     [class.selected]="pickerRecipe?.id === recipe.id"
                     [attr.aria-pressed]="pickerRecipe?.id === recipe.id" (click)="selectRecipe(recipe)">
                     <strong>{{ recipe.name }}</strong><small>{{ recipe.ingredients.length }} Zutaten · {{
@@ -207,7 +208,7 @@
             <p *ngIf="error" role="alert" class="error">{{ error }}</p>
         </div>
         <footer class="modal-footer">
-            <button [disabled]="busy" (click)="closeRecipePicker()">Abbrechen</button><button class="primary"
+            <button class="btn-secondary" [disabled]="busy" (click)="closeRecipePicker()">Abbrechen</button><button class="btn-primary"
                 [disabled]="
           busy || !pickerRecipe || !validPickerQuantity || !pickerRecipe.ingredients.length
         " (click)="addRecipeToList()">
@@ -228,7 +229,7 @@
             <p class="error" *ngIf="error" role="alert">{{ error }}</p>
         </div>
         <footer class="modal-footer">
-            <button [disabled]="busy" (click)="confirmClear = false">Abbrechen</button><button class="danger"
+            <button class="btn-secondary" [disabled]="busy" (click)="confirmClear = false">Abbrechen</button><button class="btn-danger"
                 [disabled]="busy || !!pending.size" (click)="clearChecked()">
                 {{ busy ? 'Wird entfernt…' : 'Entfernen' }}
             </button>

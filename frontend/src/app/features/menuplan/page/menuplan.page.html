@@ -1,16 +1,21 @@
 <section class="menuplan-page app-page">
     <header class="page-header">
-        <div>
-            <h2>Menüplan</h2>
+        <div class="page-heading">
+            <p class="eyebrow">Essen &amp; Einkauf</p>
+            <h1 class="page-title">Menüplan</h1>
         </div>
-        <div class="week-nav" aria-label="Woche wählen"><button class="nav-arrow" [disabled]="menuSaving"
-                (click)="prevWeek()" aria-label="Vorherige Woche">‹</button><strong>{{ weekRange }}</strong><button
-                class="nav-arrow" [disabled]="menuSaving" (click)="nextWeek()"
-                aria-label="Nächste Woche">›</button><button class="today-btn" [disabled]="menuSaving"
-                (click)="goToday()">Diese Woche</button></div>
-        <button class="btn-primary" [disabled]="loading || !!loadError || menuSaving"
-            (click)="openExportModal()">Einkauf vorbereiten</button>
+        <div class="page-actions">
+            <button class="btn-primary" [disabled]="loading || !!loadError || menuSaving"
+                (click)="openExportModal()">Einkauf vorbereiten</button>
+        </div>
     </header>
+    <div class="toolbar">
+        <div class="week-nav" role="group" aria-label="Woche wählen"><button class="btn-icon" [disabled]="menuSaving"
+                (click)="prevWeek()" aria-label="Vorherige Woche">‹</button><strong class="week-nav-label">{{ weekRange }}</strong><button
+                class="btn-icon" [disabled]="menuSaving" (click)="nextWeek()"
+                aria-label="Nächste Woche">›</button><button class="btn-secondary btn-sm" [disabled]="menuSaving"
+                (click)="goToday()">Diese Woche</button></div>
+    </div>
     <div class="planning-summary"><span><strong>{{ plannedCount }}</strong> von 21 Mahlzeiten
             geplant</span><span><strong>{{ extrasCount }}</strong> Extras</span><a routerLink="/calendar">Anwesenheiten
             im Kalender pflegen →</a></div>

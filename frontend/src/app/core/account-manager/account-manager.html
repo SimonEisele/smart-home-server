@@ -1,13 +1,9 @@
 <div class="app-page account-page">
 
   <!-- Header -->
-  <div class="page-header">
-    <a routerLink="/home" class="back-link">
-      <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
-      Zurück
-    </a>
-    <div><span class="page-eyebrow">Dein Zuhause organisieren</span><h1>Konto &amp; Wohngemeinschaften</h1><p class="page-intro">Profil pflegen, Mitbewohner verwalten und gemeinsame Geräte einrichten.</p></div>
-  </div>
+  <header class="page-header">
+    <div class="page-heading"><p class="eyebrow">Konto &amp; Haushalt</p><h1 class="page-title">Konto &amp; Wohngemeinschaften</h1><p class="page-subtitle">Profil pflegen, Mitbewohner verwalten und gemeinsame Geräte einrichten.</p></div>
+  </header>
 
   <!-- Top grid: Profile + Active WG -->
   <div class="top-grid">
@@ -57,7 +53,7 @@
         </div>
         <div role="alert" class="form-error" *ngIf="profileError">{{ profileError }}</div>
         <div class="form-actions">
-          <button class="btn-accent" (click)="saveProfile()" [disabled]="profileSaving">
+          <button class="btn-primary" (click)="saveProfile()" [disabled]="profileSaving">
             {{ profileSaving ? 'Speichere…' : 'Speichern' }}
           </button>
           <button class="btn-ghost" (click)="cancelEditProfile()">Abbrechen</button>
@@ -120,7 +116,7 @@
           </div>
           <div role="alert" class="form-error" *ngIf="passwordError">{{ passwordError }}</div>
           <div class="form-actions">
-            <button class="btn-accent" (click)="savePassword()" [disabled]="passwordSaving">
+            <button class="btn-primary" (click)="savePassword()" [disabled]="passwordSaving">
               {{ passwordSaving ? 'Speichere…' : 'Speichern' }}
             </button>
             <button class="btn-ghost" (click)="togglePasswordSection()">Abbrechen</button>
@@ -149,7 +145,7 @@
         <label for="wg-description" class="field-label">Beschreibung</label>
         <textarea id="wg-description" class="glass-input" [(ngModel)]="editDescription" rows="3"></textarea>
         <div class="form-actions">
-          <button class="btn-accent" (click)="saveEditName(hh)" [disabled]="savingHousehold || !editName.trim()">{{ savingHousehold ? 'Speichere…' : 'Speichern' }}</button>
+          <button class="btn-primary" (click)="saveEditName(hh)" [disabled]="savingHousehold || !editName.trim()">{{ savingHousehold ? 'Speichere…' : 'Speichern' }}</button>
           <button class="btn-ghost" (click)="editingName = false" [disabled]="savingHousehold">Abbrechen</button>
         </div>
       </div>
@@ -203,7 +199,7 @@
         <div class="member-search"><label for="member-search" class="field-label">Mitglied suchen</label><input id="member-search" class="glass-input" type="search" [(ngModel)]="memberSearch" placeholder="Name oder E-Mail" /></div>
       </div>
       <p class="section-help">Eigentümer verwalten die WG. Admins verwalten Mitglieder und Geräte. Mitglieder nutzen die gemeinsamen Funktionen.</p>
-      <div role="alert" class="form-error" *ngIf="memberError">{{ memberError }} <button class="btn-sm-ghost" (click)="loadMembers(hh.id)" [disabled]="loadingMembers">Erneut laden</button></div>
+      <div role="alert" class="form-error" *ngIf="memberError">{{ memberError }} <button class="btn-secondary btn-sm" (click)="loadMembers(hh.id)" [disabled]="loadingMembers">Erneut laden</button></div>
       <div *ngIf="loadingMembers" class="loading-text">Lade Mitglieder…</div>
       <div class="members-list" *ngIf="!loadingMembers">
         <div class="member-item" *ngFor="let m of filteredMembers; trackBy: trackMember">
@@ -227,7 +223,7 @@
                 <option value="admin">Admin</option>
                 <option value="member">Mitglied</option>
               </select>
-              <button *ngIf="hh.role === 'owner' && m.role !== 'owner' && !m.user_is_household_account" class="btn-sm-ghost"
+              <button *ngIf="hh.role === 'owner' && m.role !== 'owner' && !m.user_is_household_account" class="btn-secondary btn-sm"
                       [disabled]="memberPending.has(m.user_id)" (click)="transferOwnership(m.user_id)"
                       title="Zum Eigentümer machen">Eigentümer machen</button>
               <button *ngIf="m.role !== 'owner' && !m.user_is_household_account" class="btn-remove" [disabled]="memberPending.has(m.user_id)"
@@ -293,7 +289,7 @@
             <div role="alert" class="form-error" *ngIf="changePasswordError">{{ changePasswordError }}</div>
             <div role="status" class="form-success" *ngIf="changePasswordSuccess">{{ changePasswordSuccess }}</div>
             <div class="form-actions">
-              <button class="btn-accent" (click)="confirmChangePassword(m.user_id, hh)"
+              <button class="btn-primary" (click)="confirmChangePassword(m.user_id, hh)"
                       [disabled]="changePasswordLoading || !newPasswordVal.trim()">
                 {{ changePasswordLoading ? 'Speichere…' : 'Speichern' }}
               </button>
@@ -306,7 +302,7 @@
         Noch kein WG-Konto angelegt.
       </p>
 
-      <button class="btn-accent create-acct-btn" *ngIf="!showCreateAccountForm"
+      <button class="btn-secondary create-acct-btn" *ngIf="!showCreateAccountForm"
               (click)="showCreateAccountForm = true">
         + WG-Konto anlegen
       </button>
@@ -333,7 +329,7 @@
         <div role="alert" class="form-error" *ngIf="createAccountError">{{ createAccountError }}</div>
         <div role="status" class="form-success" *ngIf="createAccountSuccess">{{ createAccountSuccess }}</div>
         <div class="form-actions">
-          <button class="btn-accent" (click)="createHouseholdAccount(hh)"
+          <button class="btn-primary" (click)="createHouseholdAccount(hh)"
                   [disabled]="creatingAccount || !newAccount.name.trim() || !newAccount.password.trim()">
             {{ creatingAccount ? 'Erstelle…' : 'Erstellen' }}
           </button>
@@ -360,9 +356,9 @@
         </div>
         <div class="wg-list-right">
           <span class="active-check" *ngIf="(activeHousehold$ | async)?.id === h.id">✓ Aktiv</span>
-          <button class="btn-sm-ghost" *ngIf="(activeHousehold$ | async)?.id !== h.id"
+          <button class="btn-secondary btn-sm" *ngIf="(activeHousehold$ | async)?.id !== h.id"
                   (click)="switchTo(h.id)" [disabled]="switching || leavingHousehold">Wechseln</button>
-          <button class="btn-sm-danger" *ngIf="h.role !== 'owner'"
+          <button class="btn-danger btn-sm" *ngIf="h.role !== 'owner'"
                   (click)="leaveHousehold(h)" [disabled]="leavingHousehold"
                   title="WG verlassen">Verlassen</button>
         </div>
@@ -373,10 +369,10 @@
     <p class="section-help">Die aktive WG bestimmt, welche gemeinsamen Daten du in der App siehst.</p>
     <div role="alert" class="form-error" *ngIf="switchError">{{ switchError }}</div>
     <div class="wg-actions-row">
-      <button class="btn-accent" (click)="showCreateForm = !showCreateForm; showJoinForm = false">
+      <button class="btn-secondary" (click)="showCreateForm = !showCreateForm; showJoinForm = false">
         + Neue WG
       </button>
-      <button class="btn-ghost" (click)="showJoinForm = !showJoinForm; showCreateForm = false">
+      <button class="btn-secondary" (click)="showJoinForm = !showJoinForm; showCreateForm = false">
         WG beitreten
       </button>
     </div>
@@ -388,7 +384,7 @@
       <input class="glass-input" [(ngModel)]="newWgDesc" aria-label="Beschreibung (optional)" placeholder="Beschreibung (optional)" />
       <div role="alert" class="form-error" *ngIf="createError">{{ createError }}</div>
       <div class="form-actions">
-        <button class="btn-accent" (click)="createWg()" [disabled]="creating || !newWgName.trim()">
+        <button class="btn-primary" (click)="createWg()" [disabled]="creating || !newWgName.trim()">
           {{ creating ? 'Erstelle…' : 'Erstellen' }}
         </button>
         <button class="btn-ghost" (click)="showCreateForm = false">Abbrechen</button>
@@ -400,7 +396,7 @@
       <input class="glass-input" [(ngModel)]="inviteCode" aria-label="Einladungscode" placeholder="Einladungscode" (keydown.enter)="joinWg()" />
       <div role="alert" class="form-error" *ngIf="joinError">{{ joinError }}</div>
       <div class="form-actions">
-        <button class="btn-accent" (click)="joinWg()" [disabled]="joining || !inviteCode.trim()">
+        <button class="btn-primary" (click)="joinWg()" [disabled]="joining || !inviteCode.trim()">
           {{ joining ? 'Beitreten…' : 'Beitreten' }}
         </button>
         <button class="btn-ghost" (click)="showJoinForm = false">Abbrechen</button>

@@ -1,42 +1,45 @@
 <div class="todo-page app-page">
 
     <!-- Header -->
-    <div class="todo-header">
-        <div class="header-left">
-            <h2>Aufgaben</h2>
-            <div class="header-stats">
-                <span class="stat-pill open">{{ openCount }} offen</span>
-                <span class="stat-pill wg" *ngIf="globalCount > 0">{{ globalCount }} WG</span>
-                <span class="stat-pill overdue" *ngIf="overdueCount > 0">{{ overdueCount }} überfällig</span>
+    <header class="page-header">
+        <div class="page-heading">
+            <p class="eyebrow">Alltag</p>
+            <h1 class="page-title">Aufgaben</h1>
+            <div class="badges">
+                <span class="badge">{{ openCount }} offen</span>
+                <span class="badge badge-info" *ngIf="globalCount > 0">{{ globalCount }} WG</span>
+                <span class="badge badge-danger" *ngIf="overdueCount > 0">{{ overdueCount }} überfällig</span>
             </div>
         </div>
-        <button class="btn-add" (click)="openAdd()">
+        <div class="page-actions">
+        <button class="btn-primary" (click)="openAdd()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                 <path d="M12 5v14M5 12h14" />
             </svg>
             Neue Aufgabe
         </button>
-    </div>
+        </div>
+    </header>
 
     <!-- Filter Chips -->
     <div class="form-feedback" *ngIf="loadError" role="alert">{{ loadError }} <button (click)="loadData()">Erneut
             versuchen</button></div>
-    <p *ngIf="loading" role="status">Aufgaben werden geladen…</p>
-    <div class="filter-bar">
+    <p class="loading-state" *ngIf="loading" role="status">Aufgaben werden geladen…</p>
+    <div class="toolbar chip-group" role="group" aria-label="Aufgaben filtern">
         <button class="chip" [class.active]="filter === 'all'" (click)="filter = 'all'">Alle</button>
         <button class="chip" [class.active]="filter === 'open'" (click)="filter = 'open'">Offen</button>
         <button class="chip" [class.active]="filter === 'done'" (click)="filter = 'done'">Erledigt</button>
         <button class="chip chip-danger" [class.active]="filter === 'overdue'"
             (click)="filter = 'overdue'">Überfällig</button>
-        <span class="filter-sep"></span>
-        <button class="chip chip-wg" [class.active]="filter === 'global'" (click)="filter = 'global'">
+        <span class="chip-sep"></span>
+        <button class="chip chip-info" [class.active]="filter === 'global'" (click)="filter = 'global'">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
             WG
         </button>
-        <button class="chip chip-private" [class.active]="filter === 'private'" (click)="filter = 'private'">
+        <button class="chip" [class.active]="filter === 'private'" (click)="filter = 'private'">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
@@ -116,7 +119,7 @@
                 </div>
             </div>
         </div>
-        <p class="empty-hint" *ngIf="openTodos.length === 0 && (filter === 'open' || filter === 'overdue')">Keine
+        <p class="empty-state" *ngIf="openTodos.length === 0 && (filter === 'open' || filter === 'overdue')">Keine
             Aufgaben gefunden.</p>
     </ng-container>
 
@@ -156,7 +159,7 @@
         </div>
     </ng-container>
 
-    <p class="empty-hint full" *ngIf="!loading && !loadError && todos.length === 0">Noch keine Aufgaben. Leg los!</p>
+    <p class="empty-state" *ngIf="!loading && !loadError && todos.length === 0">Noch keine Aufgaben. Leg los!</p>
 
 </div>
 

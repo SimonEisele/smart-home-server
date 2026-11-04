@@ -2,8 +2,8 @@
 :host { display:block; height:100%; min-width:0; min-height:0; container-type:size; }
 .weather-widget { height:100%; display:flex; flex-direction:column; gap:10px; overflow-y:auto; overflow-x:hidden; }
 .weather-widget > a { flex-shrink:0; font-size:.78rem; text-decoration:none; overflow-wrap:anywhere; }
-.weather-widget > p[role="alert"] { font-size:.8rem; margin:0; }
-.weather-widget > p button { border:1px solid var(--color-card-border); border-radius:8px; padding:8px; background:var(--color-surface-soft); color:var(--color-text); }
+
+
 .current-weather { flex-shrink:0; display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--color-card-border); border-radius:12px; background:var(--color-surface-soft); }
 .current-icon { flex-shrink:0; font-size:clamp(2rem,14cqw,3.5rem); }
 .current-info { min-width:0; }

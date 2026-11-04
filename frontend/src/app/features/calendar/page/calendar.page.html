@@ -2,32 +2,39 @@
     [class.is-touch-dragging]="touchActive">
 
     <!-- ── Page header ─────────────────────────────────────────────────────── -->
-    <header class="cal-page-header">
-        <div class="week-nav">
-            <button class="nav-btn" (click)="prevWeek()">‹</button>
-            <span class="week-label">{{ weekLabel }}</span>
-            <button class="nav-btn" (click)="nextWeek()">›</button>
-            <button class="today-btn" (click)="goToday()">Heute</button>
+    <header class="page-header">
+        <div class="page-heading">
+            <p class="eyebrow">Alltag</p>
+            <h1 class="page-title">Kalender</h1>
         </div>
-
-        <div class="cal-filters" [hidden]="calendarView !== 'schedule'">
-            <button class="filter-btn filter-wg" [class.active]="showHousehold"
-                (click)="showHousehold = !showHousehold">WG</button>
-            <button class="filter-btn filter-private" [class.active]="showPrivate"
-                (click)="showPrivate   = !showPrivate">Privat</button>
-            <button class="filter-btn filter-todos" [class.active]="showTodos"
-                (click)="showTodos     = !showTodos">Aufgaben</button>
-        </div>
-
-        <button [hidden]="calendarView !== 'schedule'" class="btn-add-event" (click)="openNewEvent()">+ Termin</button>
-    </header>
-
-    @if (planningError) { <div class="form-feedback" role="alert">{{ planningError }}</div> }
-    <div class="calendar-view-switch" role="group" aria-label="Kalenderansicht"><button
+        <div class="page-actions">
+            <div class="segmented" role="group" aria-label="Kalenderansicht"><button
             [class.active]="calendarView === 'schedule'" [attr.aria-pressed]="calendarView === 'schedule'"
             (click)="calendarView = 'schedule'">Termine & Aufgaben</button><button
             [class.active]="calendarView === 'attendance'" [attr.aria-pressed]="calendarView === 'attendance'"
             (click)="calendarView = 'attendance'">Anwesenheiten & Mahlzeiten</button></div>
+            <button [hidden]="calendarView !== 'schedule'" class="btn-primary" (click)="openNewEvent()">+ Termin</button>
+        </div>
+    </header>
+
+    <div class="toolbar">
+        <div class="week-nav" role="group" aria-label="Woche wählen">
+            <button class="btn-icon" (click)="prevWeek()" aria-label="Vorherige Woche">‹</button>
+            <span class="week-nav-label">{{ weekLabel }}</span>
+            <button class="btn-icon" (click)="nextWeek()" aria-label="Nächste Woche">›</button>
+            <button class="btn-secondary btn-sm" (click)="goToday()">Heute</button>
+        </div>
+        <div class="chip-group cal-filters" role="group" aria-label="Anzeigen" [hidden]="calendarView !== 'schedule'">
+            <button class="chip filter-wg" [class.active]="showHousehold" [attr.aria-pressed]="showHousehold"
+                (click)="showHousehold = !showHousehold">WG</button>
+            <button class="chip filter-private" [class.active]="showPrivate" [attr.aria-pressed]="showPrivate"
+                (click)="showPrivate = !showPrivate">Privat</button>
+            <button class="chip filter-todos" [class.active]="showTodos" [attr.aria-pressed]="showTodos"
+                (click)="showTodos = !showTodos">Aufgaben</button>
+        </div>
+    </div>
+
+    @if (planningError) { <div class="form-feedback" role="alert">{{ planningError }}</div> }
     @if (calendarView === 'attendance') {
     <section class="attendance-workspace" aria-labelledby="attendance-heading">
         <header class="attendance-heading">
@@ -327,7 +334,7 @@
                 <label>Farbe</label>
                 <input class="color-picker" type="color" [(ngModel)]="modalForm.color" />
                 @if (modalForm.color) {
-                <button class="btn-ghost-sm" (click)="modalForm.color = ''">Zurücksetzen</button>
+                <button class="btn-ghost btn-sm" (click)="modalForm.color = ''">Zurücksetzen</button>
                 }
             </div>
         </div>

@@ -12,109 +12,27 @@
     padding-bottom: 40px;
 }
 
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 24px;
-    margin: 20px 0 28px;
-}
-
-.eyebrow {
-    font-size: 0.7rem;
-    letter-spacing: 0.14em;
-    color: var(--color-muted);
-    font-weight: 700;
-}
-
-.page-header h2 {
-    margin: 0;
-}
-
 p {
     color: var(--color-muted);
     line-height: 1.6;
     margin: 8px 0;
 }
 
-button,
-a {
+a{
     font: inherit;
 }
 
-button,
-.header-actions a {
-    border: 1px solid var(--color-card-border);
-    border-radius: 10px;
-    padding: 10px 15px;
-    background: var(--color-surface-soft);
-    color: var(--color-text);
-    cursor: pointer;
-    text-decoration: none;
-    min-height: 42px;
-}
-
-button:hover:not(:disabled),
-a:hover {
+a:hover{
     border-color: var(--color-accent);
 }
 
-button:disabled {
-    opacity: 0.5;
-    cursor: wait;
-}
-
-button:focus-visible,
-a:focus-visible,
-summary:focus-visible {
+a:focus-visible, summary:focus-visible{
     outline: 2px solid var(--color-accent);
     outline-offset: 3px;
 }
 
-.primary {
-    background: var(--color-accent);
-    color: #081619;
-    border-color: transparent;
-    font-weight: 700;
-}
-
-.danger,
-.delete {
+.delete{
     color: #ffaaaa;
-}
-
-.header-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    flex-shrink: 0;
-}
-
-.toolbar {
-    display: flex;
-    gap: 14px;
-    align-items: center;
-    flex-wrap: wrap;
-    padding: 14px;
-    background: var(--color-card-bg);
-    border: 1px solid var(--color-card-border);
-    border-radius: 16px;
-}
-
-.tabs {
-    display: flex;
-    gap: 4px;
-}
-
-.tabs button {
-    border-color: transparent;
-    background: transparent;
-}
-
-.tabs button.active {
-    background: var(--color-surface-soft);
-    border-color: var(--color-accent);
-    color: var(--color-accent);
 }
 
 input,
@@ -171,9 +89,13 @@ select:focus {
 
 .shopping-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr);
     gap: 24px;
     align-items: start;
+}
+
+.shopping-layout.has-summary {
+    grid-template-columns: minmax(0, 1fr) 320px;
 }
 
 .shopping-main {
@@ -357,13 +279,6 @@ small {
     font-size: 0.75rem;
 }
 
-.empty {
-    border: 1px dashed var(--color-card-border);
-    border-radius: 16px;
-    padding: 36px;
-    text-align: center;
-}
-
 .error {
     background: rgba(240, 92, 92, 0.1);
     border: 1px solid rgba(240, 92, 92, 0.3);
@@ -542,13 +457,8 @@ details summary {
 }
 
 @media (max-width: 1100px) {
-    .shopping-layout {
+    .shopping-layout.has-summary {
         grid-template-columns: minmax(0, 1fr) 270px;
-    }
-
-    .page-header {
-        align-items: start;
-        flex-direction: column;
     }
 
     .item-actions button:not(.delete) {
@@ -563,7 +473,8 @@ details summary {
 }
 
 @media (max-width: 760px) {
-    .shopping-layout {
+    .shopping-layout,
+    .shopping-layout.has-summary {
         grid-template-columns: 1fr;
     }
 
@@ -571,29 +482,8 @@ details summary {
         position: static;
     }
 
-    .page-header {
-        margin-top: 8px;
-        gap: 16px;
-    }
-
     h1 {
         font-size: 1.7rem;
-    }
-
-    .toolbar {
-        gap: 10px;
-        padding: 10px;
-    }
-
-    .tabs {
-        width: 100%;
-        overflow: auto;
-    }
-
-    .tabs button {
-        font-size: 0.8rem;
-        white-space: nowrap;
-        padding: 9px 12px;
     }
 
     .search {
@@ -602,18 +492,6 @@ details summary {
 
     .toolbar>label:not(.search) {
         width: 100%;
-    }
-
-    .header-actions {
-        width: 100%;
-    }
-
-    .header-actions>* {
-        flex: 1;
-        text-align: center;
-        white-space: nowrap;
-        font-size: 0.8rem;
-        padding: 10px;
     }
 
     .item-row {
@@ -681,10 +559,6 @@ details summary {
     .progress-panel {
         gap: 10px;
         font-size: 0.78rem;
-    }
-
-    .empty {
-        padding: 28px 18px;
     }
 }
 

@@ -6,39 +6,10 @@
     min-height: 100%;
 }
 
-.page-header h2 {
-    margin: 0;
-}
-
 .page-subtitle {
     margin: 6px 0 0;
     color: var(--color-muted);
     font-size: .82rem;
-}
-
-.week-nav {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.week-nav strong {
-    font-size: .82rem;
-    white-space: nowrap;
-}
-
-.nav-arrow {
-    font-size: 1.4rem;
-    width: 36px;
-}
-
-.today-btn {
-    border: 1px solid var(--color-card-border);
-    border-radius: 9px;
-    background: var(--color-surface);
-    color: var(--color-muted);
-    padding: 8px 12px;
-    font-size: .75rem;
 }
 
 .planning-summary {
@@ -58,12 +29,6 @@
 .planning-summary a {
     margin-left: auto;
     text-decoration: none;
-}
-
-.loading-state {
-    padding: 30px;
-    text-align: center;
-    color: var(--color-muted);
 }
 
 .week-grid {
@@ -741,19 +706,6 @@
 
     .export-footer>span {
         width: 100%;
-    }
-
-    .week-nav {
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .week-nav strong {
-        font-size: .75rem;
-    }
-
-    .today-btn {
-        font-size: .7rem;
     }
 }
 

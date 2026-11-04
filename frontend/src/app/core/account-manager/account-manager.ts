@@ -2,7 +2,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, DestroyRef, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { AuthService } from '../auth/service/auth.service';
 import { HouseholdService } from '../../shared/services/household.service';
 import { Household, HouseholdMember, User } from '../auth/model/auth.model';
@@ -12,7 +11,7 @@ import { apiErrorMessage } from '../../shared/utils/api-error';
 @Component({
   selector: 'app-account-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   templateUrl: './account-manager.html',
   styleUrl: './account-manager.css',
 })

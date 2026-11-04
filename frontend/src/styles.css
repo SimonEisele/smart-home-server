@@ -1,19 +1,63 @@
+/* ==========================================================================
+   Global styles and shared UI building blocks.
+
+   Pages use these classes instead of defining their own buttons, headers,
+   chips or empty states. Component CSS only adds what is specific to it.
+
+   Shared components are prefixed with `:root` where page CSS defines element
+   defaults (e.g. `button { … }`): Angular scopes those to `button[_ngcontent]`,
+   which would otherwise beat a plain `.btn-primary`.
+   ========================================================================== */
+
+/* ---- Tokens -------------------------------------------------------------- */
 :root {
     --header-height: 64px;
     --sidebar-width: 224px;
+
     --color-bg-start: #10171e;
     --color-bg-end: #10171e;
+    --color-bg: #10171e;
     --color-surface: #1a242d;
     --color-surface-soft: #222f39;
-    --color-accent: #82d7bb;
-    --color-accent-strong: #a6e8d2;
+    --color-surface-sunken: #172129;
+    --color-card-bg: var(--color-surface);
+    --color-card-border: #33434f;
+    --color-border-strong: #4a5d6b;
+
     --color-text: #e6edf2;
     --color-muted: #9eadba;
-    --color-card-bg: #1a242d;
-    --color-card-border: #33434f;
+    --color-placeholder: #8395a3;
+
+    --color-accent: #82d7bb;
+    --color-accent-strong: #a6e8d2;
+    --color-accent-soft: #243f3b;
+    --color-accent-border: #426f62;
+    --color-on-accent: #10271f;
+
+    --color-danger: #ffaaa6;
+    --color-danger-soft: #3b292c;
+    --color-danger-border: #7a4448;
+    --color-warn: #ebc575;
+    --color-warn-soft: #383327;
+    --color-warn-border: #6f5f38;
+    --color-info: #9cc7f0;
+    --color-info-soft: #22313f;
+    --color-info-border: #3e5a75;
+    --color-error-bg: #382922;
+    --color-error-border: #775146;
+    --color-error-text: #ffc0a4;
+
     --ui-radius: 14px;
+    --radius-sm: 9px;
+    --radius-md: 10px;
+    --radius-lg: 18px;
+    --control-height: 42px;
+    --control-height-sm: 34px;
+    --shadow-card: 0 2px 8px #213d3210;
+    --shadow-pop: 0 16px 60px #193d3530;
 }
 
+/* ---- Base ---------------------------------------------------------------- */
 * {
     box-sizing: border-box;
     scrollbar-width: thin;
@@ -28,7 +72,7 @@ html,
 body {
     margin: 0;
     min-height: 100%;
-    background: var(--color-bg-start);
+    background: var(--color-bg);
     color: var(--color-text);
 }
 
@@ -97,6 +141,11 @@ textarea {
     accent-color: var(--color-accent);
 }
 
+[hidden] {
+    display: none !important;
+}
+
+/* ---- Page layout --------------------------------------------------------- */
 main .app-page.app-page {
     width: 100%;
     max-width: 1800px;
@@ -104,7 +153,12 @@ main .app-page.app-page {
     padding: 28px 32px 40px;
 }
 
-main :is(.page-header, .todo-header, .recipes-header, .cal-page-header, .location-bar)[class] {
+/* Page header: <header class="page-header">
+     <div class="page-heading"><p class="eyebrow">…</p><h1 class="page-title">…</h1>
+       <p class="page-subtitle">…</p> or <div class="badges">…</div></div>
+     <div class="page-actions">buttons</div>
+   </header> */
+:root .page-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -115,17 +169,43 @@ main :is(.page-header, .todo-header, .recipes-header, .cal-page-header, .locatio
     border-bottom: 1px solid var(--color-card-border);
 }
 
-main :is(.page-header, .todo-header, .recipes-header) h2 {
-    font-size: 1.7rem;
-    font-weight: 700;
-    color: var(--color-text);
-    margin: 0;
+:root .page-heading {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
-main :is(.header-left, .header-right, .header-actions)[class] {
-    min-width: 0;
+:root .page-title {
+    margin: 0;
+    font-size: 1.7rem;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--color-text);
+}
+
+:root .page-subtitle {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: .9rem;
+    max-width: 70ch;
+}
+
+:root .eyebrow {
+    margin: 0;
+    color: var(--color-accent);
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+:root .page-actions {
+    display: flex;
+    align-items: center;
     flex-wrap: wrap;
     gap: 10px;
+    min-width: 0;
 }
 
 .page-purpose {
@@ -135,83 +215,348 @@ main :is(.header-left, .header-right, .header-actions)[class] {
     max-width: 70ch;
 }
 
-main :is(.recipe-card, .task-card, .todo-card, .glass-card, .add-form-panel, .current-card, .hourly-card, .daily-card, .map-card)[class] {
-    background: var(--color-surface);
+/* Toolbar below the header (filters, search, view switch). */
+:root .toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+/* ---- Buttons ------------------------------------------------------------- */
+:root :is(.btn-primary, .btn-secondary, .btn-ghost, .btn-danger) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: var(--control-height);
+    padding: 9px 16px;
     border: 1px solid var(--color-card-border);
-    border-radius: var(--ui-radius);
-    box-shadow: 0 2px 8px #213d3210;
-}
-
-main :is(.btn-add, .btn-primary, .btn-accent, .btn-add-event, .cook-start-btn)[class],
-body .btn-primary[class] {
-    min-height: 42px;
-    padding: 10px 16px;
-    border: 1px solid var(--color-accent);
-    border-radius: 10px;
-    background: var(--color-accent);
-    color: #1a242d;
-    font-weight: 650;
-    box-shadow: none;
-}
-
-main :is(.btn-add, .btn-primary, .btn-accent, .btn-add-event)[class]:hover {
-    background: var(--color-accent-strong);
-    color: #1a242d;
-}
-
-main :is(.btn-ghost, .btn-secondary, .btn-cancel, .btn-action, .btn-export, .today-btn)[class] {
-    min-height: 40px;
-    padding: 9px 14px;
-    border: 1px solid var(--color-card-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
     color: var(--color-text);
-    font-weight: 550;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: none;
+    transition: background-color .15s, border-color .15s, color .15s;
 }
 
-main :is(.btn-icon, .btn-icon-sm, .icon-btn, .remove-btn, .nav-arrow, .nav-btn)[class] {
+:root :is(.btn-primary, .btn-secondary, .btn-ghost, .btn-danger) svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+:root .btn-primary {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    font-weight: 650;
+}
+
+:root .btn-primary:hover:not(:disabled) {
+    border-color: var(--color-accent-strong);
+    background: var(--color-accent-strong);
+}
+
+:root .btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-accent-border);
+    background: var(--color-surface-soft);
+}
+
+:root .btn-ghost {
+    background: transparent;
+    color: var(--color-muted);
+}
+
+:root .btn-ghost:hover:not(:disabled) {
+    background: var(--color-surface-soft);
+    color: var(--color-text);
+}
+
+:root .btn-danger {
+    border-color: var(--color-danger-border);
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+}
+
+:root .btn-danger:hover:not(:disabled) {
+    border-color: var(--color-danger);
+}
+
+:root .btn-sm {
+    min-height: var(--control-height-sm);
+    padding: 6px 12px;
+    font-size: .82rem;
+}
+
+/* Square icon button (arrows, edit, close). */
+:root .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0 8px;
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-muted);
+}
+
+:root .btn-icon:hover:not(:disabled) {
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+}
+
+/* Older names still used inside dialogs and cards. */
+main :is(.btn-icon-sm, .icon-btn, .remove-btn)[class] {
     min-width: 36px;
     min-height: 36px;
     border: 1px solid var(--color-card-border);
     background: var(--color-surface);
     color: var(--color-muted);
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
 }
 
-main :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), select, textarea) {
-    color: var(--color-text);
-    background: var(--color-surface);
+main .cook-start-btn[class] {
+    min-height: var(--control-height);
+    padding: 10px 16px;
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    font-weight: 650;
+}
+
+/* ---- Week navigation ------------------------------------------------------ */
+:root .week-nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+:root .week-nav-label {
+    min-width: 128px;
+    text-align: center;
+    font-weight: 700;
+    font-size: .95rem;
+}
+
+/* ---- Chips (filters) and segmented controls -------------------------------- */
+:root .chip-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+:root .chip-sep {
+    width: 1px;
+    height: 22px;
+    background: var(--color-card-border);
+    margin: 0 4px;
+}
+
+:root .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 14px;
     border: 1px solid var(--color-card-border);
-    border-radius: 9px;
-    padding: 10px 12px;
-    min-width: 0;
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-muted);
+    font-size: .84rem;
+    font-weight: 600;
 }
 
-main :is(input, textarea)::placeholder {
-    color: #8395a3;
-    opacity: 1;
+:root .chip svg {
+    width: 14px;
+    height: 14px;
 }
 
-main :is(input, select, textarea):focus {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px #82d7bb14;
+:root .chip:hover:not(.active) {
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
 }
 
-main :is(.chip, .filter-btn, .tab-btn)[class] {
+:root .chip.active {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent-border);
+    color: var(--color-accent);
+}
+
+:root .chip.chip-danger.active {
+    background: var(--color-danger-soft);
+    border-color: var(--color-danger-border);
+    color: var(--color-danger);
+}
+
+:root .chip.chip-warn.active {
+    background: var(--color-warn-soft);
+    border-color: var(--color-warn-border);
+    color: var(--color-warn);
+}
+
+:root .chip.chip-info.active {
+    background: var(--color-info-soft);
+    border-color: var(--color-info-border);
+    color: var(--color-info);
+}
+
+/* Segmented control: switches between views of the same page. */
+:root .segmented {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--color-card-border);
+    border-radius: 12px;
+    background: var(--color-surface-sunken);
+}
+
+:root .segmented > button {
+    min-height: 36px;
+    padding: 6px 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-muted);
+    font-weight: 600;
+    font-size: .86rem;
+}
+
+:root .segmented > button:hover:not(.active) {
+    color: var(--color-text);
+}
+
+:root .segmented > button.active {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent-border);
+    color: var(--color-accent);
+}
+
+/* Older tab buttons (account page). */
+main .tab-btn[class] {
     border: 1px solid var(--color-card-border);
     color: var(--color-muted);
     background: var(--color-surface);
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
     min-height: 36px;
 }
 
-main :is(.chip, .filter-btn, .tab-btn)[class].active {
-    background: #243f3b;
+main .tab-btn[class].active {
+    background: var(--color-accent-soft);
     color: var(--color-accent);
-    border-color: #426f62;
+    border-color: var(--color-accent-border);
 }
 
-main :is(.empty-hint, .empty-state, .sidebar-empty)[class] {
+/* ---- Badges ---------------------------------------------------------------- */
+:root .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+:root .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border: 1px solid var(--color-accent-border);
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-size: .75rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+:root .badge.badge-danger {
+    border-color: var(--color-danger-border);
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+}
+
+:root .badge.badge-warn {
+    border-color: var(--color-warn-border);
+    background: var(--color-warn-soft);
+    color: var(--color-warn);
+}
+
+:root .badge.badge-info {
+    border-color: var(--color-info-border);
+    background: var(--color-info-soft);
+    color: var(--color-info);
+}
+
+:root .badge.badge-muted {
+    border-color: var(--color-card-border);
+    background: var(--color-surface-soft);
+    color: var(--color-muted);
+}
+
+/* ---- Cards, empty states, notices ------------------------------------------ */
+main :is(.card, .recipe-card, .task-card, .todo-card, .glass-card, .add-form-panel, .current-card, .hourly-card, .daily-card, .map-card)[class] {
+    background: var(--color-surface);
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--ui-radius);
+    box-shadow: var(--shadow-card);
+}
+
+main :is(.todo-card, .recipe-card)[class]:hover {
+    border-color: var(--color-accent-border);
+    box-shadow: 0 3px 14px #213d3210;
+}
+
+/* Empty state: <div class="empty-state"><strong>Titel</strong><p>Hinweis</p>
+   <button class="btn-secondary">Aktion</button></div> */
+:root .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 32px 20px;
+    border: 1px dashed var(--color-card-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-muted);
+    text-align: center;
+}
+
+:root .empty-state strong {
+    color: var(--color-text);
+    font-size: 1rem;
+}
+
+:root .empty-state p {
+    margin: 0;
+    max-width: 52ch;
+    font-size: .88rem;
+}
+
+:root .empty-state > :is(button, a) {
+    margin-top: 6px;
+}
+
+/* Inside widgets and side panels: no frame, less padding. */
+:root .empty-state.empty-state--compact {
+    flex: 1;
+    padding: 12px;
+    border: 0;
+    background: transparent;
+    font-size: .85rem;
+}
+
+main :is(.empty-hint, .sidebar-empty)[class] {
     color: var(--color-muted);
     background: var(--color-surface);
     border: 1px dashed var(--color-card-border);
@@ -220,20 +565,125 @@ main :is(.empty-hint, .empty-state, .sidebar-empty)[class] {
     text-align: center;
 }
 
-main :is(.todo-card, .recipe-card)[class]:hover {
-    border-color: #426f62;
-    box-shadow: 0 3px 14px #213d3210;
+:root .loading-state {
+    color: var(--color-muted);
+    font-size: .9rem;
+    margin: 0 0 16px;
 }
 
+.form-feedback {
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    border: 1px solid var(--color-error-border);
+    border-radius: var(--radius-md);
+    background: var(--color-error-bg);
+    color: var(--color-error-text);
+    font-size: .84rem;
+}
+
+.form-feedback button {
+    margin-left: 8px;
+    min-height: 32px;
+    padding: 4px 10px;
+    border: 1px solid currentColor;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+}
+
+.field-error,
+.form-error {
+    color: var(--color-danger);
+}
+
+.error-notice {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    width: min(560px, calc(100vw - 32px));
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--color-error-bg);
+    border: 1px solid var(--color-error-border);
+    border-radius: 12px;
+    color: var(--color-error-text);
+    box-shadow: 0 8px 32px #193d3520;
+}
+
+.error-notice button {
+    margin-left: auto;
+    min-width: 36px;
+    min-height: 36px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+}
+
+/* Status colours for priorities and due dates. */
+main :is(.priority-high, .overdue-tag, .due-label.overdue)[class] {
+    color: var(--color-danger);
+    background: var(--color-danger-soft);
+}
+
+main :is(.priority-medium, .soon-tag, .due-label.soon)[class] {
+    color: var(--color-warn);
+    background: var(--color-warn-soft);
+}
+
+main :is(.priority-low, .due-label.ok)[class] {
+    color: var(--color-accent);
+    background: var(--color-accent-soft);
+}
+
+.todo-widget-list .due-today .todo-title {
+    color: var(--color-warn);
+}
+
+/* ---- Form controls ----------------------------------------------------------- */
+main :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), select, textarea) {
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    min-width: 0;
+}
+
+main :is(input, textarea)::placeholder {
+    color: var(--color-placeholder);
+    opacity: 1;
+}
+
+main :is(input, select, textarea):focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px #82d7bb14;
+}
+
+/* Labelled filter field: <label class="field">Kategorie<select>…</select></label> */
+:root .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    color: var(--color-muted);
+    font-size: .8rem;
+    font-weight: 600;
+}
+
+/* ---- Dialogs and popovers ------------------------------------------------------ */
 body :is(.modal-backdrop, .picker-backdrop, .cook-overlay, .cook-backdrop, .layout-overlay) {
-    background: #193d354f !important;
+    background: #060b10b8 !important;
     backdrop-filter: blur(4px);
 }
 
 body :is(.modal-panel, .picker-panel, .cook-panel, .layout-panel)[class] {
     background: var(--color-surface);
     border: 1px solid var(--color-card-border);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     box-shadow: 0 24px 90px #193d3530;
     color: var(--color-text);
     max-height: calc(100dvh - 32px);
@@ -260,7 +710,7 @@ body :is(.modal-body, .cook-panel-body)[class] {
 body :is(.modal-footer, .modal-foot, .cook-panel-footer)[class] {
     flex-shrink: 0;
     border-top: 1px solid var(--color-card-border);
-    background: #172129;
+    background: var(--color-surface-sunken);
     padding: 16px 24px;
     gap: 10px;
     flex-wrap: wrap;
@@ -273,7 +723,7 @@ body :is(.modal-close, .cook-close, .layout-close-btn, .picker-close)[class] {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--color-card-border);
     background: var(--color-surface);
     color: var(--color-muted);
@@ -284,7 +734,7 @@ body :is(.account-popover-panel, .login-popover-panel, .add-widget-popover-panel
     border: 1px solid var(--color-card-border);
     border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 16px 60px #193d3530;
+    box-shadow: var(--shadow-pop);
     max-height: calc(100dvh - 100px);
     overflow-y: auto;
     color: var(--color-text);
@@ -304,7 +754,7 @@ body :is(.account-popover-panel, .login-popover-panel, .add-widget-popover-panel
     border: 1px solid var(--color-card-border);
     background: var(--color-surface-soft);
     color: var(--color-muted);
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
 }
 
 .popover-description {
@@ -320,7 +770,7 @@ body .widget-entry[class] {
     width: 100%;
     min-height: 48px;
     border: 1px solid var(--color-card-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
     color: var(--color-text);
     padding: 12px;
@@ -342,48 +792,7 @@ body .widget-entry[class] {
     background: var(--color-surface-soft);
 }
 
-.form-feedback {
-    padding: 12px 14px;
-    margin-bottom: 16px;
-    border: 1px solid #775146;
-    border-radius: 10px;
-    background: #382922;
-    color: #ffc0a4;
-    font-size: .84rem;
-}
-
-.field-error,
-.form-error {
-    color: #ffaaa6;
-}
-
-.error-notice {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10000;
-    width: min(560px, calc(100vw - 32px));
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px;
-    background: #382922;
-    border: 1px solid #775146;
-    border-radius: 12px;
-    color: #ffc0a4;
-    box-shadow: 0 8px 32px #193d3520;
-}
-
-.error-notice button {
-    margin-left: auto;
-    min-width: 36px;
-    min-height: 36px;
-    border: 0;
-    background: transparent;
-    color: inherit;
-}
-
+/* ---- Responsive ------------------------------------------------------------------ */
 @media(pointer:coarse) {
     button {
         min-height: 44px;
@@ -400,8 +809,22 @@ body .widget-entry[class] {
         padding: 22px 16px;
     }
 
+    :root .page-title {
+        font-size: 1.5rem;
+    }
+
     .error-notice {
         bottom: 80px;
+    }
+}
+
+@media(max-width:599px) {
+    :root .page-actions {
+        width: 100%;
+    }
+
+    :root .page-actions > :is(.btn-primary, .btn-secondary) {
+        flex: 1 1 auto;
     }
 }
 
@@ -426,35 +849,4 @@ body .widget-entry[class] {
         transition: none !important;
         scroll-behavior: auto !important;
     }
-}
-
-main :is(.priority-high, .overdue-tag, .due-label.overdue, .stat-pill.overdue)[class] {
-    color: #ffaaa6;
-    background: #3b292c;
-}
-
-main :is(.priority-medium, .soon-tag, .due-label.soon)[class] {
-    color: #ebc575;
-    background: #383327;
-}
-
-main :is(.priority-low, .due-label.ok)[class] {
-    color: #82d7bb;
-    background: #243f3b;
-}
-
-.todo-widget-list .due-today .todo-title {
-    color: #ebc575;
-}
-
-body :is(.modal-backdrop, .picker-backdrop, .cook-overlay, .cook-backdrop, .layout-overlay) {
-    background: #060b10b8 !important;
-}
-
-main :is(.btn-primary, .btn-add-event)[class] {
-    color: #10271f;
-}
-
-[hidden] {
-    display: none !important;
 }

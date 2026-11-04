@@ -7,89 +7,10 @@
 }
 
 /* ─── Page header ──────────────────────────────────────────────────────────── */
-.cal-page-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
 
-.week-nav {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.nav-btn {
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-card-border);
-  color: var(--color-text);
-  border-radius: 8px;
-  width: 32px;
-  height: 32px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: background .15s;
-}
-.nav-btn:hover { background: rgba(130,215,187,0.15); }
-
-.week-label {
-  font-weight: 600;
-  font-size: 0.95rem;
-  min-width: 150px;
-  text-align: center;
-  color: var(--color-text);
-}
-
-.today-btn {
-  background: rgba(130,215,187,0.12);
-  border: 1px solid rgba(130,215,187,0.3);
-  color: var(--color-accent);
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 0.82rem;
-  cursor: pointer;
-  transition: background .15s;
-}
-.today-btn:hover { background: rgba(130,215,187,0.22); }
-
-.cal-filters {
-  display: flex;
-  gap: 6px;
-  margin-left: 4px;
-}
-
-.filter-btn {
-  border-radius: 20px;
-  border: 1px solid var(--color-card-border);
-  padding: 3px 12px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all .15s;
-  background: var(--color-surface-soft);
-  color: var(--color-muted);
-}
-.filter-btn.active { color: var(--color-text); }
-.filter-wg.active   { background: rgba(79,209,197,0.2);  border-color: #4fd1c5; color: #4fd1c5; }
-.filter-private.active { background: rgba(159,122,234,0.2); border-color: #9f7aea; color: var(--color-muted); }
-.filter-todos.active   { background: rgba(246,173,85,0.2); border-color: #f6ad55; color: #f6ad55; }
-
-.btn-add-event {
-  margin-left: auto;
-  background: var(--color-surface);
-  border: 1px solid rgba(130,215,187,0.35);
-  color: var(--color-accent);
-  border-radius: 10px;
-  padding: 6px 16px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .15s;
-  white-space: nowrap;
-}
-.btn-add-event:hover { background: rgba(130,215,187,0.25); }
+.chip.filter-wg.active { background: rgba(79,209,197,0.16); border-color: #4fd1c5; color: #4fd1c5; }
+.chip.filter-private.active { background: rgba(159,122,234,0.16); border-color: #9f7aea; color: #c4b0f5; }
+.chip.filter-todos.active { background: rgba(246,173,85,0.16); border-color: var(--color-warn); color: var(--color-warn); }
 
 /* ─── Main layout ──────────────────────────────────────────────────────────── */
 .cal-main {
@@ -149,8 +70,8 @@
 .todo-drag-item:active { cursor: grabbing; }
 
 .priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
-.prio-high   { background: #fc8181; }
-.prio-medium { background: #f6ad55; }
+.prio-high   { background: var(--color-danger); }
+.prio-medium { background: var(--color-warn); }
 .prio-low    { background: #68d391; }
 
 .todo-drag-info { flex: 1; min-width: 0; }
@@ -183,50 +104,13 @@
 /* ── Meal attendance strip ──────────────────────────────────────────────── */
 /* ── Attendance panel ─────────────────────────────────────────────────────── */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* Own attendance toggle */
-
-
-
-
 
 /* Attendee + guest chips */
 
-
-
-
-
-
-
-
 /* Add guest button */
 
-
-
 /* Add guest form */
-
-
-
-
-
-
-
 
 .time-gutter-head { width: 44px; }
 
@@ -258,10 +142,10 @@
 .allday-ev.ev-household { background: rgba(79,209,197,.3); color: #4fd1c5; border: 1px solid rgba(79,209,197,.4); }
 .allday-ev.ev-private   { background: rgba(159,122,234,.3); color: var(--color-muted); border: 1px solid rgba(159,122,234,.4); }
 .allday-ev.ev-cleaning  { background: rgba(100,220,100,.15); color: var(--color-muted); border: 1px solid rgba(100,220,100,.3); text-decoration: none; display: block; }
-.allday-ev.ev-cleaning.ev-cleaning-overdue { background: rgba(255,100,100,.15); color: #ff8080; border-color: rgba(255,100,100,.3); }
+.allday-ev.ev-cleaning.ev-cleaning-overdue { background: rgba(255,100,100,.15); color: var(--color-danger); border-color: rgba(255,100,100,.3); }
 
 .todo-occ-pills { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: 2px; }
-.todo-pill { font-size: 0.6rem; background: rgba(246,173,85,.2); color: #f6ad55; border-radius: 4px; padding: 1px 4px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo-pill { font-size: 0.6rem; background: rgba(246,173,85,.2); color: var(--color-warn); border-radius: 4px; padding: 1px 4px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ─── Scrollable grid ─────────────────────────────────────────────────────── */
 .grid-scroll {
@@ -352,12 +236,12 @@
   color: var(--color-text);
 }
 .ev-todo {
-  border-left: 3px solid #f6ad55 !important;
+  border-left: 3px solid var(--color-warn) !important;
 }
 
 .ev-time { font-size: 0.66rem; opacity: 0.7; white-space: nowrap; }
 .ev-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ev-todo-badge { font-size: 0.6rem; background: rgba(246,173,85,.3); color: #f6ad55; border-radius: 3px; padding: 0 3px; width: fit-content; }
+.ev-todo-badge { font-size: 0.6rem; background: rgba(246,173,85,.3); color: var(--color-warn); border-radius: 3px; padding: 0 3px; width: fit-content; }
 .ev-location { font-size: 0.62rem; opacity: 0.55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* No pointer events on events while dragging (lets day-col receive dragover) */
@@ -386,7 +270,7 @@
   border-radius: 9px;
   background: rgba(239, 68, 68, 0.12);
   border: 1px dashed rgba(239, 68, 68, 0.45);
-  color: #fc8181;
+  color: var(--color-danger);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -555,40 +439,6 @@ details[open] .avail-summary::before { content: '▼ '; }
   border-top: 1px solid var(--color-card-border);
 }
 
-.btn-primary {
-  background: var(--color-surface);
-  border: 1px solid rgba(130,215,187,0.4);
-  color: var(--color-accent);
-  border-radius: 10px;
-  padding: 7px 18px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .15s;
-}
-.btn-primary:hover { background: rgba(130,215,187,0.3); }
-
-.btn-ghost {
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-card-border);
-  color: var(--color-muted);
-  border-radius: 10px;
-  padding: 7px 14px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background .15s;
-}
-.btn-ghost:hover { background: var(--color-surface-soft); }
-
-.btn-ghost-sm {
-  background: none;
-  border: none;
-  color: var(--color-muted);
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 2px 6px;
-}
-
 .btn-outline {
   background: none;
   border: 1px solid var(--color-card-border);
@@ -598,19 +448,6 @@ details[open] .avail-summary::before { content: '▼ '; }
   font-size: 0.85rem;
   cursor: pointer;
 }
-
-.btn-danger {
-  background: rgba(252,129,129,0.12);
-  border: 1px solid rgba(252,129,129,0.3);
-  color: #fc8181;
-  border-radius: 10px;
-  padding: 7px 14px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-right: auto;
-}
-.btn-danger:hover { background: rgba(252,129,129,0.22); }
 
 /* ─── Split modal ─────────────────────────────────────────────────────────── */
 .split-panel { width: min(360px, 94vw); }
@@ -675,7 +512,7 @@ details[open] .avail-summary::before { content: '▼ '; }
 }
 .ev-progress-fill {
   height: 100%;
-  background: #f6ad55;
+  background: var(--color-warn);
   border-radius: 2px;
   transition: width .4s ease;
 }
@@ -735,7 +572,5 @@ details[open] .avail-summary::before { content: '▼ '; }
 .attendance-days { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; }.attendance-day { position:relative; min-width:0; padding:16px; background:var(--color-surface); border:1px solid var(--color-card-border); border-radius:14px; }.attendance-day.is-today { border-color:var(--color-accent); }.attendance-day > header { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }.attendance-day h3 { font-size:.92rem; margin:0; }.attendance-day h3 span { color:var(--color-muted); font-weight:400; }.attendance-day h3 small { display:block; font-size:.65rem; color:var(--color-accent); }.attendance-day-action { border:0; background:transparent; color:var(--color-accent); font-size:.72rem; padding:8px 0; }
 .attendance-meal { padding:12px 0; border-top:1px solid var(--color-card-border); }.attendance-meal-top { display:flex; justify-content:space-between; gap:8px; align-items:center; }.attendance-toggle { display:flex; align-items:center; gap:10px; text-align:left; background:transparent; color:var(--color-text); border:0; padding:0; min-height:44px; }.attendance-toggle small { display:block; font-size:.65rem; color:var(--color-muted); }.attendance-check { display:grid; place-items:center; width:30px; height:30px; border:1px solid var(--color-card-border); border-radius:9px; color:var(--color-muted); }.is-present .attendance-check { background:var(--color-accent); color:#10271f; border-color:var(--color-accent); }.is-present small { color:var(--color-accent); }.attendance-count { color:var(--color-muted); font-size:.72rem; white-space:nowrap; }.attendance-people { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }.attendance-person { background:var(--color-surface-soft); padding:3px 7px; border-radius:6px; font-size:.7rem; overflow-wrap:anywhere; }.attendance-person small { color:var(--color-muted); }.attendance-person button { border:0; background:transparent; color:var(--color-muted); min-width:28px; min-height:28px; }.attendance-add-guest { border:0; background:transparent; color:var(--color-muted); font-size:.7rem; padding:8px 0 0; }.attendance-add-guest:hover { color:var(--color-accent); }.attendance-saving { font-size:.65rem; color:var(--color-accent); }.attendance-guest-dialog { width:440px; }.attendance-guest-dialog h3 { margin:0; }.attendance-guest-dialog p { margin:4px 0; font-size:.8rem; color:var(--color-muted); }.attendance-guest-dialog input { display:block; width:100%; margin-top:8px; }.attendance-guest-dialog form { overflow:auto; }.attendance-guest-dialog .modal-foot { display:flex; justify-content:flex-end; }
 @media(max-width:699px) { .attendance-days { grid-template-columns:1fr; }.attendance-legend { display:none; } }
-
-.calendar-view-switch { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }.calendar-view-switch button { border:1px solid var(--color-card-border); padding:10px 16px; border-radius:10px; background:var(--color-surface); color:var(--color-muted); font-size:.82rem; }.calendar-view-switch button.active { color:var(--color-accent); background:var(--color-surface-soft); border-color:var(--color-accent); }
 
 .sidebar-planning-help { font-size:.7rem; color:var(--color-muted); padding:0 12px; line-height:1.5; }.todo-sidebar.sidebar-drop-target { outline:2px dashed var(--color-accent); outline-offset:-4px; background:var(--color-surface-soft); }.linked-task-note { padding:14px; border:1px solid var(--color-card-border); border-radius:10px; background:var(--color-surface-soft); margin-bottom:14px; font-size:.8rem; }.linked-task-note p { color:var(--color-muted); margin:6px 0; }.ev-task-done .ev-title { text-decoration:line-through; opacity:.65; }.ev-todo-badge { font-size:.6rem; }

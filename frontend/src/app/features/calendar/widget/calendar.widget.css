@@ -110,7 +110,7 @@
 
 .ev-todo {
   background: var(--color-surface);
-  border-left-color: #f6ad55 !important;
+  border-left-color: var(--color-warn) !important;
 }
 
 .ev-now {
@@ -132,7 +132,7 @@
 
 .ev-cleaning-overdue {
   background: var(--color-surface);
-  border-left-color: #ff8080;
+  border-left-color: var(--color-danger);
 }
 
 .ev-cleaning-overdue:hover {

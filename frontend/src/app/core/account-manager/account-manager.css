@@ -5,32 +5,6 @@
   padding: 2rem 1.25rem 4rem;
 }
 
-
-.page-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.75rem;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.back-link {
-  display: flex; align-items: center; gap: 4px;
-  color: var(--color-muted);
-  font-size: 0.82rem;
-  text-decoration: none;
-  transition: color .2s;
-  flex-shrink: 0;
-}
-.back-link:hover { color: var(--color-accent); }
-
-
 .glass-card {
   background: var(--color-surface);
   border: 1px solid var(--color-card-border);
@@ -39,7 +13,6 @@
   margin-bottom: 1.25rem;
   backdrop-filter: blur(12px);
 }
-
 
 .top-grid {
   display: grid;
@@ -51,7 +24,6 @@
 @media (max-width: 600px) {
   .top-grid { grid-template-columns: 1fr; }
 }
-
 
 .card-label {
   font-size: 0.68rem;
@@ -66,7 +38,6 @@
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: .9rem;
 }
-
 
 .profile-card { display: flex; flex-direction: column; gap: 1rem; }
 
@@ -88,7 +59,6 @@
 .profile-email { font-size: 0.8rem; color: var(--color-muted); }
 .profile-phone { font-size: 0.8rem; color: var(--color-muted); }
 
-
 .profile-edit-form { display: flex; flex-direction: column; gap: 0.85rem; }
 .profile-fields { display: flex; flex-direction: column; gap: 0.75rem; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
@@ -98,7 +68,6 @@
   font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: var(--color-muted);
 }
-
 
 .pw-section {
   border-top: 1px solid var(--color-card-border);
@@ -125,11 +94,8 @@
 }
 .pw-input-row { display: flex; flex-direction: column; gap: 0.65rem; }
 
-
 .wg-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: .75rem; }
 .wg-name-text { font-size: 1.1rem; font-weight: 700; color: var(--color-text); flex: 1; }
-
-
 
 .wg-stats { display: flex; gap: 1.5rem; margin-bottom: 1rem; }
 .stat-item { display: flex; flex-direction: column; gap: 1px; }
@@ -151,7 +117,6 @@
   color: var(--color-accent); flex: 1; word-break: break-all;
 }
 
-
 .role-chip {
   display: inline-block;
   font-size: 0.68rem; font-weight: 700;
@@ -161,7 +126,6 @@
 .role-chip.owner { background: rgba(255,196,0,.16); color: #ffc400; border: 1px solid rgba(255,196,0,.3); }
 .role-chip.admin { background: rgba(130,215,187,0.16); color: var(--color-accent); border: 1px solid rgba(130,215,187,0.3); }
 .role-chip.member { background: var(--color-surface-soft); color: var(--color-muted); border: 1px solid var(--color-card-border); }
-
 
 .tab-header {
   display: flex; gap: 0;
@@ -187,10 +151,7 @@
   min-width: 18px; text-align: center;
 }
 
-
 .members-list { display: flex; flex-direction: column; gap: 6px; }
-
-
 
 .member-item {
   display: flex; align-items: center; gap: 12px;
@@ -238,7 +199,6 @@
 }
 .role-sel:disabled { opacity: .5; cursor: default; }
 
-
 .accounts-tab { padding-top: 2px; }
 .accounts-info-txt {
   font-size: 0.82rem; color: var(--color-muted);
@@ -249,7 +209,6 @@
   text-align: center; padding: 1rem 0;
 }
 .create-acct-btn { margin-top: .75rem; }
-
 
 .wg-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
 
@@ -279,7 +238,6 @@
 
 .wg-actions-row { display: flex; gap: 8px; }
 
-
 .inline-form {
   margin-top: 1rem;
   background: var(--color-surface-soft);
@@ -292,7 +250,6 @@
 .password-input-row { display: flex; gap: 6px; align-items: center; }
 .password-input-row .glass-input { flex: 1; }
 
-
 .glass-input {
   background: var(--color-surface-soft);
   border: 1px solid var(--color-card-border);
@@ -303,42 +260,6 @@
 }
 .glass-input::placeholder { color: var(--color-muted); }
 .glass-input:focus { outline: none; border-color: rgba(130,215,187,0.5); background: var(--color-surface-soft); }
-
-
-.btn-accent {
-  background: var(--color-surface);
-  border: 1px solid rgba(130,215,187,0.38);
-  color: var(--color-accent); border-radius: 10px;
-  padding: 8px 16px; font-size: 0.82rem; font-weight: 700;
-  cursor: pointer; transition: all .2s; font-family: inherit;
-}
-.btn-accent:hover { background: rgba(130,215,187,0.3); }
-.btn-accent:disabled { opacity: .42; cursor: default; }
-
-.btn-ghost {
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-card-border);
-  color: var(--color-muted); border-radius: 10px;
-  padding: 8px 16px; font-size: 0.82rem; font-weight: 600;
-  cursor: pointer; transition: all .2s; font-family: inherit;
-}
-.btn-ghost:hover { background: var(--color-surface-soft); }
-
-
-.btn-sm-ghost {
-  background: var(--color-surface-soft); border: 1px solid var(--color-card-border);
-  color: var(--color-muted); border-radius: 7px; padding: 5px 10px;
-  font-size: 0.78rem; cursor: pointer; font-family: inherit;
-}
-
-.btn-sm-danger {
-  background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.25);
-  color: #f87171; border-radius: 7px; padding: 5px 10px;
-  font-size: 0.78rem; cursor: pointer; font-family: inherit;
-  transition: background .15s;
-}
-.btn-sm-danger:hover { background: rgba(239,68,68,.22); }
-.btn-sm-danger:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn-icon-sm {
   background: var(--color-surface-soft); border: 1px solid var(--color-card-border);
@@ -363,7 +284,6 @@
 }
 .btn-remove:hover { background: rgba(239,68,68,.22); color: #ef4444; }
 
-
 .form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .form-error {
@@ -382,11 +302,7 @@
 }
 
 .icon-sm { width: 15px; height: 15px; flex-shrink: 0; }
-
-
-.page-header { align-items: flex-start; }
-.page-eyebrow { display: block; color: var(--color-accent); font-size: .75rem; font-weight: 700; margin-bottom: .5rem; }
-.page-intro, .section-help, .wg-description { color: var(--color-muted); line-height: 1.6; font-size: .88rem; margin: .5rem 0 1rem; }
+.section-help, .wg-description{ color: var(--color-muted); line-height: 1.6; font-size: .88rem; margin: .5rem 0 1rem; }
 .wg-active-card { background: linear-gradient(135deg, rgba(130,215,187,.08), transparent), var(--color-surface); }
 .member-toolbar { display: flex; justify-content: space-between; gap: 1.5rem; align-items: center; margin-bottom: 1rem; }
 .member-toolbar h2 { margin: 0; font-size: 1.1rem; }
@@ -406,7 +322,6 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid
 .glass-input { min-width: 0; }
 @media (max-width: 760px) {
   .top-grid { grid-template-columns: 1fr; }
-  .page-header { flex-direction: column; gap: 1rem; }
   .account-page { padding: 1rem .75rem 3rem; }
   .member-toolbar { align-items: stretch; flex-direction: column; gap: .75rem; }
   .member-search { min-width: 0; }

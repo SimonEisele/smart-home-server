@@ -1,13 +1,15 @@
 <div class="ingredients-page app-page">
   <header class="page-header">
-    <div>
-      <span class="eyebrow">Küche · Stammdaten</span>
-      <h1>Zutaten</h1>
-      <p>Ein Katalog für deine Rezepte und die Einkaufsliste.</p>
+    <div class="page-heading">
+      <p class="eyebrow">Essen &amp; Einkauf</p>
+      <h1 class="page-title">Zutaten</h1>
+      <p class="page-subtitle">Ein Katalog für deine Rezepte und die Einkaufsliste.</p>
     </div>
-    <button class="primary" type="button" (click)="openAdd()" [disabled]="loading || !!loadError">
-      + Neue Zutat
-    </button>
+    <div class="page-actions">
+      <button class="btn-primary" type="button" (click)="openAdd()" [disabled]="loading || !!loadError">
+        + Neue Zutat
+      </button>
+    </div>
   </header>
   <div class="summary" aria-label="Katalogübersicht">
     <div>
@@ -50,7 +52,7 @@
     <div class="state" role="status" *ngIf="loading">Zutaten werden geladen…</div>
     <div class="state" *ngIf="loadError" role="alert">
       <p>{{ loadError }}</p>
-      <button type="button" (click)="load()">Erneut laden</button>
+      <button class="btn-secondary" type="button" (click)="load()">Erneut laden</button>
     </div>
     <ng-container *ngIf="!loading && !loadError">
       <div class="list-heading">
@@ -98,10 +100,10 @@
               : 'Erfasse die erste Zutat mit Kategorie und Standard-Einheit.'
           }}
         </p>
-        <button type="button" (click)="resetFilters()" *ngIf="ingredients.length">
+        <button class="btn-secondary" type="button" (click)="resetFilters()" *ngIf="ingredients.length">
           Filter zurücksetzen
         </button>
-        <button type="button" class="primary" (click)="openAdd()" *ngIf="!ingredients.length">
+        <button type="button" class="btn-primary" (click)="openAdd()" *ngIf="!ingredients.length">
           Zutat erfassen
         </button>
       </div>
@@ -129,7 +131,7 @@
           {{ modal === 'delete' ? 'Zutat löschen?' : selected ? selected.name : 'Neue Zutat' }}
         </h2>
       </div>
-      <button
+      <button class="btn-secondary"
         type="button"
         aria-label="Dialog schließen"
         (click)="closeModal()"
@@ -201,7 +203,7 @@
         </div>
         <div class="notice error" role="alert" *ngIf="formError">{{ formError }}</div>
         <div class="management" *ngIf="selected">
-          <button type="button" (click)="archive()" [disabled]="saving">
+          <button class="btn-secondary" type="button" (click)="archive()" [disabled]="saving">
             {{ selected.archived ? 'Wieder aktivieren' : 'Archivieren' }}</button
           ><button
             class="danger-text"
@@ -216,9 +218,9 @@
         </div>
       </div>
       <footer class="dialog-footer">
-        <button type="button" (click)="closeModal()" [disabled]="saving">Abbrechen</button
+        <button class="btn-secondary" type="button" (click)="closeModal()" [disabled]="saving">Abbrechen</button
         ><button
-          class="primary"
+          class="btn-primary"
           type="submit"
           [disabled]="saving || !form.name.trim() || !!duplicate"
         >
@@ -233,8 +235,8 @@
         <div class="notice error" role="alert" *ngIf="formError">{{ formError }}</div>
       </div>
       <footer class="dialog-footer">
-        <button type="button" (click)="modal = 'edit'" [disabled]="saving">Zurück</button
-        ><button type="button" class="danger" (click)="delete()" [disabled]="saving">
+        <button class="btn-secondary" type="button" (click)="modal = 'edit'" [disabled]="saving">Zurück</button
+        ><button type="button" class="btn-danger" (click)="delete()" [disabled]="saving">
           {{ saving ? 'Wird gelöscht…' : 'Zutat löschen' }}
         </button>
       </footer>
