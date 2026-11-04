@@ -8,7 +8,7 @@ import { normalizeWidgetLayout } from '../models/widget-layout';
 import { WidgetHost } from '../../widgets/widget-host/widget-host';
 import { Card } from '../card/card';
 import { WIDGET_REGISTRY, WidgetDefinition } from '../../widgets/widgets.registry';
-import { AddWidget } from '../../popovers/add-widget-popver/add-widget-popover';
+import { AddWidget } from '../../popovers/add-widget-popover/add-widget-popover';
 import { DashboardService, DashboardLayout } from '../service/dashboard.service';
 import { AuthService } from '../../core/auth/service/auth.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';

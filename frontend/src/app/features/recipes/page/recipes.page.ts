@@ -1,9 +1,9 @@
 import { finalize } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DestroyRef, inject } from '@angular/core';
-import { RecipeCookService } from '../../shared/services/recipe-cook.service';
-import { INGREDIENT_UNITS, INGREDIENT_CATEGORIES } from '../ingredients/model/ingredient.model';
-import { DialogDirective } from '../../shared/directives/dialog.directive';
+import { RecipeCookService } from '../../../shared/services/recipe-cook.service';
+import { INGREDIENT_UNITS, INGREDIENT_CATEGORIES } from '../../ingredients/model/ingredient.model';
+import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import {
   Component,
   HostListener,
@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ingredientKey } from '../ingredients/model/ingredient.model';
+import { ingredientKey } from '../../ingredients/model/ingredient.model';
 import {
   Ingredient,
   Recipe,
@@ -21,9 +21,9 @@ import {
   RecipeSection,
   RecipeSideNote,
   RecipeStep,
-} from './model/recipes.model';
-import { RecipesService } from './service/recipes.service';
-import { apiErrorMessage } from '../../shared/utils/api-error';
+} from '../model/recipes.model';
+import { RecipesService } from '../service/recipes.service';
+import { apiErrorMessage } from '../../../shared/utils/api-error';
 
 type RecipeForm = Partial<Recipe> & {
   ingredients: RecipeIngredient[];
@@ -36,11 +36,11 @@ type RecipeForm = Partial<Recipe> & {
   selector: 'app-recipes',
   standalone: true,
   imports: [DialogDirective, CommonModule, FormsModule],
-  templateUrl: './recipes.html',
-  styleUrl: './recipes.css',
+  templateUrl: './recipes.page.html',
+  styleUrl: './recipes.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class Recipes implements OnInit {
+export class RecipesPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly cookService = inject(RecipeCookService);
   readonly ingredientUnits = INGREDIENT_UNITS;

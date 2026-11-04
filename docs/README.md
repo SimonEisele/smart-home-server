@@ -1,81 +1,24 @@
-# Smart Home Server – API Dokumentation
+# Dokumentation
 
-Diese Dokumentation beschreibt die Schnittstellen und Datenmodelle
-zwischen Frontend (Angular) und Backend.
+Vertrag zwischen Frontend (Angular) und Backend (Django REST Framework).
+Einrichtung, Tests und Deploy stehen im [README im Projektordner](../README.md).
 
-Ziel:
-- parallele Entwicklung von Frontend & Backend
-- klar definierter API-Vertrag
-- keine impliziten Annahmen oder Logik im Frontend
+## API
 
-Die Authentifizierung erfolgt über JWT (Access Token + Refresh Token).
+- [API-Konventionen](api-conventions.md): Format von Antworten und Fehlern
+- [Authentifizierung](auth.md): JWT mit Access- und Refresh-Token
+- [Datenmodelle](models.md)
 
----
+## Verlauf
 
-## 📚 Dokumente
+Datierte Notizen zu größeren Änderungen, älteste zuerst. Sie beschreiben den
+Stand zum jeweiligen Datum; die Screenshots in `history/screenshots/` zeigen
+das alte Design.
 
-- Authentifizierung: `auth.md`
-- Datenmodelle: `models.md`
-- API Konventionen (Responses & Errors): `api-conventions.md`
-
-Weitere Module (Notes, Dashboard, Automationen) bauen auf diesen
-Grundlagen auf.
-
----
-
-## Review and screenshots
-
-See [the October 2026 review](review-2026-10-04.md) for tested fixes, deployment notes, and remaining findings.
-
-See [the household workspace rework](workspace-rework-2026-10-05.md) for the current interface and validation. Older screenshots show the previous design.
-
-## 🛠️ Development
-
-Für die lokale Entwicklung werden das Django-Backend und das Angular-Frontend
-separat gestartet.
-
-### Backend starten
-
-In das Backend-Verzeichnis wechseln, die Abhängigkeiten installieren und den
-Django-Entwicklungsserver starten:
-
-```bash
-cd backend
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
-```
-
-Das Backend ist anschließend standardmäßig unter
-`http://127.0.0.1:8000/` erreichbar.
-
-### Frontend starten
-
-In einem zweiten Terminal das Frontend installieren und starten:
-
-```bash
-cd frontend
-npm install
-ng serve
-```
-
-Das Frontend ist anschließend unter `http://localhost:4200/` erreichbar.
-
-Die lokale API-Adresse wird in
-`frontend/src/environments/environment.development.ts` konfiguriert.
-
-### Tests und Build
-
-Frontend-Tests können mit folgendem Befehl ausgeführt werden:
-
-```bash
-cd frontend
-ng test
-```
-
-Ein Produktions-Build des Frontends wird mit folgendem Befehl erstellt:
-
-```bash
-cd frontend
-ng build
-```
+- [Review und Fixes](history/review-2026-10-04.md) (04.10.2026)
+- [Umbau der WG-Ansicht](history/workspace-rework-2026-10-05.md) (05.10.2026)
+- [Zutatenverwaltung](history/ingredient-management-2026-10-07.md) (07.10.2026)
+- [Rezepte und Kochmodus](history/recipe-workflow-2026-10-07.md) (07.10.2026)
+- [Einkaufsliste](history/shopping-workflow-2026-10-07.md) (07.10.2026)
+- [Kochübersicht und Schrittpopup](history/cooking-step-popup-2026-10-08.md) (08.10.2026)
+- [Wetter](history/weather-workflow-2026-10-08.md) (08.10.2026)

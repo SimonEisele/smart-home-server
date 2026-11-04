@@ -1,21 +1,21 @@
-import { DialogDirective } from '../../shared/directives/dialog.directive';
+import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { localIsoDate } from '../../shared/date-utils';
+import { localIsoDate } from '../../../shared/utils/date-utils';
 import { Component, DestroyRef, inject, ChangeDetectorRef, HostListener, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
-import { CalendarEvent, HouseholdMember, MemberAvailability, UserMealAttendance, ExternalMealGuest } from './model/calendar.model';
-import { CalendarService } from './service/calendar.service';
-import { TodosService } from '../todos/service/todos.service';
-import { Todo } from '../todos/model/todos.model';
-import { AuthService } from '../../core/auth/service/auth.service';
-import { CleaningTask } from '../cleaning/model/cleaning.model';
+import { CalendarEvent, HouseholdMember, MemberAvailability, UserMealAttendance, ExternalMealGuest } from '../model/calendar.model';
+import { CalendarService } from '../service/calendar.service';
+import { TodosService } from '../../todos/service/todos.service';
+import { Todo } from '../../todos/model/todos.model';
+import { AuthService } from '../../../core/auth/service/auth.service';
+import { CleaningTask } from '../../cleaning/model/cleaning.model';
 import {
   DayEntry, END_HOUR, HOUR_PX, START_HOUR, buildWeek, cleaningEntriesForDay, formatDuration, gridHeight, gridTop,
   pad, todoOccurrences, weekLabel,
-} from './calendar.utils';
+} from '../utils/calendar.utils';
 
 interface DropPreview { dateStr: string; top: number; h: number; label: string; hour: number; minute: number; }
 interface EvModalForm { title: string; date: string; startTime: string; endTime: string; calendarType: string; description: string; location: string; color: string; allDay: boolean; }
@@ -26,10 +26,10 @@ interface ResizePreview { evId: string; newH: number; newEnd: string; }
   selector: 'app-calendar',
   standalone: true,
   imports: [DialogDirective, CommonModule, FormsModule, RouterLink],
-  templateUrl: './calendar.html',
-  styleUrl: './calendar.css',
+  templateUrl: './calendar.page.html',
+  styleUrl: './calendar.page.css',
 })
-export class Calendar implements OnInit, OnDestroy {
+export class CalendarPage implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   calendarView: 'schedule' | 'attendance' = 'schedule';
   weekStart!: Date;

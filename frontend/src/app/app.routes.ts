@@ -5,9 +5,9 @@ import { Dashboard } from './dashboard/component/dashboard';
 import { WeatherPage } from './features/weather/page/weather.page';
 import { MenuplanPage } from './features/menuplan/page/menuplan.page';
 import { Register } from './core/register/register';
-import { Recipes } from './features/recipes/recipes';
-import { Shoppinglist } from './features/shoppinglist/shoppinglist';
-import { Calendar } from './features/calendar/calendar';
+import { RecipesPage } from './features/recipes/page/recipes.page';
+import { ShoppinglistPage } from './features/shoppinglist/page/shoppinglist.page';
+import { CalendarPage } from './features/calendar/page/calendar.page';
 import { AccountManager } from './core/account-manager/account-manager';
 import { IngredientsPage } from './features/ingredients/page/ingredients.page';
 import { CleaningPage } from './features/cleaning/page/cleaning.page';
@@ -21,10 +21,10 @@ export const routes: Routes = [
   { path: 'todos', component: TodosPage, canActivate: [authGuard] },
   { path: 'weather', component: WeatherPage, canActivate: [authGuard] },
   { path: 'menuplan', component: MenuplanPage, canActivate: [authGuard] },
-  { path: 'recipes', component: Recipes, canActivate: [authGuard] },
+  { path: 'recipes', component: RecipesPage, canActivate: [authGuard] },
   { path: 'ingredients', component: IngredientsPage, canActivate: [authGuard] },
-  { path: 'shoppinglist', component: Shoppinglist, canActivate: [authGuard] },
-  { path: 'calendar', component: Calendar, canActivate: [authGuard] },
+  { path: 'shoppinglist', component: ShoppinglistPage, canActivate: [authGuard] },
+  { path: 'calendar', component: CalendarPage, canActivate: [authGuard] },
   { path: 'cleaning', component: CleaningPage, canActivate: [authGuard] },
   { path: 'account', component: AccountManager, canActivate: [authGuard] },
   { path: '**', redirectTo: '' },

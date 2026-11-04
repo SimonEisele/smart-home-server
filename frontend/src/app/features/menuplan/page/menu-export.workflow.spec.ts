@@ -1,5 +1,5 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { localIsoDate } from '../../../shared/date-utils';
+import { localIsoDate } from '../../../shared/utils/date-utils';
 import { TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';

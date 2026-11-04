@@ -2,7 +2,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 import { DialogDirective } from '../../../shared/directives/dialog.directive';
-import { localIsoDate } from '../../../shared/date-utils';
+import { localIsoDate } from '../../../shared/utils/date-utils';
 import { Component, HostListener, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';

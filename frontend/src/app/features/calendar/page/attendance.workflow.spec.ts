@@ -1,21 +1,21 @@
 import { TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
-import { Calendar } from './calendar';
-import { CalendarService } from './service/calendar.service';
-import { TodosService } from '../todos/service/todos.service';
-import { AuthService } from '../../core/auth/service/auth.service';
-import { UserMealAttendance, ExternalMealGuest } from './model/calendar.model';
+import { CalendarPage } from './calendar.page';
+import { CalendarService } from '../service/calendar.service';
+import { TodosService } from '../../todos/service/todos.service';
+import { AuthService } from '../../../core/auth/service/auth.service';
+import { UserMealAttendance, ExternalMealGuest } from '../model/calendar.model';
 
 describe('Meal attendance workflows', () => {
   const service = {setMealAttendance:vi.fn(),addExternalGuest:vi.fn(),removeExternalGuest:vi.fn(),getMealAttendance:vi.fn(),getExternalGuests:vi.fn()};
-  let page: Calendar;
+  let page: CalendarPage;
   const date = '2026-10-05';
   const record: UserMealAttendance = { id:'a',userId:'me',userFirstName:'Simon',userLastName:'Eisele',date,breakfastPresent:false,lunchPresent:false,dinnerPresent:true };
   beforeEach(() => {
     vi.resetAllMocks();
-    TestBed.configureTestingModule({imports:[Calendar],providers:[{provide:CalendarService,useValue:service},{provide:TodosService,useValue:{}},{provide:AuthService,useValue:{}}]});
-    page=TestBed.createComponent(Calendar).componentInstance;
+    TestBed.configureTestingModule({imports:[CalendarPage],providers:[{provide:CalendarService,useValue:service},{provide:TodosService,useValue:{}},{provide:AuthService,useValue:{}}]});
+    page=TestBed.createComponent(CalendarPage).componentInstance;
     page.currentUserId='me';page.attendanceReady=true;
     page.weekDays=Array.from({length:7},(_,i)=>({date:new Date(date),dateStr:i===0?date:'2026-10-'+(6+i),isToday:i===0,dayName:'Mo',dayNum:5+i,month:10}));page.mealAttendances=[{...record}];
   });

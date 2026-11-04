@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AfterViewInit, Component, OnDestroy, DestroyRef, inject, ChangeDetectorRef, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { dateTimeInZone } from '../../../shared/date-utils';
+import { dateTimeInZone } from '../../../shared/utils/date-utils';
 import { DailyWeather, HourlyWeather, WeatherData } from '../model/weather.model';
 import { WeatherSymbol } from '../icon/weather-icon';
 import { WeatherLabelPipe } from '../pipes/weather.pipe';

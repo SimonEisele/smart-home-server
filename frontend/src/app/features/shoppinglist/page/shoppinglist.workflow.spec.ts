@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
-import { Shoppinglist } from './shoppinglist';
-import { ShoppinglistService } from './service/shoppinglist.service';
-import { RecipesService } from '../recipes/service/recipes.service';
-import { ShoppingItem } from './model/shoppinglist.model';
+import { ShoppinglistPage } from './shoppinglist.page';
+import { ShoppinglistService } from '../service/shoppinglist.service';
+import { RecipesService } from '../../recipes/service/recipes.service';
+import { ShoppingItem } from '../model/shoppinglist.model';
 
 describe('Shopping workflow', () => {
-  let page: Shoppinglist;
+  let page: ShoppinglistPage;
   const service = {
     deleteItem: vi.fn(),
     clearChecked: vi.fn(),
@@ -20,7 +20,7 @@ describe('Shopping workflow', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
-      imports: [Shoppinglist],
+      imports: [ShoppinglistPage],
       providers: [
         { provide: ShoppinglistService, useValue: service },
         {
@@ -29,7 +29,7 @@ describe('Shopping workflow', () => {
         },
       ],
     }).compileComponents();
-    page = TestBed.createComponent(Shoppinglist).componentInstance;
+    page = TestBed.createComponent(ShoppinglistPage).componentInstance;
     page.items = [
       { id: 'one', name: 'Pasta', quantity: 200, unit: 'g', checked: false, listType: 'manual' },
       {

@@ -1,4 +1,4 @@
-import { DialogDirective } from '../../shared/directives/dialog.directive';
+import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { RouterLink } from '@angular/router';
 import {
   Component,
@@ -11,10 +11,10 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ShoppingItem } from './model/shoppinglist.model';
-import { ShoppinglistService } from './service/shoppinglist.service';
-import { RecipesService } from '../recipes/service/recipes.service';
-import { Recipe, Ingredient } from '../recipes/model/recipes.model';
+import { ShoppingItem } from '../model/shoppinglist.model';
+import { ShoppinglistService } from '../service/shoppinglist.service';
+import { RecipesService } from '../../recipes/service/recipes.service';
+import { Recipe, Ingredient } from '../../recipes/model/recipes.model';
 
 type ListTab = 'all' | 'manual' | 'menuplan';
 interface ShoppingGroup {
@@ -64,10 +64,10 @@ const CAT_MAP: Record<string, string> = Object.fromEntries(
   selector: 'app-shoppinglist',
   standalone: true,
   imports: [DialogDirective, CommonModule, FormsModule, RouterLink],
-  templateUrl: './shoppinglist.html',
-  styleUrl: './shoppinglist.css',
+  templateUrl: './shoppinglist.page.html',
+  styleUrl: './shoppinglist.page.css',
 })
-export class Shoppinglist implements OnInit {
+export class ShoppinglistPage implements OnInit {
   private destroyRef = inject(DestroyRef);
   items: ShoppingItem[] = [];
   ingredients: Ingredient[] = [];

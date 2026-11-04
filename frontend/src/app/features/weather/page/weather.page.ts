@@ -5,7 +5,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Subscription } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { WeatherSymbol } from '../icon/weather-icon';
-import { dateTimeInZone } from '../../../shared/date-utils';
+import { dateTimeInZone } from '../../../shared/utils/date-utils';
 import { WeatherService } from '../service/weather.service';
 import { WeatherData, HourlyWeather, DailyWeather, CitySearchResult } from '../model/weather.model';
 import { wmoLabel } from '../pipes/weather.pipe';

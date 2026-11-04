@@ -1,5 +1,5 @@
-import { Todo } from '../todos/model/todos.model';
-import { CleaningTask } from '../cleaning/model/cleaning.model';
+import { Todo } from '../../todos/model/todos.model';
+import { CleaningTask } from '../../cleaning/model/cleaning.model';
 import {
   HOUR_PX, buildWeek, cleaningEntriesForDay, cleaningNextDue, daysBetween, formatDuration, gridHeight, gridTop,
   parseLocalDate, todoOccurrences, weekLabel,

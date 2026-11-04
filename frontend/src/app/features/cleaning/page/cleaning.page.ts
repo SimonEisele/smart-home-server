@@ -1,5 +1,5 @@
 import { DialogDirective } from '../../../shared/directives/dialog.directive';
-import { localIsoDate } from '../../../shared/date-utils';
+import { localIsoDate } from '../../../shared/utils/date-utils';
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';

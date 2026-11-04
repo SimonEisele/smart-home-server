@@ -1,4 +1,4 @@
-import { localIsoDate } from '../../../shared/date-utils';
+import { localIsoDate } from '../../../shared/utils/date-utils';
 import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { Component, OnInit, HostListener, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';

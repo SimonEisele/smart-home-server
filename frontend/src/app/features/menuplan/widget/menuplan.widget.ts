@@ -1,6 +1,6 @@
 import { FitWidgetContentDirective } from '../../../shared/directives/fit-widget-content.directive';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { localIsoDate } from '../../../shared/date-utils';
+import { localIsoDate } from '../../../shared/utils/date-utils';
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, DestroyRef, inject, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { Menu } from '../model/menuplan.model';

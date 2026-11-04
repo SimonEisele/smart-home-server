@@ -1,19 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
-import { Calendar } from './calendar';
-import { CalendarService } from './service/calendar.service';
-import { TodosService } from '../todos/service/todos.service';
-import { AuthService } from '../../core/auth/service/auth.service';
-import { CalendarEvent } from './model/calendar.model';
+import { CalendarPage } from './calendar.page';
+import { CalendarService } from '../service/calendar.service';
+import { TodosService } from '../../todos/service/todos.service';
+import { AuthService } from '../../../core/auth/service/auth.service';
+import { CalendarEvent } from '../model/calendar.model';
 
 describe('Linked task planning',()=>{
   const service={deleteEvent:vi.fn(),updateEvent:vi.fn(),createEvent:vi.fn()};
-  const tasks={updateTodo:vi.fn()};let page:Calendar;
+  const tasks={updateTodo:vi.fn()};let page:CalendarPage;
   const ev:CalendarEvent={id:'block',title:'Task',todoRefId:'task',start:'2026-10-05T08:00:00Z',end:'2026-10-05T09:00:00Z'};
   beforeEach(()=>{
-    vi.resetAllMocks();TestBed.configureTestingModule({imports:[Calendar],providers:[{provide:CalendarService,useValue:service},{provide:TodosService,useValue:tasks},{provide:AuthService,useValue:{}}]});
-    page=TestBed.createComponent(Calendar).componentInstance;
+    vi.resetAllMocks();TestBed.configureTestingModule({imports:[CalendarPage],providers:[{provide:CalendarService,useValue:service},{provide:TodosService,useValue:tasks},{provide:AuthService,useValue:{}}]});
+    page=TestBed.createComponent(CalendarPage).componentInstance;
     page.weekDays=Array.from({length:7},(_,i)=>({date:new Date('2026-10-05'),dateStr:'2026-10-'+(5+i),isToday:false,dayName:'Mo',dayNum:5+i,month:10}));
     page.todos=[{id:'task',title:'Task',done:false,durationMinutes:180}];page.events=[{...ev}];
   });

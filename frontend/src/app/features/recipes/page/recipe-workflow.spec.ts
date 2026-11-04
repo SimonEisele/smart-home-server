@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
-import { Recipes } from './recipes';
-import { RecipesService } from './service/recipes.service';
-import { RecipeCookService } from '../../shared/services/recipe-cook.service';
-import { Recipe } from './model/recipes.model';
+import { RecipesPage } from './recipes.page';
+import { RecipesService } from '../service/recipes.service';
+import { RecipeCookService } from '../../../shared/services/recipe-cook.service';
+import { Recipe } from '../model/recipes.model';
 const recipe: Recipe = {
   id: 'r',
   name: 'Brot',
@@ -27,16 +27,16 @@ describe('Recipe editing workflow', () => {
     deleteRecipe: vi.fn(),
     createIngredient: vi.fn(),
   };
-  let page: Recipes;
+  let page: RecipesPage;
   beforeEach(() => {
     vi.resetAllMocks();
     service.getRecipes.mockReturnValue(of([recipe]));
     service.getIngredients.mockReturnValue(of([]));
     TestBed.configureTestingModule({
-      imports: [Recipes],
+      imports: [RecipesPage],
       providers: [{ provide: RecipesService, useValue: service }],
     });
-    page = TestBed.createComponent(Recipes).componentInstance;
+    page = TestBed.createComponent(RecipesPage).componentInstance;
     page.ngOnInit();
   });
   it('opens one shared cooking flow with recipe yield instead of inventing diners', () => {

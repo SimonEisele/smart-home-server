@@ -1,6 +1,6 @@
-import { localIsoDate } from '../../shared/date-utils';
-import { Todo } from '../todos/model/todos.model';
-import { CleaningTask } from '../cleaning/model/cleaning.model';
+import { localIsoDate } from '../../../shared/utils/date-utils';
+import { Todo } from '../../todos/model/todos.model';
+import { CleaningTask } from '../../cleaning/model/cleaning.model';
 
 /** Pure calendar logic: week layout, grid geometry, recurring todos, cleaning due dates. */
 
