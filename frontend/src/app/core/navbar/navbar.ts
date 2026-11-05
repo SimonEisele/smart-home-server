@@ -43,7 +43,6 @@ export class Navbar {
   ];
   readonly mobileItems = [this.navGroups[0].items[0], this.navGroups[0].items[1], this.navGroups[1].items[0], this.navGroups[1].items[1]];
   closePopovers() { this.showLogin = false; this.showAccount = false; }
-  get isDashboard(): boolean { return this.router.url.split("?")[0] === "/home"; }
   @ViewChild('loginButton', { read: ElementRef }) loginBtn!: ElementRef;
   @ViewChild('accountButton', { read: ElementRef }) accountBtn!: ElementRef;
   @ViewChild('userText', { read: ElementRef }) userText!: ElementRef;
@@ -61,13 +60,11 @@ export class Navbar {
   accountPopoverArrowLeft = 0;
 
   user$: Observable<User | null>;
-  editMode$: Observable<boolean>;
   households$: Observable<Household[]>;
   activeHousehold$: Observable<Household | null>;
 
   constructor(public dashboardService: DashboardService, public auth: AuthService, private router: Router, public householdService: HouseholdService) {
     this.user$ = this.auth.user$;
-    this.editMode$ = this.dashboardService.editMode$;
     this.households$ = this.householdService.households$;
     this.activeHousehold$ = this.householdService.activeHousehold$;
 

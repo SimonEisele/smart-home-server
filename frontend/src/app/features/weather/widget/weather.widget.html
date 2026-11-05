@@ -10,13 +10,16 @@
       <button type="button" class="btn btn-secondary btn-sm" (click)="load()" [disabled]="loading">Erneut laden</button>
     </div>
   } @else if (data) {
-  <a routerLink="/weather" aria-label="Wetterseite öffnen">{{ data.location.city }} →</a>
   <ng-container>
     <!-- Aktuelles Wetter -->
     <div class="current-weather">
       <div class="current-icon"><weather-symbol [code]="data.current.weatherCode" [isDay]="data.current.isDay" /></div>
       <div class="current-info">
-        <div class="current-temp">{{ value(data.current.temperature) }}°C</div>
+        <div class="current-location">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          {{ data.location.city }}
+        </div>
+        <div class="current-temp">{{ value(data.current.temperature) }}°</div>
         <div class="current-label">{{ data.current.weatherCode | weatherLabel }}</div>
         <div class="current-precip">Gefühlt {{ value(data.current.apparentTemperature) }}° · Luftfeuchte {{ value(data.current.humidity) }}%</div>
       </div>
@@ -46,6 +49,6 @@
     </div>
   </ng-container>
   } @else if (loading) {
-  <div class="loading">Lade Wetterdaten…</div>
+  <div class="loading-state">Lade Wetterdaten…</div>
   }
 </div>

@@ -7,7 +7,7 @@
         <span class="cook-recipe-name">{{ slot.recipe.name }}</span>
         <span class="cook-persons">{{ slot.persons }} Person{{ slot.persons !== 1 ? 'en' : '' }}</span>
       </div>
-      <button class="cook-start-btn" (click)="startCooking(slot)">
+      <button type="button" class="btn-primary btn-sm cook-start-btn" (click)="startCooking(slot)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         Kochen
       </button>
@@ -23,19 +23,19 @@
       </div>
       <div class="meal-row">
         <span class="meal-lbl">Morgen</span>
-        <span class="meal-val" [attr.title]="m.breakfastRecipe?.name" [class.leftovers]="m.breakfastLeftoversRef && !m.breakfastRecipe">
+        <span class="meal-val" [attr.title]="m.breakfastRecipe?.name" [class.leftovers]="m.breakfastLeftoversRef && !m.breakfastRecipe" [class.empty]="!m.breakfastRecipe && !m.breakfastLeftoversRef">
           {{ m.breakfastRecipe?.name ?? (m.breakfastLeftoversRef ? formatRef(m.breakfastLeftoversRef) : '–') }}
         </span>
       </div>
       <div class="meal-row">
         <span class="meal-lbl">Mittag</span>
-        <span class="meal-val" [attr.title]="m.lunchRecipe?.name" [class.leftovers]="m.lunchLeftoversRef && !m.lunchRecipe">
+        <span class="meal-val" [attr.title]="m.lunchRecipe?.name" [class.leftovers]="m.lunchLeftoversRef && !m.lunchRecipe" [class.empty]="!m.lunchRecipe && !m.lunchLeftoversRef">
           {{ m.lunchRecipe?.name ?? (m.lunchLeftoversRef ? formatRef(m.lunchLeftoversRef) : '–') }}
         </span>
       </div>
       <div class="meal-row">
         <span class="meal-lbl">Abend</span>
-        <span class="meal-val" [attr.title]="m.dinnerRecipe?.name" [class.leftovers]="m.dinnerLeftoversRef && !m.dinnerRecipe">
+        <span class="meal-val" [attr.title]="m.dinnerRecipe?.name" [class.leftovers]="m.dinnerLeftoversRef && !m.dinnerRecipe" [class.empty]="!m.dinnerRecipe && !m.dinnerLeftoversRef">
           {{ m.dinnerRecipe?.name ?? (m.dinnerLeftoversRef ? formatRef(m.dinnerLeftoversRef) : '–') }}
         </span>
       </div>

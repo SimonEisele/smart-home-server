@@ -639,10 +639,6 @@ main :is(.priority-low, .due-label.ok)[class] {
     background: var(--color-accent-soft);
 }
 
-.todo-widget-list .due-today .todo-title {
-    color: var(--color-warn);
-}
-
 /* ---- Form controls ----------------------------------------------------------- */
 main :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), select, textarea) {
     color: var(--color-text);
@@ -675,7 +671,7 @@ main :is(input, select, textarea):focus {
 }
 
 /* ---- Dialogs and popovers ------------------------------------------------------ */
-body :is(.modal-backdrop, .picker-backdrop, .cook-overlay, .cook-backdrop, .layout-overlay) {
+body :is(.modal-backdrop, .picker-backdrop, .cook-overlay, .cook-backdrop) {
     background: #060b10b8 !important;
     backdrop-filter: blur(4px);
 }
@@ -716,7 +712,7 @@ body :is(.modal-footer, .modal-foot, .cook-panel-footer)[class] {
     flex-wrap: wrap;
 }
 
-body :is(.modal-close, .cook-close, .layout-close-btn, .picker-close)[class] {
+body :is(.modal-close, .cook-close, .picker-close)[class] {
     width: 36px;
     height: 36px;
     display: inline-flex;
@@ -729,7 +725,7 @@ body :is(.modal-close, .cook-close, .layout-close-btn, .picker-close)[class] {
     color: var(--color-muted);
 }
 
-body :is(.account-popover-panel, .login-popover-panel, .add-widget-popover-panel)[class] {
+body :is(.account-popover-panel, .login-popover-panel)[class] {
     background: var(--color-surface);
     border: 1px solid var(--color-card-border);
     border-radius: 16px;
@@ -763,34 +759,9 @@ body :is(.account-popover-panel, .login-popover-panel, .add-widget-popover-panel
     margin: 0 0 16px;
 }
 
-body .widget-entry[class] {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    min-height: 48px;
-    border: 1px solid var(--color-card-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
-    color: var(--color-text);
-    padding: 12px;
-    text-align: left;
-    margin: 6px 0;
-}
 
-.widget-entry-plus {
-    margin-left: auto;
-    color: var(--color-accent);
-}
 
-.widget-entry img {
-    filter: brightness(0) invert(1);
-    opacity: .55;
-}
 
-.widget-entry:hover {
-    background: var(--color-surface-soft);
-}
 
 /* ---- Responsive ------------------------------------------------------------------ */
 @media(pointer:coarse) {

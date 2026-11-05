@@ -1,6 +1,9 @@
 <div class="cal-widget" fitWidgetContent=".ev-item" fitWidgetGroups=".day-group">
   @if (!hasEntries) {
-    <div class="empty-hint">Keine Termine oder Reinigungsaufgaben in den nächsten 14 Tagen</div>
+    <div class="empty-state empty-state--compact">
+      <strong>Freie Bahn</strong>
+      <p>Keine Termine oder Reinigungen in den nächsten 14 Tagen.</p>
+    </div>
   }
 
   @for (group of groupedEvents; track group.dateStr) {
@@ -8,7 +11,7 @@
       <div class="day-label" [class.today-label]="group.label === 'Heute'">{{ group.label }}</div>
 
       @for (ev of group.events; track ev.id) {
-        <div [class]="evClass(ev)" [class.ev-now]="isNow(ev)" [style.borderLeftColor]="ev.color || null">
+        <div [class]="evClass(ev)" [class.ev-now]="isNow(ev)" [style.--ev-color]="ev.color || null">
           <div class="ev-time-col">
             <span class="ev-start">{{ timeStr(ev.start) }}</span>
             @if (ev.end) {
@@ -22,7 +25,7 @@
             }
           </div>
           @if (isNow(ev)) {
-            <span class="now-badge">JETZT</span>
+            <span class="badge now-badge">Jetzt</span>
           }
         </div>
       }
@@ -30,7 +33,7 @@
       @for (cleaning of group.cleaningTasks; track cleaning.task.id) {
         <a class="ev-item ev-cleaning-widget" [class.ev-cleaning-overdue]="cleaning.overdue" routerLink="/cleaning">
           <div class="ev-time-col">
-            <span class="cleaning-icon"></span>
+            <svg class="cleaning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M18 15l.8 1.7 1.7.8-1.7.8L18 20l-.8-1.7-1.7-.8 1.7-.8z"/></svg>
           </div>
           <div class="ev-body">
             <span class="ev-title">{{ cleaning.task.name }}</span>

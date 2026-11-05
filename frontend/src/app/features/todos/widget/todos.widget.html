@@ -1,29 +1,28 @@
-<div #container class="todos-widget" fitWidgetContent=".todo-widget-list li">
-  <ng-container *ngIf="openTodos.length > 0; else allDone">
-    <ul class="todo-widget-list">
-      <li *ngFor="let todo of openTodos"
-          [class.overdue]="isOverdue(todo)"
-          [class.due-today]="isDueToday(todo)">
-
-        <div class="todo-row">
-          <button class="complete-btn" (click)="completeTodo(todo, $event)" title="Erledigt" [attr.aria-label]="todo.title + ' erledigen'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-            </svg>
-          </button>
-          <div class="todo-info">
-            <span class="todo-title">{{ todo.title }}</span>
-            <span class="todo-date" *ngIf="todo.dueDate">
-              {{ isOverdue(todo) ? '⚠ ' : '' }}{{ todo.dueDate | date:'dd.MM.yy' }}
-            </span>
-          </div>
-        </div>
-
+<div class="todos-widget" fitWidgetContent=".todo-item">
+  @if (loaded && openTodos.length === 0) {
+    <div class="empty-state empty-state--compact">
+      <strong>Alles erledigt</strong>
+      <p>Keine offenen Aufgaben.</p>
+    </div>
+  }
+  <ul class="todo-widget-list">
+    @for (todo of openTodos; track todo.id) {
+      @let state = dueState(todo);
+      <li class="todo-item" [class.overdue]="state === 'overdue'" [class.due-today]="state === 'today'">
+        <button type="button" class="complete-btn" (click)="completeTodo(todo, $event)" title="Erledigt" [attr.aria-label]="todo.title + ' erledigen'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <path class="tick" d="M8.5 12.5l2.5 2.5 4.5-5"/>
+          </svg>
+        </button>
+        <span class="todo-title">{{ todo.title }}</span>
+        @switch (state) {
+          @case ('overdue') { <span class="badge badge-danger">{{ todo.dueDate | date:'d.M.' }}</span> }
+          @case ('today') { <span class="badge badge-warn">Heute</span> }
+          @case ('tomorrow') { <span class="badge badge-info">Morgen</span> }
+          @case ('later') { <span class="badge badge-muted">{{ todo.dueDate | date:'d.M.' }}</span> }
+        }
       </li>
-    </ul>
-  </ng-container>
-
-  <ng-template #allDone>
-    <div class="all-done">Alle Todos erledigt </div>
-  </ng-template>
+    }
+  </ul>
 </div>

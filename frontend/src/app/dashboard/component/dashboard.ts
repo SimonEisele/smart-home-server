@@ -1,28 +1,38 @@
 import { DialogDirective } from '../../shared/directives/dialog.directive';
-import { Component, ElementRef, HostListener, OnInit, ViewChild, ChangeDetectorRef, DestroyRef, inject, OnDestroy } from '@angular/core';
+import { Component, HostListener, OnInit, ChangeDetectorRef, DestroyRef, inject, OnDestroy } from '@angular/core';
 import { CompactType, DisplayGrid, Gridster, GridsterConfig, GridsterItem, GridsterItemConfig, GridType } from 'angular-gridster2';
-import { CommonModule } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DashboardItem } from '../models/dashboard.models';
-import { normalizeWidgetLayout } from '../models/widget-layout';
+import { findFreeSpot, normalizeWidgetLayout } from '../models/widget-layout';
 import { WidgetHost } from '../../widgets/widget-host/widget-host';
 import { Card } from '../card/card';
-import { WIDGET_REGISTRY, WidgetDefinition } from '../../widgets/widgets.registry';
-import { AddWidget } from '../../popovers/add-widget-popover/add-widget-popover';
+import { WIDGET_REGISTRY, widgetDefinition } from '../../widgets/widgets.registry';
+import { WidgetPicker } from '../widget-picker/widget-picker';
 import { DashboardService, DashboardLayout } from '../service/dashboard.service';
 import { AuthService } from '../../core/auth/service/auth.service';
+import { GreetingPipe } from '../../features/datetime/pipes/datetime.pipe';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Observable, Subject, catchError, concatMap, distinctUntilChanged, finalize, forkJoin, of } from 'rxjs';
+import { Observable, Subject, catchError, concatMap, distinctUntilChanged, finalize, forkJoin, interval, map, of } from 'rxjs';
 import { User } from '../../core/auth/model/auth.model';
 
-const ADD_WIDGET_POPOVER_WIDTH = 250;
-const VIEWPORT_PADDING = 8;
-const ARROW_WIDTH = 20;
+/** Below this window width the dashboard shows a single list instead of the grid. */
+const MOBILE_WIDTH = 1100;
+
+/** Default arrangement for new accounts and for "Zurücksetzen". */
+const INITIAL_LAYOUT: Array<[type: string, x: number, y: number, cols: number, rows: number]> = [
+  ['datetime', 0, 0, 3, 5],
+  ['calendar', 3, 0, 5, 5],
+  ['weather', 8, 0, 4, 5],
+  ['menuplan', 0, 5, 4, 8],
+  ['todos', 4, 5, 4, 8],
+  ['shoppinglist', 8, 5, 4, 8],
+];
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DialogDirective,  CommonModule, FormsModule, GridsterItem, Gridster, WidgetHost, Card, AddWidget ],
+  imports: [DialogDirective, DatePipe, FormsModule, GridsterItem, Gridster, WidgetHost, Card, WidgetPicker],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -30,28 +40,22 @@ export class Dashboard implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly mutations = new Subject<() => Observable<unknown>>();
   private readonly saveTimeouts = new Map<DashboardItem, ReturnType<typeof setTimeout>>();
+  private readonly greetingPipe = new GreetingPipe();
   errorMessage = "";
-  isMobile = window.innerWidth < 1100;
-  @ViewChild('dashboardGrid', { read: ElementRef }) dashboardGrid?: ElementRef<HTMLElement>;
-  @ViewChild('addWidgetButton', { read: ElementRef }) addWidgetBtn!: ElementRef;
+  isMobile = window.innerWidth < MOBILE_WIDTH;
 
-  showAddWidgetPopover = false;
-  addWidgetPopoverBottom = 0;
-  addWidgetPopoverLeft = 0;
-  addWidgetPopoverArrowLeft = 0;
+  showWidgetPicker = false;
 
   options!: GridsterConfig;
   dashboard: DashboardItem[] = [];
   dashboardLoaded = false;
-  availableWidgets: WidgetDefinition[] = WIDGET_REGISTRY;
-  editMode: boolean = false;
-  containerWith = window.innerWidth;
-  containerHeight = window.innerHeight;
+  editMode = false;
   columns = 12;
   rows = 12;
-  maxColumns = 24;
   maxRows = 24;
-  navbarHeight = 64;
+
+  now = new Date();
+  firstName = '';
 
   // Layout manager
   showLayoutPanel = false;
@@ -59,7 +63,7 @@ export class Dashboard implements OnInit, OnDestroy {
   newLayoutName = '';
   layoutSaving = false;
   layoutApplying = false;
-
+  resetting = false;
 
   constructor(public dashboardService: DashboardService, private cdr: ChangeDetectorRef, public auth: AuthService) {
     this.mutations.pipe(
@@ -71,8 +75,36 @@ export class Dashboard implements OnInit, OnDestroy {
     ).subscribe();
     this.dashboardService.editMode$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(mode => {
       this.editMode = mode;
+      if (!mode) this.showWidgetPicker = false;
       this.updateGridsterOptions();
+      this.recalcFixedCellSize();
     });
+    // The greeting follows the time of day while the page stays open.
+    interval(60_000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.now = new Date(); this.cdr.markForCheck(); });
+  }
+
+  get greeting(): string {
+    return this.greetingPipe.transform(this.now);
+  }
+
+  /** Reading order of the grid; the mobile list follows it. */
+  get orderedItems(): DashboardItem[] {
+    return [...this.dashboard].sort((a, b) => a.y - b.y || a.x - b.x);
+  }
+
+  /** How often each widget type is on the dashboard, for the picker. */
+  get widgetsInUse(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const item of this.dashboard) counts[item.widget_type] = (counts[item.widget_type] ?? 0) + 1;
+    return counts;
+  }
+
+  routeFor(item: DashboardItem): string | undefined {
+    return widgetDefinition(item.widget_type)?.route;
+  }
+
+  sizeLabel(item: DashboardItem): string {
+    return `${item.cols} × ${item.rows}`;
   }
 
   ngOnInit() {
@@ -82,6 +114,7 @@ export class Dashboard implements OnInit, OnDestroy {
       distinctUntilChanged((a, b) => a?.id === b?.id),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(user => {
+      this.firstName = user?.first_name ?? '';
       this.loadDashboardForUser(user);
     });
   }
@@ -89,85 +122,69 @@ export class Dashboard implements OnInit, OnDestroy {
   private initGrid() {
     this.options = {
       gridType: GridType.VerticalFixed,
-      // Below 1100px window width the dashboard shows its own mobile list (isMobile).
+      // Below MOBILE_WIDTH the dashboard shows its own list (isMobile).
       // Gridster measures its own width (without the sidebar), so its breakpoint must
       // stay lower, or laptops around 1280px get a single stacked column.
       mobileBreakpoint: 640,
       keepFixedHeightInMobile: true,
       compactType: CompactType.None,
-      margin: 8,
+      margin: 14,
       outerMargin: false,
       useTransformPositioning: false,
-      fixedColWidth: this.containerWith / this.columns,
       fixedRowHeight: 48,
       minCols: this.columns,
       maxCols: this.columns,
       minRows: this.rows,
       maxRows: 1000,
-      draggable: {
-        enabled: this.editMode,
-        dragHandleClass: 'dash-card-header',
-        ignoreContent: true,
-        stop: (item: GridsterItemConfig) => this.onItemChange(item)
-      },
-      resizable: {
-        enabled: this.editMode,
-        stop: (item: GridsterItemConfig) => this.onItemChange(item)
-      },
       swap: false,
       pushItems: true,
-      displayGrid: DisplayGrid.OnDragAndResize,
+      // Fires after gridster commits a move, resize or push, so every moved card is saved.
+      itemChangeCallback: (item: GridsterItemConfig) => this.onItemChange(item),
       api: {
         optionsChanged: () => {},
         resize: () => {},
+      },
+      ...this.editOptions(),
+    };
+  }
+
+  private editOptions(): GridsterConfig {
+    return {
+      displayGrid: this.editMode ? DisplayGrid.Always : DisplayGrid.None,
+      draggable: { enabled: this.editMode, dragHandleClass: 'dash-card-header', ignoreContent: true },
+      resizable: {
+        enabled: this.editMode,
+        handles: { s: true, e: true, se: true, n: false, w: false, ne: false, nw: false, sw: false },
       },
     };
   }
 
   private updateGridsterOptions() {
-    this.options = {
-      ...this.options,
-      draggable: {
-        enabled: this.editMode,
-        dragHandleClass: 'dash-card-header',
-        ignoreContent: true,
-        stop: (item: GridsterItemConfig) => this.onItemChange(item)
-      },
-      resizable: {
-        enabled: this.editMode,
-        stop: (item: GridsterItemConfig) => this.onItemChange(item)
-      },
-    }
+    if (!this.options) return;
+    this.options = { ...this.options, ...this.editOptions() };
   }
 
-  toggleAddWidgetPopover() {
-    this.showAddWidgetPopover = !this.showAddWidgetPopover;
+  startEditing() { this.dashboardService.setEditMode(true); }
 
-    if (this.showAddWidgetPopover) {
-      queueMicrotask(() => {
-        const rect = this.addWidgetBtn.nativeElement.getBoundingClientRect();
+  openWidgetPicker() {
+    if (!this.editMode) this.startEditing();
+    this.showWidgetPicker = true;
+  }
 
-        this.addWidgetPopoverBottom = window.innerHeight - rect.top + 24;
-
-        let left = rect.left + rect.width / 2 - ADD_WIDGET_POPOVER_WIDTH / 2;
-        const minLeft = VIEWPORT_PADDING;
-        const maxLeft = window.innerWidth - ADD_WIDGET_POPOVER_WIDTH - VIEWPORT_PADDING;
-        this.addWidgetPopoverLeft = Math.round(Math.max(minLeft, Math.min(left, maxLeft)));
-
-        this.addWidgetPopoverArrowLeft = Math.round(rect.left + rect.width / 2 - this.addWidgetPopoverLeft - ARROW_WIDTH / 2);
-      });
-    }
+  finishEditing() {
+    this.flushPendingSaves();
+    this.dashboardService.setEditMode(false);
   }
 
   addWidget(widgetType: string) {
-    const def = WIDGET_REGISTRY.find(w => w.type === widgetType);
+    const def = widgetDefinition(widgetType);
     if (!def) return;
 
+    const spot = findFreeSpot(this.dashboard, def.defaultCols, def.defaultRows, this.columns);
     const newItem: DashboardItem = {
       id: '',
       widget_type: def.type,
-      x: 0,
-      y: 0,
+      ...spot,
       cols: def.defaultCols,
       minItemCols: def.minCols,
       maxItemCols: def.maxCols ?? this.columns,
@@ -179,18 +196,20 @@ export class Dashboard implements OnInit, OnDestroy {
       config: {}
     };
 
-    this.dashboard.push(newItem);
+    this.dashboard = [...this.dashboard, newItem];
     this.saveItem(newItem);
-    this.showAddWidgetPopover = false;
+    this.showWidgetPicker = false;
+    this.refreshGrid();
+    setTimeout(() => document.querySelector(`[data-widget-index="${this.dashboard.indexOf(newItem)}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
   }
 
-  removeWidget(id: string) {
-    const item = this.dashboard.find(w => w.id === id);
-    if (!item) return;
+  removeWidget(item: DashboardItem) {
+    if (!confirm(`„${item.title || 'Widget'}" vom Dashboard entfernen?`)) return;
     clearTimeout(this.saveTimeouts.get(item));
     this.saveTimeouts.delete(item);
-    if (this.auth.user) {
-      this.mutations.next(() => this.dashboardService.deleteItem(id).pipe(
+    if (this.auth.user && item.id) {
+      this.mutations.next(() => this.dashboardService.deleteItem(item.id).pipe(
         finalize(() => this.cdr.markForCheck()),
         // Keep the card until the server confirms deletion.
         concatMap(() => {
@@ -200,8 +219,52 @@ export class Dashboard implements OnInit, OnDestroy {
       ));
     } else {
       this.dashboard = this.dashboard.filter(w => w !== item);
-      localStorage.setItem('dashboard', JSON.stringify(this.dashboard));
+      this.storeLocally();
     }
+  }
+
+  renameWidget(item: DashboardItem, title: string) {
+    item.title = title;
+    this.saveItem(item);
+  }
+
+  /** Mobile editing: move a card one step in reading order. The grid positions swap. */
+  moveWidget(item: DashboardItem, direction: -1 | 1) {
+    const order = this.orderedItems;
+    const index = order.indexOf(item);
+    const other = order[index + direction];
+    if (!other) return;
+    [item.x, item.y, other.x, other.y] = [other.x, other.y, item.x, item.y];
+    // Cards of different sizes may overlap after swapping; push later ones down.
+    const sorted = [...this.dashboard].sort((a, b) => a.y - b.y || a.x - b.x);
+    const fixed = normalizeWidgetLayout(sorted, this.columns);
+    sorted.forEach((original, i) => {
+      const next = fixed[i];
+      const changed = original === item || original === other || original.x !== next.x || original.y !== next.y;
+      Object.assign(original, { x: next.x, y: next.y, cols: next.cols, rows: next.rows });
+      if (changed) this.saveItem(original);
+    });
+    this.dashboard = [...this.dashboard];
+  }
+
+  resetDashboard() {
+    if (this.resetting) return;
+    if (!confirm('Dashboard auf die Standardansicht zurücksetzen? Eigene Anordnung und Titel gehen verloren.')) return;
+    this.flushPendingSaves();
+    const initial = this.getInitialLayout();
+    if (!this.auth.user) {
+      initial.forEach(item => item.id = this.generateId());
+      this.applyLoadedItems(initial);
+      this.storeLocally();
+      return;
+    }
+    this.resetting = true;
+    const existing = this.dashboard.filter(item => item.id);
+    this.mutations.next(() => (existing.length ? forkJoin(existing.map(item => this.dashboardService.deleteItem(item.id))) : of([])).pipe(
+      concatMap(() => forkJoin(initial.map(item => this.dashboardService.saveItem(item)))),
+      map(saved => { this.applyLoadedItems(saved); return saved; }),
+      finalize(() => { this.resetting = false; this.cdr.markForCheck(); })
+    ));
   }
 
   private loadDashboardForUser(user: User | null) {
@@ -210,25 +273,28 @@ export class Dashboard implements OnInit, OnDestroy {
         if (items && items.length > 0) {
           this.applyLoadedItems(items);
         } else {
-          const initialItems = this.getInitialLayout();
-          forkJoin(initialItems.map(item => this.dashboardService.saveItem(item))).subscribe({
+          forkJoin(this.getInitialLayout().map(item => this.dashboardService.saveItem(item))).subscribe({
             next: saved => this.applyLoadedItems(saved),
             error: () => { this.errorMessage = 'Dashboard konnte nicht angelegt werden.'; this.cdr.markForCheck(); }
           });
         }
       }, () => { this.errorMessage = 'Dashboard konnte nicht geladen werden.'; this.cdr.markForCheck(); });
     } else {
-      let items: DashboardItem[] = JSON.parse(localStorage.getItem('dashboard') || '[]');
+      const items: DashboardItem[] = JSON.parse(localStorage.getItem('dashboard') || '[]');
 
       if (items && items.length > 0) {
         this.applyLoadedItems(items);
       } else {
-        const initialItems = this.getInitialLayout().map(item => ({ ...item }));
+        const initialItems = this.getInitialLayout();
         initialItems.forEach(item => item.id = this.generateId());
-        localStorage.setItem('dashboard', JSON.stringify(initialItems));
         this.applyLoadedItems(initialItems);
+        this.storeLocally();
       }
     }
+  }
+
+  private storeLocally() {
+    localStorage.setItem('dashboard', JSON.stringify(this.dashboard));
   }
 
   private saveItem(item: DashboardItem) {
@@ -251,7 +317,7 @@ export class Dashboard implements OnInit, OnDestroy {
       ));
     } else {
       if (!item.id) item.id = this.generateId();
-      localStorage.setItem('dashboard', JSON.stringify(this.dashboard));
+      this.storeLocally();
     }
   }
 
@@ -270,7 +336,7 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   private onItemChange(item: GridsterItemConfig) {
-    const dashboardItem = this.dashboard.find(d => d.id === item['id']);
+    const dashboardItem = this.dashboard.find(d => d === item) ?? this.dashboard.find(d => d.id && d.id === item['id']);
     if (!dashboardItem) return;
 
     dashboardItem.x = item.x!;
@@ -280,17 +346,22 @@ export class Dashboard implements OnInit, OnDestroy {
 
     this.saveItem(dashboardItem);
     this.recalcFixedCellSize();
-    this.options['api'].optionsChanged();
+    this.options['api']?.optionsChanged?.();
+    this.cdr.markForCheck();
   }
 
   private applyLoadedItems(items: DashboardItem[]) {
     this.dashboard = normalizeWidgetLayout(items, this.columns);
     this.dashboardLoaded = true;
+    this.refreshGrid();
+  }
+
+  private refreshGrid() {
     setTimeout(() => {
       this.cdr.detectChanges();
       this.recalcFixedCellSize();
-      this.options['api'].optionsChanged();
-      this.options['api'].resize();
+      this.options['api']?.optionsChanged?.();
+      this.options['api']?.resize?.();
     });
   }
 
@@ -300,28 +371,24 @@ export class Dashboard implements OnInit, OnDestroy {
     const maxExtentCols = Math.max(...this.dashboard.map(d => d.x + d.cols));
     const maxExtentRows = Math.max(...this.dashboard.map(d => d.y + d.rows));
 
-    const effectiveCols = Math.max(this.columns, maxExtentCols);
-    const effectiveRows = Math.max(this.rows, maxExtentRows);
-
-    // Fit the saved coordinates to the actual grid viewport.
+    // In edit mode keep a few empty rows below the cards as room to drop into.
+    const spareRows = this.editMode ? 4 : 0;
     this.options = {
       ...this.options,
-
-      fixedRowHeight: 48,
-      minCols: effectiveCols,
-      minRows: effectiveRows,
+      minCols: Math.max(this.columns, maxExtentCols),
+      minRows: Math.max(this.rows, maxExtentRows + spareRows),
     };
   }
 
   private getInitialLayout(): DashboardItem[] {
-    return [
-      { id: '', widget_type: 'datetime', x: 0, y: 0, cols: 3, rows: 4, minItemCols: 3, minItemRows: 4, config: {}, title: 'Uhr & Datum', icon: 'datetime.svg' },
-      { id: '', widget_type: 'calendar', x: 3, y: 0, cols: 5, rows: 5, minItemCols: 3, minItemRows: 5, config: {}, title: 'Als Nächstes', icon: 'calendar.svg' },
-      { id: '', widget_type: 'weather', x: 8, y: 0, cols: 4, rows: 5, minItemCols: 3, minItemRows: 5, config: {}, title: 'Wetter', icon: 'weather.svg' },
-      { id: '', widget_type: 'menuplan', x: 0, y: 5, cols: 4, rows: 8, minItemCols: 3, minItemRows: 5, config: {}, title: 'Nächste Mahlzeiten', icon: 'menuplan.svg' },
-      { id: '', widget_type: 'todos', x: 4, y: 5, cols: 4, rows: 8, minItemCols: 3, minItemRows: 5, config: {}, title: 'Offene Aufgaben', icon: 'todo.svg' },
-      { id: '', widget_type: 'shoppinglist', x: 8, y: 5, cols: 4, rows: 8, minItemCols: 3, minItemRows: 5, config: {}, title: 'Einkaufsliste', icon: 'shoppinglist.svg' }
-    ];
+    return INITIAL_LAYOUT.map(([type, x, y, cols, rows]) => {
+      const def = widgetDefinition(type)!;
+      return {
+        id: '', widget_type: type, x, y, cols, rows,
+        minItemCols: def.minCols, minItemRows: def.minRows,
+        config: {}, title: def.title, icon: def.icon,
+      };
+    });
   }
 
   // ── Layout manager ────────────────────────────────────────────────────────
@@ -421,14 +488,14 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   private generateId(): string {
-    return '_' + Math.random().toString(36).substr(2, 9);
+    return '_' + Math.random().toString(36).substring(2, 11);
   }
 
   @HostListener('window:resize')
   onResize() {
-    this.isMobile = window.innerWidth < 1100;
+    this.isMobile = window.innerWidth < MOBILE_WIDTH;
     this.recalcFixedCellSize();
-    this.options['api'].optionsChanged();
-    this.options['api'].resize();
+    this.options['api']?.optionsChanged?.();
+    this.options['api']?.resize?.();
   }
 }

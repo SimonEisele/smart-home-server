@@ -1,72 +1,135 @@
-<div *ngIf="errorMessage" class="dashboard-status" role="alert">{{ errorMessage }}
-  <button (click)="errorMessage = ''" aria-label="Meldung schliessen">✕</button>
-</div>
-<div *ngIf="!dashboardLoaded && !errorMessage" class="dashboard-status" role="status">Dashboard wird geladen…</div>
-<div *ngIf="dashboardLoaded" class="dashboard-container">
-
-  <!-- Edit mode banner -->
-  <div *ngIf="editMode" class="edit-banner">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-    </svg>
-    <span>Bearbeitungsmodus — Widgets verschieben &amp; Grösse anpassen</span>
-    <button class="btn-layouts" (click)="openLayoutPanel()">Layouts</button>
-    <button class="btn-edit-done" (click)="dashboardService.setEditMode(false)">Fertig</button>
-  </div>
-
-  <!-- Layout manager panel -->
-  <ng-container *ngIf="showLayoutPanel">
-    <div class="layout-overlay" (click)="closeLayoutPanel()"></div>
-    <div class="layout-panel"   aria-label="Layouts verwalten" appDialog (dialogDismiss)="closeLayoutPanel()">
-      <div class="layout-panel-header">
-        <span>Layouts verwalten</span>
-        <button class="layout-close-btn" (click)="closeLayoutPanel()" aria-label="Schliessen">✕</button>
-      </div>
-      <div class="layout-save-row">
-        <input class="layout-name-input" type="text" placeholder="Name für aktuelles Layout…"
-               [(ngModel)]="newLayoutName" (keydown.enter)="saveCurrentLayout()" />
-        <button class="layout-save-btn" [disabled]="!newLayoutName.trim() || layoutSaving || layoutApplying"
-                (click)="saveCurrentLayout()">Speichern</button>
-      </div>
-      <ng-container *ngIf="layouts.length === 0">
-        <p class="layout-empty">Noch keine Layouts gespeichert.</p>
-      </ng-container>
-      <ul class="layout-list" *ngIf="layouts.length > 0">
-        <li class="layout-item" *ngFor="let layout of layouts">
-          <div class="layout-info">
-            <span class="layout-name">{{ layout.name }}</span>
-            <span class="layout-meta">{{ layout.itemCount }} Widgets · {{ formatDate(layout.createdAt) }}</span>
-          </div>
-          <div class="layout-actions">
-            <button class="btn-layout-load" (click)="applyLayout(layout)" [disabled]="layoutApplying">Laden</button>
-            <button class="btn-layout-del" (click)="deleteLayout(layout, $event)" aria-label="Layout löschen">×</button>
-          </div>
-        </li>
-      </ul>
+<div class="dashboard-page" [class.is-editing]="editMode">
+  <header class="page-header dashboard-header">
+    <div class="page-heading">
+      <p class="eyebrow">{{ now | date:'EEEE, d. MMMM' }}</p>
+      @if (editMode) {
+        <h1 class="page-title">Dashboard anpassen</h1>
+        <p class="page-subtitle">
+          @if (isMobile) {
+            Reihenfolge mit den Pfeilen ändern, Titel antippen zum Umbenennen.
+          } @else {
+            Widgets an der Kopfzeile ziehen, Grösse an den Rändern ändern, Titel anklicken zum Umbenennen.
+          }
+        </p>
+      } @else {
+        <h1 class="page-title">{{ greeting }}{{ firstName ? ', ' + firstName : '' }}</h1>
+        <p class="page-subtitle">Das steht bei euch an.</p>
+      }
     </div>
-  </ng-container>
+    <div class="page-actions">
+      @if (editMode) {
+        <button type="button" class="btn-secondary" (click)="openWidgetPicker()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Widget
+        </button>
+        <button type="button" class="btn-secondary" (click)="openLayoutPanel()">Layouts</button>
+        <button type="button" class="btn-ghost" (click)="resetDashboard()" [disabled]="resetting">Zurücksetzen</button>
+        <button type="button" class="btn-primary" (click)="finishEditing()">Fertig</button>
+      } @else {
+        <button type="button" class="btn-secondary" (click)="startEditing()" [disabled]="!dashboardLoaded">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>
+          </svg>
+          Anpassen
+        </button>
+      }
+    </div>
+  </header>
 
-  <div *ngIf="isMobile && !editMode" class="mobile-dashboard">
-    <card *ngFor="let item of dashboard" [attr.data-widget]="item.widget_type"
-      [title]="item.title || ''" [link]="item.widget_type" [icon]="item.icon || ''">
-      <widget-host [widget]="item"></widget-host>
-    </card>
-  </div>
-  <gridster *ngIf="!isMobile || editMode" #dashboardGrid [options]="options">
-    <gridster-item *ngFor="let item of dashboard" [item]="item">
-      <card style="height:100%; width:100%;" [title]="item.title || ''" [editMode]="editMode" [link]="item.widget_type" [icon]="item.icon || ''" (remove)="removeWidget(item.id)">
-        <widget-host [widget]="item"></widget-host>
-      </card>
-    </gridster-item>
-  </gridster>
+  @if (errorMessage) {
+    <div class="form-feedback form-error dashboard-alert" role="alert">
+      {{ errorMessage }}
+      <button type="button" (click)="errorMessage = ''" aria-label="Meldung schliessen">✕</button>
+    </div>
+  }
 
-  <button *ngIf="editMode" #addWidgetButton class="add-widget-fab" (click)="toggleAddWidgetPopover()" title="Widget hinzufügen" aria-label="Widget hinzufügen">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-      <path d="M12 5v14M5 12h14"/>
-    </svg>
-  </button>
+  @if (!dashboardLoaded && !errorMessage) {
+    <div class="loading-state" role="status">Dashboard wird geladen…</div>
+  }
 
+  @if (dashboardLoaded) {
+    @if (dashboard.length === 0) {
+      <div class="empty-state">
+        <strong>Dein Dashboard ist leer</strong>
+        <p>Füge Widgets hinzu, um Termine, Aufgaben oder die Einkaufsliste im Blick zu haben.</p>
+        <button type="button" class="btn-primary" (click)="openWidgetPicker()">Widget hinzufügen</button>
+      </div>
+    } @else if (isMobile) {
+      <div class="mobile-dashboard" [class.editing]="editMode">
+        @for (item of orderedItems; track item; let first = $first, last = $last) {
+          <div class="mobile-slot" [attr.data-widget]="item.widget_type" [attr.data-widget-index]="dashboard.indexOf(item)">
+            @if (editMode) {
+              <div class="mobile-order">
+                <button type="button" class="btn-icon btn-sm" (click)="moveWidget(item, -1)" [disabled]="first" [attr.aria-label]="(item.title || 'Widget') + ' nach oben'">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+                </button>
+                <button type="button" class="btn-icon btn-sm" (click)="moveWidget(item, 1)" [disabled]="last" [attr.aria-label]="(item.title || 'Widget') + ' nach unten'">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+              </div>
+            }
+            <card [title]="item.title || ''" [editMode]="editMode" [route]="routeFor(item)" [icon]="item.icon || ''" [draggable]="false"
+                  (remove)="removeWidget(item)" (rename)="renameWidget(item, $event)">
+              <widget-host [widget]="item"></widget-host>
+            </card>
+          </div>
+        }
+      </div>
+    } @else {
+      <gridster [options]="options" [class.editing]="editMode">
+        @for (item of dashboard; track item; let i = $index) {
+          <gridster-item [item]="item" [attr.data-widget-index]="i">
+            <card [title]="item.title || ''" [editMode]="editMode" [route]="routeFor(item)" [icon]="item.icon || ''"
+                  [size]="sizeLabel(item)" (remove)="removeWidget(item)" (rename)="renameWidget(item, $event)">
+              <widget-host [widget]="item"></widget-host>
+            </card>
+          </gridster-item>
+        }
+      </gridster>
+    }
+  }
 </div>
 
-<add-widget-popover *ngIf="showAddWidgetPopover" class="add-widget-popover" [style.bottom.px]="addWidgetPopoverBottom" [style.left.px]="addWidgetPopoverLeft" [widgets]="availableWidgets" [arrowLeft]="addWidgetPopoverArrowLeft" (select)="addWidget($event)" (close)="showAddWidgetPopover = false"></add-widget-popover>
+@if (showWidgetPicker) {
+  <widget-picker [inUse]="widgetsInUse" (select)="addWidget($event)" (close)="showWidgetPicker = false"></widget-picker>
+}
+
+@if (showLayoutPanel) {
+  <div class="modal-backdrop" (click)="closeLayoutPanel()"></div>
+  <section class="modal-panel layout-panel" aria-labelledby="layout-panel-title" appDialog (dialogDismiss)="closeLayoutPanel()">
+    <header class="modal-header">
+      <div>
+        <h2 id="layout-panel-title">Layouts</h2>
+        <p>Speichere Anordnungen, zum Beispiel für das Tablet in der Küche, und wechsle zwischen ihnen.</p>
+      </div>
+      <button type="button" class="modal-close" (click)="closeLayoutPanel()" aria-label="Schliessen">✕</button>
+    </header>
+    <div class="modal-body layout-body">
+      <form class="layout-save-row" (submit)="$event.preventDefault(); saveCurrentLayout()">
+        <input type="text" name="layoutName" placeholder="Name für die aktuelle Anordnung" aria-label="Name des Layouts"
+               [(ngModel)]="newLayoutName" />
+        <button type="submit" class="btn-primary" [disabled]="!newLayoutName.trim() || layoutSaving || layoutApplying">Speichern</button>
+      </form>
+      @if (layouts.length === 0) {
+        <div class="empty-state empty-state--compact"><p>Noch keine Layouts gespeichert.</p></div>
+      } @else {
+        <ul class="layout-list">
+          @for (layout of layouts; track layout.id) {
+            <li class="layout-item">
+              <div class="layout-info">
+                <span class="layout-name">{{ layout.name }}</span>
+                <span class="layout-meta">{{ layout.itemCount }} Widgets · {{ formatDate(layout.createdAt) }}</span>
+              </div>
+              <div class="layout-actions">
+                <button type="button" class="btn-secondary btn-sm" (click)="applyLayout(layout)" [disabled]="layoutApplying">Laden</button>
+                <button type="button" class="btn-icon btn-sm layout-delete" (click)="deleteLayout(layout, $event)" [attr.aria-label]="'Layout ' + layout.name + ' löschen'">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </section>
+}

@@ -1,23 +1,38 @@
-<div class="dash-card" [class.edit-mode]="editMode" >
-  <div class="dash-card-header">
-    <img class="card-icon" [src]="'/icons/' + icon" alt="" />
-    <span class="card-title">{{ title }}</span>
-    <div class="header-actions">
-      <button *ngIf="!editMode && link" class="btn-open" (click)="navigate(); $event.stopPropagation()" [title]="title + ' öffnen'" [attr.aria-label]="title + ' öffnen'">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-          <polyline points="15 3 21 3 21 9"/>
-          <line x1="10" y1="14" x2="21" y2="3"/>
+<article class="dash-card" [class.edit-mode]="editMode" [class.draggable]="draggable">
+  <header class="dash-card-header">
+    @if (editMode && draggable) {
+      <span class="drag-grip" aria-hidden="true" title="Zum Verschieben ziehen">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>
+      </span>
+    } @else if (icon && !editMode) {
+      <span class="card-icon" aria-hidden="true"><img [src]="'/icons/' + icon" alt="" /></span>
+    }
+
+    @if (editMode) {
+      <input #titleInput class="card-title-input" type="text" maxlength="100" [value]="title"
+             aria-label="Titel des Widgets" (mousedown)="$event.stopPropagation()" (touchstart)="$event.stopPropagation()"
+             (blur)="commitTitle(titleInput)" (keydown.enter)="titleInput.blur()" (keydown.escape)="cancelTitle(titleInput)" />
+      @if (size) {
+        <span class="card-size" title="Breite × Höhe im Raster">{{ size }}</span>
+      }
+      <button type="button" class="card-action card-remove" (mousedown)="$event.stopPropagation()"
+              (click)="$event.stopPropagation(); remove.emit()" [attr.aria-label]="title + ' entfernen'" title="Widget entfernen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>
         </svg>
       </button>
-      <button *ngIf="editMode" class="btn-remove" (click)="$event.stopPropagation(); remove.emit()" title="Entfernen">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <path d="M18 6L6 18M6 6l12 12"/>
-        </svg>
-      </button>
-    </div>
-  </div>
+    } @else {
+      <h2 class="card-title">{{ title }}</h2>
+      @if (route) {
+        <a class="card-action card-open" [routerLink]="route" [attr.aria-label]="title + ' öffnen'" title="Seite öffnen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 6l6 6-6 6"/>
+          </svg>
+        </a>
+      }
+    }
+  </header>
   <div class="dash-card-content">
     <ng-content></ng-content>
   </div>
-</div>
+</article>

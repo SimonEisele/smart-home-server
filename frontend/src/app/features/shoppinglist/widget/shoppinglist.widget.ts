@@ -101,10 +101,6 @@ export class ShoppinglistWidget implements OnInit {
       });
   }
 
-  onKeydown(e: KeyboardEvent): void {
-    if (e.key === 'Enter') this.addItem();
-  }
-
   quantityLabel(item: ShoppingItem): string {
     if (item.quantity == null) return 'Nach Bedarf';
     return `${new Intl.NumberFormat('de-CH', { maximumFractionDigits: 3 }).format(item.quantity)} ${item.unit || ''}${item.quantityIncomplete ? ' + nach Bedarf' : ''}`.trim();

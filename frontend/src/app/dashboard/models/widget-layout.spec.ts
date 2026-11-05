@@ -1,4 +1,4 @@
-import { normalizeWidgetLayout } from './widget-layout';
+import { findFreeSpot, normalizeWidgetLayout } from './widget-layout';
 import { DashboardItem } from './dashboard.models';
 
 const card = (id: string, type: string, x: number, y: number, cols: number, rows: number): DashboardItem => ({ id, widget_type: type, x, y, cols, rows, minItemCols: 1, minItemRows: 1, config: {} });
@@ -16,4 +16,10 @@ it('preserves usable saved positions and bounds wide cards to the dashboard widt
   const items = normalizeWidgetLayout([card('clock', 'datetime', 0, 0, 3, 4), card('menu', 'menuplan', 18, 5, 20, 8)]);
   expect(items[0]).toMatchObject({ x: 0, y: 0, cols: 3, rows: 4 });
   expect(items[1]).toMatchObject({ x: 0, y: 5, cols: 12, rows: 8 });
+});
+it('finds the first free spot for a new card', () => {
+  const items = [card('a', 'todos', 0, 0, 4, 5), card('b', 'todos', 4, 0, 4, 5)];
+  expect(findFreeSpot(items, 4, 5)).toEqual({ x: 8, y: 0 });
+  expect(findFreeSpot([...items, card('c', 'todos', 8, 0, 4, 5)], 4, 5)).toEqual({ x: 0, y: 5 });
+  expect(findFreeSpot([], 3, 4)).toEqual({ x: 0, y: 0 });
 });

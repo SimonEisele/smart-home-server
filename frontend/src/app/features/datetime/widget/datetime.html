@@ -1,25 +1,16 @@
-<div class="datetime-widget" fitWidgetContent=".weekday, .time, .date, .greeting">
-  <div class="weekday">
-    {{ now | date:'EEEE' }}
+<div class="datetime-widget">
+  <div class="time" [attr.aria-label]="now | date:'HH:mm'">
+    {{ now | date:'HH:mm' }}<span class="seconds" aria-hidden="true">{{ now | date:'ss' }}</span>
   </div>
-
-  <div class="time">
-    {{ now | date:'HH:mm:ss' }}
-  </div>
-
   <div class="date">
-    {{ now | date:'dd.MM.yyyy' }}
+    <span class="weekday">{{ now | date:'EEEE' }}</span>
+    <span>{{ now | date:'d. MMMM yyyy' }}</span>
   </div>
-
-  <div class="greeting" *ngIf="user$ | async as user; else guest">
-    <span class="greeting-text">{{ now | greeting }},</span>
-    <span class="username">{{ user.first_name }}</span>
+  <div class="day-progress" role="img" [attr.aria-label]="dayProgress + ' % des Tages vorbei'">
+    <span class="day-progress-bar" [style.width.%]="dayProgress"></span>
   </div>
-
-  <ng-template #guest>
-    <div class="greeting">
-      <span class="greeting-text">{{ now | greeting }},</span>
-      <span class="username">Gast</span>
-    </div>
-  </ng-template>
+  <div class="meta">
+    <span>KW {{ weekNumber }}</span>
+    <span>{{ dayOfYear }}. Tag</span>
+  </div>
 </div>

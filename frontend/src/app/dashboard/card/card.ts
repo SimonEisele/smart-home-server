@@ -1,35 +1,37 @@
-import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'card',
   standalone: true,
-  imports: [ CommonModule ],
+  imports: [RouterLink],
   templateUrl: './card.html',
   styleUrl: './card.css',
 })
 export class Card {
   @Input() title = '';
-  @Input() editMode: boolean = false;
-  @Input() link?: string;
+  @Input() editMode = false;
+  /** Page the header links to outside edit mode. */
+  @Input() route?: string;
   @Input() icon?: string;
+  /** Size shown in edit mode, e.g. "4 × 8". */
+  @Input() size = '';
+  /** Shows the drag grip; the mobile list reorders with buttons instead. */
+  @Input() draggable = true;
   @Output() remove = new EventEmitter<void>();
+  @Output() rename = new EventEmitter<string>();
 
-  constructor(private router: Router) {}
-
-  // Navigate only when the card is not in edit mode.
-  navigate() {
-    if (!this.editMode && this.link) {
-      this.router.navigate([this.link === "datetime" ? "/home" : "/" + this.link]);
+  commitTitle(input: HTMLInputElement): void {
+    const value = input.value.trim();
+    if (!value) {
+      input.value = this.title;
+      return;
     }
+    if (value !== this.title) this.rename.emit(value);
   }
 
-  onCardClick(event: MouseEvent): void {
-    if (this.editMode || !this.link) return;
-    const target = event.target as HTMLElement;
-    // Don't navigate when clicking interactive elements inside the widget
-    if (target.closest('button, input, select, textarea, a, [role="button"], label')) return;
-    this.router.navigate([this.link === "datetime" ? "/home" : "/" + this.link]);
+  cancelTitle(input: HTMLInputElement): void {
+    input.value = this.title;
+    input.blur();
   }
 }

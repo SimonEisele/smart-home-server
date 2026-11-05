@@ -13,10 +13,12 @@ npm run build                # Produktions-Build nach dist/
 ## Aufbau von `src/app`
 
 - `core/`: Login, Registrierung, Navigation, Kontoverwaltung
-- `dashboard/`: Startseite mit verschiebbaren Widgets
+- `dashboard/`: Startseite mit Widgets. `Anpassen` öffnet den Bearbeitungsmodus
+  (verschieben, Grösse ändern, umbenennen, hinzufügen, Layouts). Neue Widgets
+  werden in `widgets/widgets.registry.ts` eingetragen.
 - `features/<bereich>/`: je Bereich `page/` (Seite), `widget/` (Dashboard-Kachel),
   `service/` (API), `model/` (Typen)
-- `popovers/`, `widgets/`: Dialoge und das Widget-Register des Dashboards
+- `popovers/`: Konto-Popover; `widgets/`: Widget-Register und Host des Dashboards
 - `shared/`: gemeinsame Services, Direktiven, Kochmodus und `utils/`
 
 ## Styling

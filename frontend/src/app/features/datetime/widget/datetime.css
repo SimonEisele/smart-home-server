@@ -1,11 +1,14 @@
 :host { display:block; height:100%; min-height:0; min-width:0; container-type:size; }
-.datetime-widget { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:clamp(2px,1cqh,5px); }
-.weekday { font-size:clamp(.65rem,12cqh,1.1rem); color: var(--color-muted); text-transform:capitalize; }
-.time { font-size:clamp(1.25rem,min(17cqw,30cqh),3.5rem); font-weight:650; line-height:1.1; letter-spacing:-.03em; }
-.date { font-size:clamp(.65rem,10cqh,.9rem); color: var(--color-muted); }
-.greeting { margin-top:clamp(2px,4cqh,10px); display:flex; align-items:baseline; gap:6px; max-width:100%; }
-.greeting-text { font-size:clamp(.65rem,12cqh,.95rem); color: var(--color-muted); white-space:nowrap; }
-.username { font-size:clamp(.9rem,15cqh,1.3rem); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.datetime-widget { height:100%; display:flex; flex-direction:column; justify-content:center; gap:clamp(4px,3cqh,10px); padding:0 4px; }
+.time {
+  font-size:clamp(1.8rem, min(22cqw, 36cqh), 4.2rem); font-weight:700; line-height:1;
+  letter-spacing:-.04em; font-variant-numeric:tabular-nums; color:var(--color-text);
+}
+.seconds { margin-left:.12em; font-size:.38em; font-weight:600; letter-spacing:0; color:var(--color-accent); vertical-align:top; }
+.date { display:flex; flex-wrap:wrap; gap:0 .4em; font-size:clamp(.78rem, 9cqh, 1rem); color:var(--color-muted); }
+.weekday { color:var(--color-text); font-weight:600; text-transform:capitalize; }
+.day-progress { height:4px; border-radius:999px; background:var(--color-surface-soft); overflow:hidden; margin-top:clamp(2px,2cqh,8px); }
+.day-progress-bar { display:block; height:100%; border-radius:inherit; background:var(--color-accent); }
+.meta { display:flex; justify-content:space-between; gap:8px; font-size:.72rem; color:var(--color-muted); font-variant-numeric:tabular-nums; }
 
-@container (height < 140px) { .greeting { display:none; } }
-@container (width < 250px) { .greeting { flex-direction:column; align-items:center; gap:2px; } }
+@container (height < 150px) { .day-progress, .meta { display:none; } }

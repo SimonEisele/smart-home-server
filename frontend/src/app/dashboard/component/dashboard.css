@@ -1,24 +1,75 @@
-.dashboard-container { height:calc(100dvh - var(--header-height)); min-height:500px; box-sizing:border-box; padding:18px; position:relative; }
-gridster,gridster-item { background:transparent; }
-.dashboard-status { margin:18px; background:#382922; padding:14px; border:1px solid #775146; border-radius:12px; }
-.dashboard-status button { float:right; border:0; background:transparent; color:inherit; }
-.edit-banner { position:fixed; top:calc(var(--header-height) + 8px); left:calc(50% + var(--sidebar-width)/2); transform:translateX(-50%); z-index:2100; display:flex; align-items:center; gap:10px; padding:8px 12px; width:max-content; max-width:calc(100vw - var(--sidebar-width) - 32px); background:var(--color-surface); border:1px solid var(--color-accent); border-radius:12px; box-shadow:0 4px 20px #193d3520; color:var(--color-text); font-size:.75rem; }
-.edit-banner svg { width:16px; height:16px; color:var(--color-accent); flex-shrink:0; }
-.btn-edit-done,.layout-save-btn,.btn-layout-load { padding:8px 12px; border:0; border-radius:9px; background:var(--color-accent); color:var(--color-surface); font-weight:600; }
-.btn-layouts { padding:8px 12px; border:1px solid var(--color-card-border); border-radius:9px; background:var(--color-surface); color:var(--color-text); white-space:nowrap; }
-.layout-overlay { position:fixed; inset:0; z-index:2300; }
-.layout-panel { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:2301; width:min(460px,calc(100vw - 24px)); padding:24px; display:flex; flex-direction:column; gap:20px; }
-.layout-panel-header { display:flex; align-items:center; justify-content:space-between; font-weight:700; }
-.layout-save-row { display:flex; gap:8px; }.layout-name-input { flex:1; min-width:0; }.layout-list { list-style:none; margin:0; padding:0; display:grid; gap:8px; overflow:auto; }.layout-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px; border:1px solid var(--color-card-border); border-radius:10px; }.layout-info { min-width:0; }.layout-name { display:block; font-weight:600; overflow-wrap:anywhere; }.layout-meta,.layout-empty { font-size:.75rem; color:var(--color-muted); }.layout-actions { display:flex; gap:8px; }.btn-layout-del { border:1px solid #775146; padding:8px 10px; border-radius:9px; background:#382922; color:#ffc0a4; }
-.add-widget-fab { position:fixed; bottom:24px; right:24px; width:48px; height:48px; border-radius:14px; border:0; background:var(--color-accent); color:#10271f; display:grid; place-items:center; box-shadow:0 8px 24px #193d3520; z-index:2100; }.add-widget-fab svg { width:24px; height:24px; }.add-widget-popover { position:fixed; z-index:2200; }
-.mobile-dashboard { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }.mobile-dashboard card { min-width:0; height:320px; }.mobile-dashboard card[data-widget=datetime] { height:220px; }.mobile-dashboard card[data-widget=weather] { height:440px; }.mobile-dashboard card[data-widget=menuplan] { height:340px; }
-@media(max-width:899px) { .dashboard-container { height:calc(100dvh - var(--header-height) - 64px); }.edit-banner { left:50%; max-width:calc(100vw - 24px); }.add-widget-fab { bottom:80px; right:16px; } }
-@media(max-width:1099px) { .dashboard-container { height:auto; min-height:0; padding:14px; }.edit-banner { width:calc(100vw - 24px); font-size:.7rem; gap:6px; }.edit-banner span { flex:1; }.edit-banner svg { display:none; } }
+/* The page fills the viewport; the grid scrolls inside it so the header stays put. */
+.dashboard-page {
+  height:calc(100dvh - var(--header-height)); min-height:520px; box-sizing:border-box;
+  display:flex; flex-direction:column; gap:18px;
+  padding:24px 28px 20px; max-width:1800px; margin:0 auto;
+}
+.dashboard-header { flex-shrink:0; margin:0; }
+.dashboard-alert { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0; }
+.dashboard-alert button { border:0; background:transparent; color:inherit; }
 
-@media(min-width:700px) and (max-width:1099px) {
-  .mobile-dashboard { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
-  .mobile-dashboard card[data-widget=menuplan], .mobile-dashboard card[data-widget=weather] { height:400px; }
+/* ---- Grid --------------------------------------------------------------------- */
+gridster { flex:1; min-height:0; background:transparent; border-radius:var(--radius-lg); transition:background .2s ease; }
+gridster-item { background:transparent; overflow:visible; }
+gridster.editing { background:var(--color-surface-sunken); outline:1px dashed var(--color-card-border); outline-offset:6px; }
+
+:host ::ng-deep gridster .gridster-column,
+:host ::ng-deep gridster .gridster-row { border-color:color-mix(in srgb, var(--color-card-border) 45%, transparent) !important; }
+:host ::ng-deep gridster .gridster-preview { background:var(--color-accent-soft) !important; border:1px dashed var(--color-accent); border-radius:var(--radius-lg); }
+:host ::ng-deep gridster-item.gridster-item-moving,
+:host ::ng-deep gridster-item.gridster-item-resizing { z-index:20; box-shadow:var(--shadow-pop); border-radius:var(--radius-lg); }
+
+/* Resize handles: an obvious corner grip plus wide invisible edges. */
+:host ::ng-deep gridster-item .gridster-item-resizable-handler.handle-se {
+  width:18px; height:18px; right:4px; bottom:4px; border:0; z-index:5;
+  background:
+    linear-gradient(135deg, transparent 0 45%, var(--color-accent) 45% 55%, transparent 55% 70%, var(--color-accent) 70% 80%, transparent 80%);
+  border-radius:0 0 var(--radius-lg) 0; opacity:.9;
+}
+:host ::ng-deep gridster-item .gridster-item-resizable-handler.handle-e { width:12px; right:-6px; }
+:host ::ng-deep gridster-item .gridster-item-resizable-handler.handle-s { height:12px; bottom:-6px; }
+
+/* ---- Mobile list ---------------------------------------------------------------- */
+.mobile-dashboard { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; align-items:start; }
+.mobile-slot { position:relative; min-width:0; height:320px; display:flex; gap:8px; }
+.mobile-slot card { flex:1; min-width:0; }
+.mobile-slot[data-widget=datetime] { height:230px; }
+.mobile-slot[data-widget=weather] { height:430px; }
+.mobile-slot[data-widget=menuplan] { height:360px; }
+.mobile-dashboard.editing .mobile-slot { height:150px; }
+.mobile-order { display:flex; flex-direction:column; justify-content:center; gap:6px; }
+
+/* ---- Layout dialog ------------------------------------------------------------- */
+.modal-backdrop { position:fixed; inset:0; z-index:2300; }
+.layout-panel { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:2301; width:min(500px, calc(100vw - 24px)); }
+.modal-header { display:flex; align-items:flex-start; justify-content:space-between; }
+.modal-header h2 { margin:0; font-size:1.05rem; }
+.modal-header p { margin:4px 0 0; color:var(--color-muted); font-size:.8rem; line-height:1.45; }
+.layout-body { display:flex; flex-direction:column; gap:16px; }
+.layout-save-row { display:flex; gap:8px; }
+.layout-save-row input { flex:1; min-width:0; }
+.layout-list { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+.layout-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border:1px solid var(--color-card-border); border-radius:var(--radius-md); background:var(--color-surface-soft); }
+.layout-info { min-width:0; display:flex; flex-direction:column; gap:2px; }
+.layout-name { font-weight:600; overflow-wrap:anywhere; }
+.layout-meta { font-size:.75rem; color:var(--color-muted); }
+.layout-actions { display:flex; gap:6px; flex-shrink:0; }
+.layout-delete:hover { color:var(--color-danger); }
+
+/* ---- Responsive ---------------------------------------------------------------- */
+@media (max-width:1099px) {
+  .dashboard-page { height:auto; min-height:0; padding:18px 16px 24px; }
+}
+@media (min-width:700px) and (max-width:1099px) {
+  .mobile-dashboard:not(.editing) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .mobile-dashboard:not(.editing) .mobile-slot[data-widget=menuplan],
+  .mobile-dashboard:not(.editing) .mobile-slot[data-widget=weather] { height:400px; }
+}
+@media (max-width:899px) {
+  .dashboard-page { padding-bottom:calc(88px + env(safe-area-inset-bottom)); }
 }
 
 gridster { touch-action:pan-y; -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain; }
 gridster-item, .mobile-dashboard { touch-action:pan-y; }
+
+@media (prefers-reduced-motion: reduce) { gridster { transition:none; } }

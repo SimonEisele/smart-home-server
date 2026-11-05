@@ -1,98 +1,58 @@
 <div class="sl-widget">
-  <p *ngIf="error" role="alert">{{ error }} <button (click)="load()">Erneut laden</button></p>
-
-  <!-- Quick-add row -->
-  <div class="add-row">
-    <input
-      class="add-input"
-      aria-label="Artikel hinzufügen"
-      [(ngModel)]="newItemName"
-      (keydown)="onKeydown($event)"
-      placeholder="Hinzufügen…"
-      [disabled]="adding"
-    />
-    <button
-      class="add-btn"
-      aria-label="Artikel hinzufügen"
-      (click)="addItem()"
-      [disabled]="!newItemName.trim() || adding"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.5"
-        stroke-linecap="round"
-      >
-        <path d="M12 5v14M5 12h14" />
-      </svg>
-    </button>
-  </div>
-
-  <div class="shopping-scroll" fitWidgetContent=".sl-item" fitWidgetGroups=".checked-section">
-  <!-- Unchecked items -->
-  @if (unchecked.length === 0 && checked.length === 0) {
-    <div class="empty-hint">Liste ist leer</div>
+  @if (error) {
+    <p class="form-feedback form-error" role="alert">{{ error }} <button type="button" (click)="load()">Erneut laden</button></p>
   }
 
-  <ul class="sl-list">
-    @for (item of unchecked; track item.id) {
-      <li class="sl-item" (click)="toggle(item)">
-        <button
-          class="check-btn"
-          [attr.aria-label]="item.name + ' abhaken'"
-          [disabled]="pending.has(item.id)"
-          (click)="$event.stopPropagation(); toggle(item)"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-          </svg>
-        </button>
-        <span class="item-name">{{ item.name }}</span>
-        @if (quantityLabel(item)) {
-          <span class="item-qty">{{ quantityLabel(item) }}</span>
-        }
-      </li>
-    }
-  </ul>
+  <form class="add-row" (submit)="$event.preventDefault(); addItem()">
+    <input class="add-input" name="newItem" aria-label="Artikel hinzufügen" [(ngModel)]="newItemName"
+           placeholder="Artikel hinzufügen…" [disabled]="adding" autocomplete="off" />
+    <button type="submit" class="btn-primary btn-icon add-btn" aria-label="Artikel hinzufügen" [disabled]="!newItemName.trim() || adding">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+    </button>
+  </form>
 
-  <!-- Checked items (collapsed appearance) -->
-  @if (checked.length > 0) {
-    <div class="checked-section">
-      <div class="checked-label">{{ checked.length }} erledigt</div>
-      <ul class="sl-list sl-list-done">
-        @for (item of checked; track item.id) {
-          <li class="sl-item sl-item-done" (click)="toggle(item)">
-            <button
-              class="check-btn check-btn-done"
-              [attr.aria-label]="item.name + ' wieder öffnen'"
-              [disabled]="pending.has(item.id)"
-              (click)="$event.stopPropagation(); toggle(item)"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M8 12l3 3 5-5" />
-              </svg>
-            </button>
-            <span class="item-name item-done-name">{{ item.name }}</span>
-          </li>
-        }
-      </ul>
+  @if (items.length > 0) {
+    <div class="sl-progress" [attr.aria-label]="checked.length + ' von ' + items.length + ' erledigt'">
+      <span class="sl-progress-text">{{ unchecked.length === 0 ? 'Alles im Korb' : unchecked.length + ' offen' }}</span>
+      <span class="sl-progress-track"><span class="sl-progress-bar" [style.width.%]="checked.length / items.length * 100"></span></span>
     </div>
   }
+
+  <div class="shopping-scroll" fitWidgetContent=".sl-item" fitWidgetGroups=".checked-section">
+    @if (unchecked.length === 0 && checked.length === 0) {
+      <div class="empty-state empty-state--compact"><p>Die Liste ist leer.</p></div>
+    }
+
+    <ul class="sl-list">
+      @for (item of unchecked; track item.id) {
+        <li class="sl-item" (click)="toggle(item)">
+          <button type="button" class="check-btn" [attr.aria-label]="item.name + ' abhaken'" [disabled]="pending.has(item.id)"
+                  (click)="$event.stopPropagation(); toggle(item)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /></svg>
+          </button>
+          <span class="item-name">{{ item.name }}</span>
+          @if (quantityLabel(item)) {
+            <span class="item-qty">{{ quantityLabel(item) }}</span>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (checked.length > 0) {
+      <div class="checked-section">
+        <div class="checked-label">{{ checked.length }} erledigt</div>
+        <ul class="sl-list">
+          @for (item of checked; track item.id) {
+            <li class="sl-item sl-item-done" (click)="toggle(item)">
+              <button type="button" class="check-btn check-btn-done" [attr.aria-label]="item.name + ' wieder öffnen'" [disabled]="pending.has(item.id)"
+                      (click)="$event.stopPropagation(); toggle(item)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></svg>
+              </button>
+              <span class="item-name">{{ item.name }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
   </div>
 </div>

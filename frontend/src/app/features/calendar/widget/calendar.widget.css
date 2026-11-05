@@ -1,257 +1,52 @@
-:host { display:block; height:100%; min-width:0; min-height:0; container-type:size; }
+:host {
+  display:block; height:100%; min-width:0; min-height:0; container-type:size;
+  /* Same colours as the calendar page filters. */
+  --cal-household:#4fd1c5;
+  --cal-private:#9f7aea;
+  --cal-cleaning:#7de89a;
+}
 .cal-widget {
-  height: 100%;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  color: var(--color-text);
-  padding: 2px 4px 4px 2px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(137, 223, 207, .25) transparent;
+  height:100%; min-height:0; overflow:hidden; touch-action:pan-y;
+  display:flex; flex-direction:column; gap:12px; color:var(--color-text);
 }
 
-.cal-widget::-webkit-scrollbar {
-  width: 6px;
-}
-
-.cal-widget::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.cal-widget::-webkit-scrollbar-thumb {
-  background: rgba(130,215,187,0.25);
-  border-radius: 999px;
-}
-
-.empty-hint {
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-muted);
-  font-size: .82rem;
-  line-height: 1.45;
-  text-align: center;
-  padding: 12px;
-  border: 1px dashed var(--color-card-border);
-  border-radius: 14px;
-  background: var(--color-surface-soft);
-}
-
-.day-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
+.day-group { flex-shrink:0; display:flex; flex-direction:column; gap:6px; }
 .day-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: .68rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--color-muted);
-  padding: 0 3px 6px;
-  border-bottom: 1px solid var(--color-card-border);
+  display:flex; align-items:center; gap:8px;
+  font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--color-muted);
 }
-
-.day-label::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--color-surface);
-}
-
-.today-label {
-  color: var(--color-accent);
-}
-
-.today-label::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--color-accent);
-  box-shadow: none;
-}
+.day-label::after { content:''; flex:1; height:1px; background:var(--color-card-border); }
+.today-label { color:var(--color-accent); }
+.today-label::before { content:''; width:6px; height:6px; flex-shrink:0; border-radius:50%; background:var(--color-accent); }
 
 .ev-item {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  min-height: 46px;
-  padding: 8px 10px;
-  border: 1px solid var(--color-card-border);
-  border-left: 3px solid transparent;
-  border-radius: 11px;
-  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+  position:relative; display:flex; align-items:center; gap:10px; min-height:46px;
+  padding:7px 10px; border-radius:var(--radius-md);
+  background:var(--color-surface-soft); border:1px solid transparent;
+  box-shadow:inset 3px 0 0 var(--ev-color, var(--cal-household));
+  color:inherit; text-decoration:none;
+  transition:border-color .15s ease;
 }
+.ev-item:hover { border-color:var(--color-border-strong); }
+.ev-household { --ev-color:var(--cal-household); }
+.ev-private { --ev-color:var(--cal-private); }
+.ev-todo { --ev-color:var(--color-warn); }
+.ev-cleaning-widget { --ev-color:var(--cal-cleaning); }
+.ev-cleaning-overdue { --ev-color:var(--color-danger); }
+.ev-now { background:var(--color-accent-soft); border-color:var(--color-accent-border); }
 
-.ev-item:hover {
-  transform: translateX(2px);
-  border-color: var(--color-card-border);
-  box-shadow: none;
-}
+.ev-time-col { flex-shrink:0; min-width:42px; display:flex; flex-direction:column; align-items:flex-end; }
+.ev-start { font-size:.8rem; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.ev-end { margin-top:1px; font-size:.66rem; color:var(--color-muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.cleaning-icon { width:18px; height:18px; color:var(--ev-color); }
 
-.ev-household {
-  background: var(--color-surface);
-  border-left-color: #4fd1c5;
-}
+.ev-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.ev-title { font-size:.84rem; font-weight:600; line-height:1.25; overflow-wrap:anywhere; }
+.ev-loc { font-size:.7rem; line-height:1.25; color:var(--color-muted); overflow-wrap:anywhere; }
+.ev-cleaning-overdue .ev-loc { color:var(--color-danger); }
+.now-badge[class] { flex-shrink:0; color:var(--color-on-accent); background:var(--color-accent); border-color:transparent; }
 
-.ev-private {
-  background: var(--color-surface);
-  border-left-color: #9f7aea;
-}
+@container (width < 280px) { .ev-item { gap:6px; padding:7px 8px; } .ev-time-col { min-width:34px; } .now-badge { display:none; } }
+@container (height < 240px) { .cal-widget { gap:8px; } .ev-end, .ev-loc { display:none; } .ev-item { min-height:38px; } }
 
-.ev-todo {
-  background: var(--color-surface);
-  border-left-color: var(--color-warn) !important;
-}
-
-.ev-now {
-  border-color: rgba(130,215,187,0.38);
-  background: var(--color-surface);
-  box-shadow: none;
-}
-
-.ev-cleaning-widget {
-  background: var(--color-surface);
-  border-left-color: #7de89a;
-  color: inherit;
-  text-decoration: none;
-}
-
-.ev-cleaning-widget:hover {
-  background: rgba(125, 232, 154, .22);
-}
-
-.ev-cleaning-overdue {
-  background: var(--color-surface);
-  border-left-color: var(--color-danger);
-}
-
-.ev-cleaning-overdue:hover {
-  background: rgba(255, 128, 128, .23);
-}
-
-.cleaning-icon {
-  width: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  line-height: 1.2;
-}
-
-.ev-time-col {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  flex-shrink: 0;
-  min-width: 42px;
-  padding-top: 1px;
-}
-
-.ev-start {
-  font-size: .8rem;
-  font-weight: 800;
-  color: var(--color-text);
-  white-space: nowrap;
-}
-
-.ev-end {
-  margin-top: 2px;
-  font-size: .65rem;
-  color: var(--color-muted);
-  white-space: nowrap;
-}
-
-.ev-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
-}
-
-.ev-title {
-  font-size: .82rem;
-  font-weight: 650;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ev-loc {
-  font-size: .66rem;
-  color: var(--color-muted);
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.now-badge {
-  flex-shrink: 0;
-  align-self: center;
-  font-size: .57rem;
-  font-weight: 850;
-  letter-spacing: .06em;
-  color: var(--color-accent);
-  background: rgba(130,215,187,0.14);
-  border: 1px solid rgba(130,215,187,0.32);
-  border-radius: 999px;
-  padding: 3px 6px;
-}
-
-@media (max-width: 520px) {
-  .cal-widget {
-    gap: 11px;
-    padding-right: 2px;
-  }
-
-  .ev-item {
-    gap: 8px;
-    padding: 8px;
-  }
-
-  .ev-time-col {
-    min-width: 38px;
-  }
-
-  .ev-title {
-    font-size: .78rem;
-  }
-
-  .now-badge {
-    font-size: .52rem;
-    padding: 3px 5px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ev-item {
-    transition: none;
-  }
-}
-.ev { border-radius: 10px; }
-.day-label { color: var(--color-muted); padding:8px 0; font-weight:600; }
-.ev-title { overflow-wrap:anywhere; }
-
-.cal-widget { min-height:0; overflow-x:hidden; }
-.day-group { flex-shrink:0; }
-.ev-title { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-@container (width < 280px) { .ev-item { gap:6px; padding:8px 6px; } .ev-time-col { min-width:34px; } .now-badge { display:none; } }
-@container (height < 240px) { .cal-widget { gap:8px; } .ev-end, .ev-loc { display:none; } .ev-item { min-height:40px; padding:6px; } }
-
-/* Compact previews do not capture dashboard scrolling or display partial entries. */
-.cal-widget { overflow:hidden; touch-action:pan-y; }
-.ev-title { display:block; white-space:normal; overflow:visible; text-overflow:clip; -webkit-line-clamp:unset; }
-.ev-loc { white-space:normal; overflow-wrap:anywhere; }
+@media (prefers-reduced-motion: reduce) { .ev-item { transition:none; } }

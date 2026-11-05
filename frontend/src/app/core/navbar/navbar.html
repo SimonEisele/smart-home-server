@@ -19,9 +19,6 @@
                     <option *ngFor="let household of households" [value]="household.id">{{ household.name }}</option>
                 </select>
             </ng-container>
-            <button *ngIf="isDashboard" class="edit-control" (click)="dashboardService.toggleEditMode()"
-                [attr.aria-pressed]="editMode$ | async" aria-label="Bearbeiten umschalten">{{ (editMode$ | async) ?
-                'Fertig' : 'Anpassen' }}</button>
             <button class="icon-control fullscreen-button" (click)="toggleFullscreen()"
                 [attr.aria-label]="isFullscreen ? 'Vollbild beenden' : 'Vollbild'">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">

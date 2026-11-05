@@ -26,3 +26,16 @@ export function normalizeWidgetLayout(items: DashboardItem[], columns = 12): Das
   }
   return placed;
 }
+
+/** First position (top to bottom, left to right) where a card of this size fits without overlap. */
+export function findFreeSpot(items: DashboardItem[], cols: number, rows: number, columns = 12): { x: number; y: number } {
+  const width = Math.min(cols, columns);
+  const bottom = items.reduce((max, item) => Math.max(max, item.y + item.rows), 0);
+  for (let y = 0; y <= bottom; y++) {
+    for (let x = 0; x + width <= columns; x++) {
+      const overlaps = items.some(other => x < other.x + other.cols && x + width > other.x && y < other.y + other.rows && y + rows > other.y);
+      if (!overlaps) return { x, y };
+    }
+  }
+  return { x: 0, y: bottom };
+}

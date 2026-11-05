@@ -1,0 +1,29 @@
+<div class="modal-backdrop" (click)="close.emit()"></div>
+<section class="modal-panel picker" aria-labelledby="widget-picker-title" appDialog (dialogDismiss)="close.emit()">
+  <header class="modal-header">
+    <div>
+      <h2 id="widget-picker-title">Widget hinzufügen</h2>
+      <p>Neue Widgets landen am ersten freien Platz.</p>
+    </div>
+    <button type="button" class="modal-close" (click)="close.emit()" aria-label="Schliessen">✕</button>
+  </header>
+  <div class="modal-body">
+    <ul class="picker-grid">
+      @for (widget of widgets; track widget.type) {
+        <li>
+          <button type="button" class="picker-tile" (click)="select.emit(widget.type)">
+            <span class="picker-icon" aria-hidden="true"><img [src]="'/icons/' + widget.icon" alt="" /></span>
+            <span class="picker-text">
+              <strong>{{ widget.title }}</strong>
+              <span>{{ widget.description }}</span>
+            </span>
+            @if (inUse[widget.type]) {
+              <span class="badge badge-muted picker-used">{{ inUse[widget.type] === 1 ? 'Schon da' : inUse[widget.type] + '× da' }}</span>
+            }
+            <span class="picker-plus" aria-hidden="true">+</span>
+          </button>
+        </li>
+      }
+    </ul>
+  </div>
+</section>

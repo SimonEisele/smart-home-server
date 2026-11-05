@@ -40,6 +40,7 @@ export class DashboardService {
           y: item.y,
           cols: item.cols,
           rows: item.rows,
+          title: item.title,
           config: item.config
         }
       ).pipe(map(r => r.data));
