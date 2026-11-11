@@ -7,6 +7,9 @@ urlpatterns = [
     # User endpoints
     path('api/users/', include('users.urls')),
 
+    # WG assistant (language model with tools)
+    path('api/assistant/', include('assistant.urls')),
+
     # Feature endpoints
     path('api/', include('features.urls')),
 ]

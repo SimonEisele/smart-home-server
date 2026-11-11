@@ -1,0 +1,69 @@
+@if (status$ | async; as status) {
+@if (!status.enabled) {
+<div class="setup-hint">
+    <strong>Der Assistent ist noch nicht eingerichtet.</strong>
+    <p>Trag auf dem Server in der <code>.env</code> einen Schlüssel ein, zum Beispiel <code>OPENAI_API_KEY=…</code> oder
+        <code>ANTHROPIC_API_KEY=…</code>, und starte die App neu.</p>
+</div>
+} @else {
+<div class="chat" [class.compact]="compact">
+    <div class="messages" #scroller aria-live="polite">
+        @if (!assistant.messages().length) {
+        <div class="welcome">
+            <p>Ich kann Rezepte von Links übernehmen, Termine und Aufgaben vorschlagen, den Menüplan füllen und die
+                Einkaufsliste ergänzen. Gespeichert wird erst, wenn du einen Vorschlag übernimmst.</p>
+            <div class="suggestions">
+                @for (s of suggestions; track s.label) {
+                <button type="button" (click)="useSuggestion(s.text)">{{ s.label }}</button>
+                }
+            </div>
+        </div>
+        }
+        @for (message of assistant.messages(); track $index; let i = $index) {
+        <div class="message" [class.user]="message.role === 'user'" [class.error]="message.error">
+            <p>{{ message.content }}</p>
+        </div>
+        @for (proposal of message.proposals ?? []; track proposal.id) {
+        <article class="proposal" [class.saved]="proposal.state === 'saved'"
+            [class.dismissed]="proposal.state === 'dismissed'">
+            <header><span class="type">{{ TYPE_LABELS[proposal.type] }}</span><strong>{{ proposal.title }}</strong>
+            </header>
+            <ul>
+                @for (line of proposal.summary; track $index) { <li>{{ line }}</li> }
+            </ul>
+            @if (proposal.error) { <p class="proposal-error" role="alert">{{ proposal.error }}</p> }
+            <footer>
+                @switch (proposal.state) {
+                @case ('saved') { <span class="done">✓ Gespeichert</span><a [routerLink]="linkPath(proposal)"
+                    [queryParams]="linkParams(proposal)" (click)="assistant.panelOpen.set(false)">Öffnen →</a> }
+                @case ('dismissed') { <span class="muted">Verworfen</span> }
+                @default {
+                <button type="button" class="btn-ghost" [disabled]="proposal.state === 'saving'"
+                    (click)="assistant.dismiss(i, proposal)">Verwerfen</button>
+                <button type="button" class="btn-primary" [disabled]="proposal.state === 'saving'"
+                    (click)="assistant.apply(i, proposal)">{{ proposal.state === 'saving' ? 'Wird gespeichert …' :
+                    'Übernehmen' }}</button>
+                }
+                }
+            </footer>
+        </article>
+        }
+        }
+        @if (assistant.sending()) {
+        <div class="message typing" role="status"><span></span><span></span><span></span><small>Denkt nach …</small></div>
+        }
+    </div>
+    <form class="composer" (ngSubmit)="send()">
+        <textarea #input name="draft" rows="1" [(ngModel)]="draft" (keydown)="onKeydown($event)"
+            placeholder="Frag oder füg einen Rezept-Link ein …" aria-label="Nachricht an den Assistenten"
+            maxlength="4000"></textarea>
+        <button type="submit" class="btn-primary send" [disabled]="!draft.trim() || assistant.sending()"
+            aria-label="Senden">↑</button>
+    </form>
+    @if (assistant.messages().length) {
+    <button type="button" class="clear" (click)="assistant.clear()" [disabled]="assistant.sending()">Neues
+        Gespräch</button>
+    }
+</div>
+}
+}

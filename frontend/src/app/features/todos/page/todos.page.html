@@ -5,13 +5,10 @@
         <div class="page-heading">
             <p class="eyebrow">Alltag</p>
             <h1 class="page-title">Aufgaben</h1>
-            <div class="badges">
-                <span class="badge">{{ openCount }} offen</span>
-                <span class="badge badge-info" *ngIf="globalCount > 0">{{ globalCount }} WG</span>
-                <span class="badge badge-danger" *ngIf="overdueCount > 0">{{ overdueCount }} überfällig</span>
-            </div>
+            <p class="page-subtitle">{{ statusCount('open') }} offen{{ statusCount('overdue') ? ' · ' + statusCount('overdue') + ' überfällig' : '' }}</p>
         </div>
         <div class="page-actions">
+            <a class="btn-secondary" routerLink="/calendar">Im Kalender</a>
         <button class="btn-primary" (click)="openAdd()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                 <path d="M12 5v14M5 12h14" />
@@ -25,32 +22,35 @@
     <div class="form-feedback" *ngIf="loadError" role="alert">{{ loadError }} <button (click)="loadData()">Erneut
             versuchen</button></div>
     <p class="loading-state" *ngIf="loading" role="status">Aufgaben werden geladen…</p>
-    <div class="toolbar chip-group" role="group" aria-label="Aufgaben filtern">
-        <button class="chip" [class.active]="filter === 'all'" (click)="filter = 'all'">Alle</button>
-        <button class="chip" [class.active]="filter === 'open'" (click)="filter = 'open'">Offen</button>
-        <button class="chip" [class.active]="filter === 'done'" (click)="filter = 'done'">Erledigt</button>
-        <button class="chip chip-danger" [class.active]="filter === 'overdue'"
-            (click)="filter = 'overdue'">Überfällig</button>
-        <span class="chip-sep"></span>
-        <button class="chip chip-info" [class.active]="filter === 'global'" (click)="filter = 'global'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-            WG
-        </button>
-        <button class="chip" [class.active]="filter === 'private'" (click)="filter = 'private'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-            </svg>
-            Meine
-        </button>
+    <div class="todo-notice" role="status" *ngIf="notice">{{ notice }} <a routerLink="/calendar">Kalender →</a></div>
+    <div class="filter-bar" role="search" aria-label="Aufgaben filtern">
+        <label class="filter-search"><span class="sr-only">Aufgaben suchen</span><input type="search"
+                [ngModel]="filters.search" (ngModelChange)="setFilter({ search: $event })"
+                placeholder="Aufgabe suchen" />@if (filters.search) {<button type="button" class="filter-clear"
+                (click)="setFilter({ search: '' })" aria-label="Suche leeren">×</button>}</label>
+        <div class="filter-chips" role="group" aria-label="Status">
+            @for (option of [{ v: 'open', l: 'Offen' }, { v: 'overdue', l: 'Überfällig' }, { v: 'done', l: 'Erledigt' }, { v: 'all', l: 'Alle' }]; track option.v) {
+            <button class="chip" [class.chip-danger]="option.v === 'overdue'" [class.active]="filters.status === option.v"
+                [attr.aria-pressed]="filters.status === option.v" (click)="setFilter({ status: $any(option.v) })">{{ option.l
+                }}<span class="count">{{ statusCount($any(option.v)) }}</span></button>
+            }
+        </div>
+        <div class="filter-chips" role="group" aria-label="Nur WG oder nur private Aufgaben">
+            @for (option of [{ v: 'global', l: 'WG' }, { v: 'private', l: 'Privat' }]; track option.v) {
+            <button class="chip" [class.chip-info]="option.v === 'global'" [class.active]="filters.scope === option.v"
+                [attr.aria-pressed]="filters.scope === option.v"
+                (click)="setFilter({ scope: filters.scope === option.v ? 'all' : $any(option.v) })">{{ option.l }}<span
+                    class="count">{{ scopeCount($any(option.v)) }}</span></button>
+            }
+        </div>
+        @if (filtersActive) {
+        <div class="filter-end"><button class="filter-reset" (click)="resetFilters()">Zurücksetzen</button></div>
+        }
     </div>
 
     <!-- Open todos -->
-    <ng-container *ngIf="openTodos.length > 0 || filter !== 'done'">
-        <div class="section-label" *ngIf="filter === 'all' || filter === 'open' || filter === 'overdue'">
+    <ng-container *ngIf="filters.status !== 'done'">
+        <div class="section-label" *ngIf="filters.status === 'all'">
             <span>Offen</span>
             <span class="section-count">{{ openTodos.length }}</span>
         </div>
@@ -108,6 +108,18 @@
                         </svg>
                         {{ recurrenceLabel(todo) }}
                     </span>
+                    <a class="meta-tag planned" *ngIf="nextSlot(todo) as slot" routerLink="/calendar"
+                        [queryParams]="{ date: slot.date }" [attr.aria-label]="'Im Kalender: ' + slotLabel(todo)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" />
+                            <path d="M16 2v4M8 2v4M3 10h18M8 15h3" />
+                        </svg>
+                        Eingeplant · {{ slotLabel(todo) }}
+                    </a>
+                    <a class="meta-tag plan-link" *ngIf="!todo.done && !todo.recurrence && !todo.plannedSlots?.length"
+                        routerLink="/calendar" [queryParams]="{ plan: todo.id }"
+                        [attr.aria-label]="todo.title + ' im Kalender einplanen'">+ Einplanen</a>
                     <span class="meta-tag wg-badge" *ngIf="todo.globalTodo">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round">
@@ -119,13 +131,17 @@
                 </div>
             </div>
         </div>
-        <p class="empty-state" *ngIf="openTodos.length === 0 && (filter === 'open' || filter === 'overdue')">Keine
-            Aufgaben gefunden.</p>
+        <p class="empty-state" *ngIf="!loading && openTodos.length === 0">{{ filtersActive ? 'Keine Aufgaben für diese
+            Filter.' : 'Keine offenen Aufgaben – alles erledigt.' }} <button class="filter-reset" *ngIf="filtersActive"
+                (click)="resetFilters()">Filter zurücksetzen</button></p>
     </ng-container>
+
+    <p class="empty-state" *ngIf="!loading && filters.status === 'done' && doneTodos.length === 0">Noch nichts erledigt{{
+        filtersActive ? ' für diese Filter' : '' }}.</p>
 
     <!-- Done todos -->
     <ng-container *ngIf="doneTodos.length > 0">
-        <div class="section-label done-label">
+        <div class="section-label done-label" *ngIf="filters.status === 'all'">
             <span>Erledigt</span>
             <span class="section-count">{{ doneTodos.length }}</span>
         </div>

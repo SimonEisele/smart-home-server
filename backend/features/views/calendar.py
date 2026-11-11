@@ -24,7 +24,7 @@ class CalendarEventListCreateView(generics.ListCreateAPIView):
 
         queryset = CalendarEvent.objects.filter(
             Q(household=hh, calendar_type='household') |
-            Q(created_by=user, calendar_type='private')
+            Q(household=hh, created_by=user, calendar_type='private')
         )
         if start_raw:
             queryset = queryset.filter(
@@ -60,7 +60,7 @@ class CalendarEventDetailView(generics.RetrieveUpdateDestroyAPIView):
         user = self.request.user
         return CalendarEvent.objects.filter(
             Q(household=hh, calendar_type='household') |
-            Q(created_by=user, calendar_type='private')
+            Q(household=hh, created_by=user, calendar_type='private')
         )
 
     def retrieve(self, request, *args, **kwargs):

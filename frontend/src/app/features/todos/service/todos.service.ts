@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Todo } from '../model/todos.model';
+import { Todo, TodoCompletion } from '../model/todos.model';
 import { Observable, map } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
@@ -24,6 +24,11 @@ export class TodosService {
     return this.http.patch<{ data: Todo }>(`${environment.apiUrl}/todos/${id}/`, patch).pipe(
       map(res => res.data)
     );
+  }
+
+  /** One-off tasks become done; recurring tasks move on to their next occurrence. */
+  completeTodo(id: string, date?: string): Observable<TodoCompletion> {
+    return this.http.post<TodoCompletion>(`${environment.apiUrl}/todos/${id}/complete/`, date ? { date } : {});
   }
 
   deleteTodo(id: string): Observable<void> {

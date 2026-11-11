@@ -410,6 +410,160 @@ main .cook-start-btn[class] {
     color: var(--color-info);
 }
 
+/* Filter bar: one pattern for every list page.
+   Search left, chip groups (with counts), compact selects, then "Zurücksetzen" and the result count. */
+:root .filter-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    margin-bottom: 20px;
+}
+
+:root .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+:root .filter-search {
+    position: relative;
+    display: block;
+    flex: 1 1 220px;
+    max-width: 340px;
+    margin: 0;
+}
+
+/* Selectors outrank the generic `main :is(input…)` form rule below. */
+main .filter-bar .filter-search input[type=search]:not([type=checkbox]):not([type=radio]) {
+    width: 100%;
+    min-height: 38px;
+    padding: 7px 34px 7px 34px;
+    border-radius: 999px;
+    font-size: .86rem;
+}
+
+:root .filter-search::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    left: 13px;
+    top: 50%;
+    width: 11px;
+    height: 11px;
+    border: 2px solid var(--color-muted);
+    border-radius: 50%;
+    transform: translateY(-60%);
+    pointer-events: none;
+}
+
+:root .filter-search::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    left: 23px;
+    top: calc(50% + 3px);
+    width: 5px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--color-muted);
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+
+:root .filter-search .filter-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-muted);
+    font-size: 1rem;
+    line-height: 1;
+}
+
+:root .filter-search .filter-clear:hover { color: var(--color-text); background: var(--color-surface-soft); }
+
+:root .filter-chips {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+:root .filter-chips .chip { min-height: 34px; padding: 5px 12px; font-size: .82rem; }
+
+:root .chip .count {
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--color-surface-soft);
+    font-size: .7rem;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+
+:root .chip.active .count { background: rgba(255, 255, 255, .08); }
+
+main .filter-bar select.filter-select:not([multiple]):not([size]):not([disabled]) {
+    min-height: 34px;
+    width: auto;
+    padding: 5px 30px 5px 12px;
+    border-radius: 999px;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--color-muted);
+}
+
+main .filter-bar select.filter-select.is-set:not([multiple]):not([size]):not([disabled]) { color: var(--color-accent); border-color: var(--color-accent-border); }
+
+:root .filter-end {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+    font-size: .78rem;
+    color: var(--color-muted);
+    white-space: nowrap;
+}
+
+:root .filter-reset {
+    border: 0;
+    background: none;
+    padding: 4px 0;
+    color: var(--color-accent);
+    font-size: .78rem;
+    font-weight: 600;
+}
+
+@media (max-width: 699px) {
+    :root .filter-bar { gap: 10px; }
+    :root .filter-search { flex-basis: 100%; max-width: none; }
+    /* One swipeable row instead of several wrapped chip lines. */
+    :root .filter-chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        max-width: 100%;
+        scrollbar-width: none;
+        margin: 0 -16px;
+        padding: 0 16px;
+    }
+    :root .filter-chips::-webkit-scrollbar { display: none; }
+    :root .filter-chips .chip { flex-shrink: 0; }
+    :root .filter-end { margin-left: 0; width: 100%; justify-content: space-between; }
+}
+
 /* Segmented control: switches between views of the same page. */
 :root .segmented {
     display: inline-flex;

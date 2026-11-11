@@ -8,8 +8,11 @@ from .ingredients import (  # noqa: F401
     CanEditIngredientCatalog,
     IngredientListView,
     IngredientDetailView,
+    MergeIngredientView,
+    UnlinkedIngredientsView,
 )
 from .todos import (  # noqa: F401
+    CompleteTodoView,
     TodoListCreateView,
     TodoDetailView,
 )

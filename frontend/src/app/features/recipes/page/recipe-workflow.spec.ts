@@ -104,4 +104,62 @@ describe('Recipe editing workflow', () => {
     expect(page.catalogError).toBeTruthy();
     expect(page.recipes.length).toBe(1);
   });
+  it('asks before discarding unsaved edits and closes untouched editors directly', () => {
+    page.openEdit(recipe);
+    page.requestClose();
+    expect(page.showModal).toBe(false);
+    page.openEdit(recipe);
+    page.form.name = 'Geändert';
+    page.requestClose();
+    expect(page.showModal).toBe(true);
+    expect(page.showDiscardConfirm).toBe(true);
+    page.requestClose();
+    expect(page.showModal).toBe(false);
+  });
+  it('imports a pasted ingredient list and links catalog entries', () => {
+    page.ingredientCatalog = [
+      { id: 7, name: 'Weizenmehl', category: 'getreide', subcategory: '', defaultUnit: 'g' },
+    ];
+    page.openAdd();
+    page.openImport('ingredients');
+    page.importText = '500 weizenmehl\n1/2 TL Salz';
+    expect(page.importPreviewCount).toBe(2);
+    page.applyImport();
+    expect(page.form.ingredients.map((i) => [i.name, i.quantityPerPerson, i.unit, i.ingredientId])).toEqual([
+      ['Weizenmehl', 500, 'g', 7],
+      ['Salz', 0.5, 'TL', undefined],
+    ]);
+    page.openImport('steps');
+    page.importText = '1. Mischen\n2. Backen';
+    page.applyImport();
+    expect(page.form.steps.map((s) => [s.order, s.description])).toEqual([
+      [1, 'Mischen'],
+      [2, 'Backen'],
+    ]);
+  });
+  it('reorders ingredients and duplicates a recipe with fresh amount identities', () => {
+    const withLink: Recipe = {
+      ...recipe,
+      ingredients: [...recipe.ingredients, { id: 'b', name: 'Salz', quantityPerPerson: 10, unit: 'g' }],
+      steps: [{ order: 1, description: 'Mischen', ingredients: [{ recipeIngredientId: 'a', name: 'Mehl' }] }],
+    };
+    page.openEdit(withLink);
+    page.moveIngredient(1, -1);
+    expect(page.form.ingredients.map((i) => i.name)).toEqual(['Salz', 'Mehl']);
+    page.duplicate();
+    expect(page.modalMode).toBe('add');
+    expect(page.form.name).toBe('Brot (Kopie)');
+    expect((page.form as Recipe).id).toBeUndefined();
+    const flour = page.form.ingredients.find((i) => i.name === 'Mehl')!;
+    expect(flour.id).not.toBe('a');
+    expect(page.form.steps[0].ingredients[0].recipeIngredientId).toBe(flour.id);
+    expect(page.isDirty).toBe(true);
+  });
+  it('offers only categories with recipes and counts them under the search', () => {
+    page.recipes = [recipe, { ...recipe, id: 's', name: 'Suppe', category: 'mahlzeit', ingredients: [] }];
+    expect(page.categoryOptions.map(c => [c.value, c.count])).toEqual([['mahlzeit', 1], ['backen', 1]]);
+    page.search = 'mehl';
+    expect(page.categoryOptions.map(c => [c.value, c.count])).toEqual([['backen', 1]]);
+    expect(page.searchCount).toBe(1);
+  });
 });

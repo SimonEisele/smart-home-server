@@ -39,7 +39,10 @@ export class Navbar {
       { path: '/recipes', label: 'Rezepte', icon: 'recipes.svg' },
       { path: '/ingredients', label: 'Zutaten', icon: 'ingredients.svg' },
     ] },
-    { label: 'Unterwegs', items: [{ path: '/weather', label: 'Wetter', icon: 'weather.svg' }] },
+    { label: 'Mehr', items: [
+      { path: '/weather', label: 'Wetter', icon: 'weather.svg' },
+      { path: '/assistant', label: 'Assistent', icon: 'assistant.svg' },
+    ] },
   ];
   readonly mobileItems = [this.navGroups[0].items[0], this.navGroups[0].items[1], this.navGroups[1].items[0], this.navGroups[1].items[1]];
   closePopovers() { this.showLogin = false; this.showAccount = false; }

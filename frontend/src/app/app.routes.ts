@@ -12,6 +12,7 @@ import { AccountManager } from './core/account-manager/account-manager';
 import { IngredientsPage } from './features/ingredients/page/ingredients.page';
 import { CleaningPage } from './features/cleaning/page/cleaning.page';
 import { LandingPage } from './core/landing/landing';
+import { AssistantPage } from './features/assistant/assistant.page';
 import { authGuard, guestGuard } from './core/auth/guards/auth.guard';
 
 export const routes: Routes = [
@@ -26,6 +27,7 @@ export const routes: Routes = [
   { path: 'shoppinglist', component: ShoppinglistPage, canActivate: [authGuard] },
   { path: 'calendar', component: CalendarPage, canActivate: [authGuard] },
   { path: 'cleaning', component: CleaningPage, canActivate: [authGuard] },
+  { path: 'assistant', component: AssistantPage, canActivate: [authGuard] },
   { path: 'account', component: AccountManager, canActivate: [authGuard] },
   { path: '**', redirectTo: '' },
 ];

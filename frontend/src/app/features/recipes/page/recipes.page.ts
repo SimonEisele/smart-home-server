@@ -1,3 +1,4 @@
+import { filtersChanged, loadFilters, saveFilters } from '../../../shared/utils/filter-memory';
 import { finalize } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DestroyRef, inject } from '@angular/core';
@@ -24,6 +25,7 @@ import {
 } from '../model/recipes.model';
 import { RecipesService } from '../service/recipes.service';
 import { apiErrorMessage } from '../../../shared/utils/api-error';
+import { parseIngredientList, parseStepList } from '../utils/recipe-import';
 
 type RecipeForm = Partial<Recipe> & {
   ingredients: RecipeIngredient[];
@@ -52,6 +54,7 @@ export class RecipesPage implements OnInit {
     { value: 'beilage', label: 'Beilage' },
     { value: 'sonstiges', label: 'Sonstiges' },
   ];
+  private static readonly DEFAULT_FILTERS = { search: '', categoryFilter: '', sort: 'name' };
   categoryFilter = '';
   sort = 'name';
   editorTab: 'details' | 'ingredients' | 'steps' = 'details';
@@ -70,6 +73,11 @@ export class RecipesPage implements OnInit {
   form: RecipeForm = this.emptyForm();
   ingredientPrevNames: string[] = [];
   newIngredientPrompt: { name: string; category: string; defaultUnit: string } | null = null;
+  /** Serialized form at the time the editor opened; used to warn before discarding edits. */
+  private snapshot = '';
+  showDiscardConfirm = false;
+  importMode: 'ingredients' | 'steps' | null = null;
+  importText = '';
 
   readonly INGREDIENT_CATEGORIES = INGREDIENT_CATEGORIES;
 
@@ -79,6 +87,7 @@ export class RecipesPage implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    Object.assign(this, loadFilters('recipes', RecipesPage.DEFAULT_FILTERS));
     this.loadData();
   }
 
@@ -151,7 +160,29 @@ export class RecipesPage implements OnInit {
     this.search = '';
     this.categoryFilter = '';
     this.sort = 'name';
+    this.persistFilters();
   }
+
+  persistFilters(): void {
+    saveFilters('recipes', { search: this.search, categoryFilter: this.categoryFilter, sort: this.sort });
+  }
+
+  get filtersActive(): boolean {
+    return filtersChanged({ search: this.search, categoryFilter: this.categoryFilter, sort: this.sort },
+      RecipesPage.DEFAULT_FILTERS);
+  }
+
+  /** Categories that have recipes (plus the selected one), each with its count under the current search. */
+  get categoryOptions(): Array<{ value: string; label: string; count: number }> {
+    const q = ingredientKey(this.search);
+    const found = this.recipes.filter(r => !q || ingredientKey(
+      `${r.name} ${r.description ?? ''} ${r.ingredients.map(i => i.name).join(' ')}`).includes(q));
+    return this.recipeCategories
+      .map(c => ({ ...c, count: found.filter(r => (r.category ?? 'sonstiges') === c.value).length }))
+      .filter(c => c.count > 0 || c.value === this.categoryFilter);
+  }
+
+  get searchCount(): number { return this.categoryOptions.reduce((n, c) => n + c.count, 0); }
 
   formatDuration(mins?: number): string {
     if (mins == null) return '';
@@ -277,6 +308,92 @@ export class RecipesPage implements OnInit {
   onRecipeIngredientQtyUnitChange(_index: number): void {
     // Step-specific amounts stay independent from the recipe total.
     this.form.ingredients = [...this.form.ingredients];
+  }
+
+  moveIngredient(index: number, delta: number): void {
+    const target = index + delta;
+    if (target < 0 || target >= this.form.ingredients.length) return;
+    const ingredients = [...this.form.ingredients];
+    const names = [...this.ingredientPrevNames];
+    [ingredients[index], ingredients[target]] = [ingredients[target], ingredients[index]];
+    [names[index], names[target]] = [names[target], names[index]];
+    this.form.ingredients = ingredients;
+    this.ingredientPrevNames = names;
+  }
+
+  /** Enter in an ingredient row starts the next row, so a list can be typed without the mouse. */
+  onIngredientEnter(index: number, event: Event): void {
+    event.preventDefault();
+    const next = index + 1;
+    if (next >= this.form.ingredients.length || this.form.ingredients[next].name.trim()) {
+      const ingredients = [...this.form.ingredients];
+      ingredients.splice(next, 0, {
+        id: crypto.randomUUID(),
+        name: '',
+        quantityPerPerson: undefined,
+        unit: '',
+        sectionId: this.form.ingredients[index]?.sectionId,
+      });
+      this.form.ingredients = ingredients;
+      const names = [...this.ingredientPrevNames];
+      names.splice(next, 0, '');
+      this.ingredientPrevNames = names;
+    }
+    this.focusField(`Zutat ${next + 1} Name`);
+  }
+
+  openImport(mode: 'ingredients' | 'steps'): void {
+    this.importMode = this.importMode === mode ? null : mode;
+    this.importText = '';
+  }
+
+  get importPreviewCount(): number {
+    if (!this.importMode) return 0;
+    return this.importMode === 'ingredients'
+      ? parseIngredientList(this.importText).length
+      : parseStepList(this.importText).length;
+  }
+
+  /** Adds pasted lines like "200 g Mehl" or numbered steps to the form. */
+  applyImport(): void {
+    if (this.importMode === 'ingredients') {
+      const rows = parseIngredientList(this.importText).map((item) => {
+        const match = this.ingredientCatalog.find(
+          (i) => ingredientKey(i.name) === ingredientKey(item.name),
+        );
+        return {
+          id: crypto.randomUUID(),
+          name: match?.name ?? item.name,
+          ingredientId: match?.id,
+          quantityPerPerson: item.quantity ?? undefined,
+          unit: item.unit || match?.defaultUnit || '',
+        } as RecipeIngredient;
+      });
+      const kept = this.form.ingredients.filter((i) => i.name.trim());
+      this.form.ingredients = [...kept, ...rows];
+      this.ingredientPrevNames = this.form.ingredients.map((i) => i.name);
+    } else if (this.importMode === 'steps') {
+      const kept = this.form.steps.filter((s) => s.description.trim());
+      const added = parseStepList(this.importText).map((description) => ({
+        order: 0,
+        description,
+        ingredients: [],
+      }));
+      this.form.steps = [...kept, ...added].map((step, i) => ({ ...step, order: i + 1 }));
+    }
+    this.importMode = null;
+    this.importText = '';
+  }
+
+  get unlinkedIngredientNames(): string[] {
+    const known = new Set(this.ingredientCatalog.map((i) => ingredientKey(i.name)));
+    return [
+      ...new Set(
+        this.form.ingredients
+          .map((i) => i.name.trim())
+          .filter((name) => name && !known.has(ingredientKey(name))),
+      ),
+    ];
   }
 
   addStep(sectionId?: number): void {
@@ -410,7 +527,37 @@ export class RecipesPage implements OnInit {
     this.showDeleteConfirm = false;
     this.ingredientPrevNames = [];
     this.modalMode = 'add';
+    this.resetEditorState();
     this.showModal = true;
+  }
+
+  /** Starts a new recipe prefilled with a copy of the one being edited. */
+  duplicate(): void {
+    if (this.saving || this.modalMode !== 'edit') return;
+    const ids = new Map(this.form.ingredients.map((i) => [i.id, crypto.randomUUID()]));
+    const { id: _id, createdAt: _c, updatedAt: _u, ...copy } = this.form as RecipeForm & { id?: string };
+    this.form = {
+      ...copy,
+      name: `${this.form.name} (Kopie)`.slice(0, 200),
+      sections: this.form.sections.map((s) => ({ ...s })),
+      sideNotes: this.form.sideNotes.map((n) => ({ ...n })),
+      ingredients: this.form.ingredients.map((i) => ({ ...i, id: ids.get(i.id) })),
+      steps: this.form.steps.map((s) => ({
+        ...s,
+        ingredients: s.ingredients.map((link) => ({
+          ...link,
+          recipeIngredientId: ids.get(link.recipeIngredientId) ?? link.recipeIngredientId,
+        })),
+      })),
+    };
+    this.modalMode = 'add';
+    this.editorTab = 'details';
+    this.formError = '';
+    this.showDeleteConfirm = false;
+    this.showDiscardConfirm = false;
+    // The copy only exists in the form, so closing it should ask first.
+    this.snapshot = '';
+    this.focusField('Rezeptname');
   }
 
   openEdit(recipe: Recipe): void {
@@ -452,24 +599,49 @@ export class RecipesPage implements OnInit {
       }
     this.ingredientPrevNames = this.form.ingredients.map((i) => i.name ?? '');
     this.modalMode = 'edit';
+    this.resetEditorState();
     this.showModal = true;
+  }
+
+  get isDirty(): boolean {
+    return this.serializeForm() !== this.snapshot;
+  }
+
+  /** Closes the editor, but asks first when there are unsaved changes. */
+  requestClose(): void {
+    if (this.saving || this.ingredientSaving) return;
+    if (this.showDeleteConfirm) {
+      this.showDeleteConfirm = false;
+      return;
+    }
+    if (this.importMode) {
+      this.importMode = null;
+      return;
+    }
+    if (this.isDirty && !this.showDiscardConfirm) {
+      this.showDiscardConfirm = true;
+      return;
+    }
+    this.closeModal();
   }
 
   closeModal(): void {
     if (this.saving || this.ingredientSaving) return;
     this.showModal = false;
+    this.showDiscardConfirm = false;
     this.formError = '';
     this.form = this.emptyForm();
     this.newIngredientPrompt = null;
+    this.importMode = null;
   }
 
   onBackdropClick(e: MouseEvent): void {
-    if (e.target === e.currentTarget) this.closeModal();
+    if (e.target === e.currentTarget) this.requestClose();
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
-    if (this.showModal) this.closeModal();
+    if (this.showModal) this.requestClose();
   }
 
   startCooking(recipe: Recipe, e?: MouseEvent): void {
@@ -601,6 +773,25 @@ export class RecipesPage implements OnInit {
           this.cdr.markForCheck();
         },
       });
+  }
+
+  private resetEditorState(): void {
+    this.showDiscardConfirm = false;
+    this.importMode = null;
+    this.importText = '';
+    this.newIngredientPrompt = null;
+    this.snapshot = this.serializeForm();
+  }
+
+  private serializeForm(): string {
+    return JSON.stringify(this.form);
+  }
+
+  private focusField(label: string): void {
+    this.cdr.detectChanges();
+    setTimeout(() =>
+      document.querySelector<HTMLElement>(`.recipe-editor [aria-label="${label}"]`)?.focus(),
+    );
   }
 
   private errorText(error: unknown, fallback: string): string {

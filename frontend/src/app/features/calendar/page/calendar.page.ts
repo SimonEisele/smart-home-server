@@ -4,20 +4,22 @@ import { localIsoDate } from '../../../shared/utils/date-utils';
 import { Component, DestroyRef, inject, ChangeDetectorRef, HostListener, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
-import { CalendarEvent, HouseholdMember, MemberAvailability, UserMealAttendance, ExternalMealGuest } from '../model/calendar.model';
+import { CalendarEvent } from '../model/calendar.model';
 import { CalendarService } from '../service/calendar.service';
 import { TodosService } from '../../todos/service/todos.service';
 import { Todo } from '../../todos/model/todos.model';
-import { AuthService } from '../../../core/auth/service/auth.service';
 import { CleaningTask } from '../../cleaning/model/cleaning.model';
+import { CleaningService } from '../../cleaning/service/cleaning.service';
 import {
-  DayEntry, END_HOUR, HOUR_PX, START_HOUR, buildWeek, cleaningEntriesForDay, formatDuration, gridHeight, gridTop,
-  pad, todoOccurrences, weekLabel,
+  DayEntry, DayTask, END_HOUR, HOUR_PX, START_HOUR, buildWeek, dayTasks, formatDuration, gridHeight, gridTop,
+  overlapColumns, pad, parseLocalDate, todoOverdue, weekLabel,
 } from '../utils/calendar.utils';
 
 interface DropPreview { dateStr: string; top: number; h: number; label: string; hour: number; minute: number; }
+interface PlanForm { date: string; time: string; duration: number; blocks: number; }
+interface UndoAction { message: string; run: () => void; }
 interface EvModalForm { title: string; date: string; startTime: string; endTime: string; calendarType: string; description: string; location: string; color: string; allDay: boolean; }
 interface ResizePreview { evId: string; newH: number; newEnd: string; }
 
@@ -31,37 +33,35 @@ interface ResizePreview { evId: string; newH: number; newEnd: string; }
 })
 export class CalendarPage implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
-  calendarView: 'schedule' | 'attendance' = 'schedule';
+  private readonly route = inject(ActivatedRoute, { optional: true });
+  private readonly cleaningService = inject(CleaningService, { optional: true });
+  private planAfterLoad: string | null = null;
   weekStart!: Date;
   weekDays: DayEntry[] = [];
 
   events:        CalendarEvent[]    = [];
   todos:         Todo[]             = [];
-  members:       HouseholdMember[]  = [];
-  availabilities: MemberAvailability[] = [];
-  mealAttendances: UserMealAttendance[] = [];
-  externalGuests: ExternalMealGuest[] = [];
   cleaningTasks: CleaningTask[] = [];
-  currentUserId: string | null = null;
-  isHouseholdAccount = false;
-  todoOccurrences: Record<string, string[]> = {};
   memberName = '';
 
-  // External guest add form
-  addingGuestFor: { dateStr: string; meal: 'breakfast' | 'lunch' | 'dinner' } | null = null;
-  newGuestName = '';
-  attendanceLoading = false;
-  attendanceReady = false;
-  attendanceError = '';
-  attendancePending = new Set<string>();
-  guestSaving = false;
-  guestError = '';
-  guestDeleting = new Set<string>();
+  // Ticking off tasks and cleaning
+  completing = new Set<string>();
+  undoAction: UndoAction | null = null;
+  private undoTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // "Einplanen" dialog (replaces the old split dialog)
+  planTodo: Todo | null = null;
+  planForm: PlanForm = { date: '', time: '09:00', duration: 60, blocks: 1 };
+  planSaving = false;
+  planError = '';
+
+  showMoreOptions = false;
 
   // Filters
   showHousehold = true;
   showPrivate   = true;
   showTodos     = true;
+  showCleaning  = true;
 
   // Drag & drop state
   dragTodo:       Todo | null          = null;
@@ -101,13 +101,6 @@ export class CalendarPage implements OnInit, OnDestroy {
   editingEvent: CalendarEvent | null = null;
   modalForm:   EvModalForm = this.emptyForm();
 
-  // Split modal
-  showSplitModal = false;
-  splitTodo:   Todo | null = null;
-  splitCount   = 2;
-  splitDate    = '';
-  splitHour    = 9;
-  splitMinute  = 0;
 
   // Now-line
   nowTop = 0;
@@ -116,36 +109,39 @@ export class CalendarPage implements OnInit, OnDestroy {
 
   readonly gridHours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
   readonly GRID_H = (END_HOUR - START_HOUR) * HOUR_PX;
-  readonly MEALS: Array<{ key: 'breakfast' | 'lunch' | 'dinner'; label: string; icon: string }> = [
-    { key: 'breakfast', label: 'Frühstück', icon: '🌅' },
-    { key: 'lunch', label: 'Mittag', icon: '🍽' },
-    { key: 'dinner', label: 'Abend', icon: '🌙' },
-  ];
-
   constructor(
     private calendarService: CalendarService,
     private todosService: TodosService,
-    private authService: AuthService,
     private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
-    this.authService.user$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(u => {
-      this.currentUserId = u?.id ?? null;
-      this.isHouseholdAccount = u?.is_household_account ?? false;
-      this.cdr.detectChanges();
-    });
-    this.initWeek(new Date());
+    // Links from other pages: ?date=YYYY-MM-DD opens that week, ?plan=<todo id> opens the plan dialog.
+    const params = this.route?.snapshot?.queryParamMap;
+    const date = params?.get('date');
+    this.planAfterLoad = params?.get('plan') ?? null;
+    this.initWeek(date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? parseLocalDate(date) : new Date());
     this.load();
     this.updateNow();
     this.nowTimer = setInterval(() => { this.updateNow(); this.cdr.detectChanges(); }, 30000);
-    setTimeout(() => {
-      const el = document.getElementById('grid-scroll');
-      if (el) el.scrollTop = Math.max(0, this.nowTop - 160);
-    }, 300);
   }
 
-  ngOnDestroy(): void { clearInterval(this.nowTimer); }
+  ngOnDestroy(): void { clearInterval(this.nowTimer); if (this.undoTimer) clearTimeout(this.undoTimer); }
+
+  /** Scrolls the time grid to the current time, or the first appointment of a week without today. */
+  private scrollGrid(): void {
+    setTimeout(() => {
+      // Phone agenda: start at today instead of Monday.
+      const today = document.querySelector('.agenda-view .agenda-today');
+      const agenda = document.querySelector('.agenda-view');
+      if (today && agenda && getComputedStyle(agenda).display !== 'none') today.scrollIntoView({ block: 'start' });
+      const el = document.getElementById('grid-scroll');
+      if (!el) return;
+      const timed = this.events.filter(e => !e.allDay && e.start).map(e => this.evTop(e));
+      const target = this.weekDays.some(d => d.isToday) && this.nowVisible ? this.nowTop : Math.min(...timed, 2 * HOUR_PX);
+      el.scrollTop = Math.max(0, target - 120);
+    }, 50);
+  }
 
   // â”€â”€ Week nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   prevWeek(): void { const d = new Date(this.weekStart); d.setDate(d.getDate() - 7); this.initWeek(d); this.loadEvents(); }
@@ -154,8 +150,9 @@ export class CalendarPage implements OnInit, OnDestroy {
   goToday(): void {
     this.initWeek(new Date());
     this.loadEvents();
-    setTimeout(() => { const el = document.getElementById('grid-scroll'); if (el) el.scrollTop = Math.max(0, this.nowTop - 160); }, 200);
   }
+
+  get isCurrentWeek(): boolean { return this.weekDays.some(d => d.isToday); }
 
   private initWeek(d: Date): void {
     const week = buildWeek(d);
@@ -168,11 +165,12 @@ export class CalendarPage implements OnInit, OnDestroy {
   // â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   private load(): void {
     this.loadEvents();
-    this.calendarService.getMembers().subscribe(m => { this.members = m; this.cdr.detectChanges(); });
     this.calendarService.getCleaningTasks().subscribe(t => { this.cleaningTasks = t; this.cdr.detectChanges(); });
     this.todosService.getUserTodos().subscribe(t => {
-      this.todos = t; this.rebuildTodoOcc();
-      this.updateActiveProgress(new Date());
+      this.todos = t;
+      const plan = this.planAfterLoad && t.find(todo => todo.id === this.planAfterLoad);
+      this.planAfterLoad = null;
+      if (plan && !plan.done) this.openPlan(plan);
       this.cdr.detectChanges();
     });
   }
@@ -182,150 +180,97 @@ export class CalendarPage implements OnInit, OnDestroy {
     const start = this.weekDays[0].dateStr;
     const end   = this.weekDays[6].dateStr;
     this.calendarService.getEvents(start, end).subscribe(evs => {
+      if (this.weekDays[0]?.dateStr !== start) return;
       this.events = evs;
-      this.updateActiveProgress(new Date());
       this.cdr.detectChanges();
+      this.scrollGrid();
     });
-    this.calendarService.getAvailabilities(start, end).subscribe(a => { this.availabilities = a; this.cdr.detectChanges(); });
-    this.loadAttendance();
-  }
-
-  private rebuildTodoOcc(): void {
-    this.todoOccurrences = todoOccurrences(this.todos, this.weekDays);
   }
 
   // â”€â”€ Computed views â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  /** One-off tasks that still need a time block (recurring ones show up on their days). */
   get openTodos(): Todo[] {
     const scheduled = new Set(
       this.events.filter(e => !!e.todoRefId).map(e => e.todoRefId!)
     );
-    return this.todos.filter(t => !t.done && !scheduled.has(t.id));
+    return this.todos
+      .filter(t => !t.done && !t.recurrence && !scheduled.has(t.id) && !t.plannedSlots?.length)
+      .sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'));
   }
 
-  // ── Cleaning ─────────────────────────────────────────────────────────────
-
-  cleaningEventsForDay(dateStr: string): { task: CleaningTask; overdue: boolean }[] {
-    return cleaningEntriesForDay(this.cleaningTasks, dateStr);
+  todoDueLabel(todo: Todo): string {
+    if (!todo.dueDate) return '';
+    const due = new Date(todo.dueDate);
+    return `${todoOverdue(todo) ? 'Überfällig seit' : 'Fällig'} ${due.getDate()}.${due.getMonth() + 1}.`;
   }
 
-  mealAttendeesForDay(dateStr: string, meal: 'breakfast' | 'lunch' | 'dinner'): UserMealAttendance[] {
-    return this.mealAttendances.filter(a => {
-      if (a.date !== dateStr) return false;
-      if (meal === 'breakfast') return a.breakfastPresent;
-      if (meal === 'lunch') return a.lunchPresent;
-      return a.dinnerPresent;
-    });
+  // ── Tasks and cleaning per day ───────────────────────────────────────────
+
+  tasksForDay(dateStr: string): DayTask[] {
+    return dayTasks(this.todos, this.cleaningTasks, dateStr)
+      .filter(t => (t.kind === 'todo' ? this.showTodos : this.showCleaning));
   }
 
-  myAttendanceForDay(dateStr: string): UserMealAttendance | undefined {
-    return this.mealAttendances.find(a => a.date === dateStr && a.userId === this.currentUserId);
-  }
-
-  attendanceDisplayName(a: UserMealAttendance): string {
-    const sameFirst = new Set(this.mealAttendances.filter(x => x.userFirstName === a.userFirstName).map(x => x.userId)).size > 1;
-    return sameFirst ? `${a.userFirstName} ${a.userLastName}`.trim() : a.userFirstName;
-  }
-
-  mealIsActive(dateStr: string, meal: 'breakfast' | 'lunch' | 'dinner'): boolean {
-    const rec = this.myAttendanceForDay(dateStr);
-    if (!rec) return false; // opt-in: absent by default
-    if (meal === 'breakfast') return rec.breakfastPresent;
-    if (meal === 'lunch') return rec.lunchPresent;
-    return rec.dinnerPresent;
-  }
-
-  loadAttendance(): void {
-    const start = this.weekDays[0]?.dateStr, end = this.weekDays[6]?.dateStr;
-    if (!start || !end) return;
-    this.attendanceLoading = true; this.attendanceReady = false; this.attendanceError = '';
-    forkJoin({ attendance: this.calendarService.getMealAttendance(start, end), guests: this.calendarService.getExternalGuests(start, end) })
-      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+  /** Ticks off a task (recurring ones move to their next date) or logs a cleaning job. */
+  completeTask(item: DayTask, dateStr: string, e?: Event): void {
+    e?.stopPropagation();
+    if (this.completing.has(item.key)) return;
+    this.completing.add(item.key); this.planningError = '';
+    const done = () => { this.completing.delete(item.key); this.cdr.markForCheck(); };
+    if (item.todo) {
+      const original = item.todo;
+      this.todosService.completeTodo(original.id, dateStr).pipe(takeUntilDestroyed(this.destroyRef), finalize(done)).subscribe({
         next: result => {
-          if (this.weekDays[0]?.dateStr !== start) return;
-          this.mealAttendances = result.attendance; this.externalGuests = result.guests;
-          this.attendanceLoading = false; this.attendanceReady = true; this.cdr.markForCheck();
+          this.replaceTodo({ ...result.data, plannedSlots: original.plannedSlots });
+          const next = result.advancedTo ? parseLocalDate(result.advancedTo) : null;
+          this.offerUndo(next ? `„${original.title}“ erledigt · nächstes Mal ${next.getDate()}.${next.getMonth() + 1}.`
+                               : `„${original.title}“ erledigt`,
+            () => this.todosService.updateTodo(original.id, result.advancedTo
+              ? { startDate: result.previous.startDate ?? null, dueDate: result.previous.dueDate ?? null }
+              : { done: false }).subscribe(t => this.replaceTodo({ ...t, plannedSlots: original.plannedSlots })));
         },
-        error: () => {
-          if (this.weekDays[0]?.dateStr !== start) return;
-          this.attendanceLoading = false;
-          this.attendanceError = 'Die Anwesenheiten konnten nicht geladen werden. Bitte erneut versuchen.';
-          this.cdr.markForCheck();
-        }
+        error: () => { this.planningError = 'Die Aufgabe konnte nicht abgehakt werden. Bitte erneut versuchen.'; },
       });
-  }
-
-  mealLabel(meal: string): string { return this.MEALS.find(m => m.key === meal)?.label ?? meal; }
-  allMealsActive(date: string): boolean { return this.MEALS.every(m => this.mealIsActive(date, m.key)); }
-  toggleWholeDay(date: string): void {
-    const value = !this.allMealsActive(date);
-    this.saveAttendance(date, value, value, value);
-  }
-  toggleMealAttendance(dateStr: string, meal: 'breakfast' | 'lunch' | 'dinner'): void {
-    const existing = this.myAttendanceForDay(dateStr);
-    this.saveAttendance(dateStr,
-      meal === 'breakfast' ? !existing?.breakfastPresent : existing?.breakfastPresent ?? false,
-      meal === 'lunch' ? !existing?.lunchPresent : existing?.lunchPresent ?? false,
-      meal === 'dinner' ? !existing?.dinnerPresent : existing?.dinnerPresent ?? false);
-  }
-  private saveAttendance(date: string, breakfast: boolean, lunch: boolean, dinner: boolean): void {
-    if (this.isHouseholdAccount || !this.currentUserId || !this.attendanceReady || this.attendanceLoading || this.attendancePending.has(date)) return;
-    this.attendancePending.add(date); this.attendanceError = '';
-    this.calendarService.setMealAttendance(date, breakfast, lunch, dinner)
-      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.attendancePending.delete(date); this.cdr.markForCheck(); }))
-      .subscribe({
-        next: updated => {
-          // A week switch during a request must not insert an old week's record.
-          if (!this.weekDays.some(d => d.dateStr === date)) return;
-          this.mealAttendances = [...this.mealAttendances.filter(a => !(a.date === date && a.userId === this.currentUserId)), updated];
+    } else if (item.cleaning && this.cleaningService) {
+      const task = item.cleaning, today = localIsoDate(new Date());
+      const doneAt = dateStr < today ? dateStr : today;
+      this.cleaningService.logCompletion(task.id, doneAt).pipe(takeUntilDestroyed(this.destroyRef), finalize(done)).subscribe({
+        next: log => {
+          const previous = task.lastDoneAt ?? null;
+          this.cleaningTasks = this.cleaningTasks.map(t => t.id === task.id
+            ? { ...t, logs: [log, ...(t.logs ?? [])], lastDoneAt: previous && previous > log.doneAt ? previous : log.doneAt } : t);
+          this.offerUndo(`„${task.name}“ geputzt`, () => this.cleaningService!.deleteLog(log.id).subscribe(() => {
+            this.cleaningTasks = this.cleaningTasks.map(t => t.id === task.id
+              ? { ...t, logs: (t.logs ?? []).filter(l => l.id !== log.id), lastDoneAt: previous } : t);
+            this.cdr.markForCheck();
+          }));
         },
-        error: () => { this.attendanceError = 'Die Änderung wurde nicht gespeichert. Deine bisherige Anwesenheit bleibt erhalten.'; }
+        error: () => { this.planningError = 'Die Reinigung konnte nicht gespeichert werden. Bitte erneut versuchen.'; },
       });
+    }
   }
 
-  removeMealAttendance(dateStr: string): void {
-    this.calendarService.deleteMealAttendance(dateStr).subscribe(() => {
-      this.mealAttendances = this.mealAttendances.filter(a => !(a.date === dateStr && a.userId === this.currentUserId));
-      this.cdr.detectChanges();
-    });
+  private replaceTodo(todo: Todo): void {
+    this.todos = this.todos.map(t => t.id === todo.id ? todo : t);
+    this.cdr.markForCheck();
   }
 
-  // ── External guests ──────────────────────────────────────────────────────
-
-  externalGuestsForMeal(dateStr: string, meal: 'breakfast' | 'lunch' | 'dinner'): ExternalMealGuest[] {
-    return this.externalGuests.filter(g => g.date === dateStr && g.meal === meal);
+  private offerUndo(message: string, run: () => void): void {
+    if (this.undoTimer) clearTimeout(this.undoTimer);
+    this.undoAction = { message, run };
+    this.undoTimer = setTimeout(() => { this.undoAction = null; this.cdr.markForCheck(); }, 8000);
   }
 
-  openAddGuest(dateStr: string, meal: 'breakfast' | 'lunch' | 'dinner', e: Event): void {
-    e.stopPropagation();
-    if (this.guestSaving) return;
-    this.guestError = '';
-    this.addingGuestFor = { dateStr, meal };
-    this.newGuestName = '';
-    this.cdr.detectChanges();
+  undo(): void {
+    const action = this.undoAction;
+    this.undoAction = null;
+    if (this.undoTimer) clearTimeout(this.undoTimer);
+    action?.run();
   }
 
-  closeAddGuest(): void { if (this.guestSaving) return; this.addingGuestFor = null; this.newGuestName = ''; this.guestError = ''; }
-
-  submitAddGuest(): void {
-    const name = this.newGuestName.trim(), target = this.addingGuestFor;
-    if (!name || !target || this.guestSaving) return;
-    this.guestSaving = true; this.guestError = '';
-    this.calendarService.addExternalGuest(name, target.dateStr, target.meal)
-      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.guestSaving = false; this.cdr.markForCheck(); }))
-      .subscribe({ next: guest => {
-        if (this.weekDays.some(d => d.dateStr === target.dateStr)) this.externalGuests = [...this.externalGuests, guest];
-        this.addingGuestFor = null; this.newGuestName = '';
-      }, error: () => { this.guestError = 'Der Gast konnte nicht gespeichert werden. Bitte erneut versuchen.'; } });
-  }
-
-  removeExternalGuest(id: string, e: Event): void {
-    e.stopPropagation();
-    if (this.guestDeleting.has(id)) return;
-    this.guestDeleting.add(id); this.attendanceError = '';
-    this.calendarService.removeExternalGuest(id)
-      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.guestDeleting.delete(id); this.cdr.markForCheck(); }))
-      .subscribe({ next: () => { this.externalGuests = this.externalGuests.filter(g => g.id !== id); },
-        error: () => { this.attendanceError = 'Der Gast konnte nicht entfernt werden. Bitte erneut versuchen.'; } });
+  /** Opens the task behind a calendar item: plan one-off tasks, jump to cleaning otherwise. */
+  openDayTask(item: DayTask, dateStr: string): void {
+    if (item.todo && !item.todo.recurrence) this.openPlan(item.todo, dateStr);
   }
 
   eventsForDay(dateStr: string): CalendarEvent[] {
@@ -344,10 +289,18 @@ export class CalendarPage implements OnInit, OnDestroy {
 
   evTop(ev: CalendarEvent): number { return gridTop(new Date(ev.start)); }
 
+  /** Horizontal placement so overlapping appointments sit next to each other. */
+  evLane(ev: CalendarEvent, dateStr: string): { left: string; width: string } {
+    const lane = overlapColumns(this.eventsForDay(dateStr))[ev.id] ?? { col: 0, cols: 1 };
+    return { left: `calc(${(lane.col * 100) / lane.cols}% + 3px)`, width: `calc(${100 / lane.cols}% - 6px)` };
+  }
+
   evHeight(ev: CalendarEvent): number {
     if (this.resizePreview?.evId === ev.id) return this.resizePreview.newH;
     return gridHeight(ev.start, ev.end);
   }
+
+  get hasPrivateEvents(): boolean { return this.events.some(e => e.calendarType === 'private'); }
 
   evClass(ev: CalendarEvent): string {
     const type = ev.calendarType ?? 'household';
@@ -363,28 +316,78 @@ export class CalendarPage implements OnInit, OnDestroy {
     const now = new Date();
     this.nowTop = gridTop(now);
     this.nowVisible = now.getHours() >= START_HOUR && now.getHours() < END_HOUR;
-    this.updateActiveProgress(now);
   }
 
-  splitSessionDuration(): number {
-    return Math.ceil((this.splitTodo?.durationMinutes ?? 60) / this.splitCount);
-  }
-
-  // ── Split direct ──────────────────────────────────────────────────────────
-  openSplitDirect(todo: Todo, e: Event): void {
-    e.stopPropagation();
+  // ── Einplanen ─────────────────────────────────────────────────────────────
+  /** One dialog for planning a task: date, time, duration and optionally several blocks. */
+  openPlan(todo: Todo, dateStr?: string, hour?: number, minute = 0, e?: Event): void {
+    e?.stopPropagation();
     const now = new Date();
-    this.splitTodo = todo;
-    this.splitDate = this.iso(now);
-    this.splitHour = Math.min(now.getHours() + 1, END_HOUR - 1);
-    this.splitMinute = 0;
-    this.splitCount = Math.max(2, Math.ceil((todo.durationMinutes ?? 60) / 60));
-    this.showSplitModal = true;
+    const weekDay = this.weekDays.find(d => d.isToday)?.dateStr ?? this.weekDays[0]?.dateStr;
+    const start = hour ?? Math.min(Math.max(now.getHours() + 1, START_HOUR + 2), END_HOUR - 2);
+    const duration = todo.durationMinutes || 60;
+    this.planTodo = todo;
+    this.planError = '';
+    this.planForm = {
+      date: dateStr ?? weekDay ?? this.iso(now),
+      time: `${pad(start)}:${pad(minute)}`,
+      duration,
+      blocks: duration > 120 ? Math.min(4, Math.ceil(duration / 120)) : 1,
+    };
     this.cdr.detectChanges();
   }
 
-  get splitTimeStr(): string { return `${pad(this.splitHour)}:${pad(this.splitMinute)}`; }
-  set splitTimeStr(v: string) { const p = v.split(':'); this.splitHour = +p[0]; this.splitMinute = +(p[1] ?? 0); }
+  get planBlockMinutes(): number {
+    return Math.max(5, Math.ceil((this.planForm.duration || 60) / Math.max(1, this.planForm.blocks)));
+  }
+
+  setPlanBlocks(delta: number): void {
+    this.planForm = { ...this.planForm, blocks: Math.min(8, Math.max(1, this.planForm.blocks + delta)) };
+  }
+
+  closePlan(): void { if (!this.planSaving) { this.planTodo = null; this.planError = ''; } }
+
+  confirmPlan(): void {
+    const todo = this.planTodo;
+    if (!todo || this.planSaving) return;
+    if (!this.planForm.date || !/^\d{2}:\d{2}$/.test(this.planForm.time) || !(this.planForm.duration > 0)) {
+      this.planError = 'Bitte Datum, Uhrzeit und Dauer angeben.'; return;
+    }
+    const blocks = Math.max(1, this.planForm.blocks), part = this.planBlockMinutes;
+    let start = new Date(`${this.planForm.date}T${this.planForm.time}:00`);
+    const requests = Array.from({ length: blocks }, (_, i) => {
+      const end = new Date(start.getTime() + part * 60000);
+      const request = this.calendarService.createEvent({
+        title: blocks > 1 ? `${todo.title} (${i + 1}/${blocks})` : todo.title,
+        description: todo.description,
+        start: start.toISOString(), end: end.toISOString(),
+        calendarType: todo.globalTodo ? 'household' : 'private', todoRefId: todo.id,
+      });
+      start = new Date(end.getTime() + 15 * 60000); // 15 min pause between blocks
+      return request;
+    });
+    this.planSaving = true; this.planError = '';
+    forkJoin(requests).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.planSaving = false; this.cdr.markForCheck(); }))
+      .subscribe({
+        next: evs => {
+          this.addEvents(evs);
+          this.planTodo = null;
+          if (!this.weekDays.some(d => d.dateStr === this.planForm.date)) this.initWeekAndLoad(parseLocalDate(this.planForm.date));
+        },
+        error: () => { this.planError = 'Die Aufgabe konnte nicht eingeplant werden. Bitte erneut versuchen.'; },
+      });
+  }
+
+  private initWeekAndLoad(date: Date): void { this.initWeek(date); this.loadEvents(); }
+
+  /** Adds new blocks to the week and to their task, so it leaves the "Noch einplanen" list. */
+  private addEvents(evs: CalendarEvent[]): void {
+    this.events = [...this.events, ...evs];
+    for (const ev of evs.filter(e => e.todoRefId)) {
+      this.todos = this.todos.map(t => t.id === ev.todoRefId
+        ? { ...t, plannedSlots: [...(t.plannedSlots ?? []), { id: ev.id, start: ev.start, end: ev.end ?? null }] } : t);
+    }
+  }
 
   // ── Resize ────────────────────────────────────────────────────────────────
   onResizeDragstart(e: DragEvent, ev: CalendarEvent): void {
@@ -401,7 +404,6 @@ export class CalendarPage implements OnInit, OnDestroy {
     return this.todos.find(t => t.id === todoRefId)?.progress ?? 0;
   }
 
-  private updateActiveProgress(_now: Date): void { /* progress tracking removed */ }
 
   // ── Touch drag & drop ─────────────────────────────────────────────────────
 
@@ -545,14 +547,8 @@ export class CalendarPage implements OnInit, OnDestroy {
         if (this.touchDragTodo) {
           const todo = this.touchDragTodo;
           const dur  = todo.durationMinutes ?? 60;
-          if (dur > 120) {
-            this.splitTodo = todo; this.splitDate = day.dateStr;
-            this.splitHour = hour; this.splitMinute = minute;
-            this.splitCount = Math.min(4, Math.ceil(dur / 60));
-            this.showSplitModal = true;
-          } else {
-            this.doCreateFromTodo(todo, day.dateStr, hour, minute, dur);
-          }
+          if (dur > 120) this.openPlan(todo, day.dateStr, hour, minute);
+          else this.doCreateFromTodo(todo, day.dateStr, hour, minute, dur);
         } else if (this.touchDragEvent) {
           this.doMoveEvent(this.touchDragEvent, day.dateStr, hour, minute);
         }
@@ -636,6 +632,8 @@ export class CalendarPage implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.planningPending.delete(ev.id); this.cdr.markForCheck(); }))
       .subscribe({ next: () => {
         this.events = this.events.filter(e => e.id !== ev.id);
+        this.todos = this.todos.map(t => t.id === ev.todoRefId
+          ? { ...t, plannedSlots: (t.plannedSlots ?? []).filter(slot => slot.id !== ev.id) } : t);
         if (this.editingEvent?.id === ev.id) this.closeModal();
       }, error: () => {
         this.planningError = 'Die Planung konnte nicht entfernt werden. Aufgabe und Termin bleiben erhalten.';
@@ -715,14 +713,8 @@ export class CalendarPage implements OnInit, OnDestroy {
     if (this.dragTodo) {
       const todo = this.dragTodo;
       const dur  = todo.durationMinutes ?? 60;
-      if (dur > 120) {
-        this.splitTodo = todo; this.splitDate = day.dateStr;
-        this.splitHour = hour; this.splitMinute = minute;
-        this.splitCount = Math.min(4, Math.ceil(dur / 60));
-        this.showSplitModal = true;
-      } else {
-        this.doCreateFromTodo(todo, day.dateStr, hour, minute, dur);
-      }
+      if (dur > 120) this.openPlan(todo, day.dateStr, hour, minute);
+      else this.doCreateFromTodo(todo, day.dateStr, hour, minute, dur);
     } else if (this.dragEvent) {
       this.doMoveEvent(this.dragEvent, day.dateStr, hour, minute);
     }
@@ -744,7 +736,7 @@ export class CalendarPage implements OnInit, OnDestroy {
       start: start.toISOString(), end: end.toISOString(),
       calendarType: todo.globalTodo ? 'household' : 'private', todoRefId: todo.id,
     }).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.planningPending.delete(todo.id); this.cdr.markForCheck(); }))
-      .subscribe({ next: ev => { this.events = [...this.events, ev]; }, error: () => { this.planningError = 'Die Aufgabe konnte nicht eingeplant werden. Bitte erneut versuchen.'; } });
+      .subscribe({ next: ev => { this.addEvents([ev]); }, error: () => { this.planningError = 'Die Aufgabe konnte nicht eingeplant werden. Bitte erneut versuchen.'; } });
   }
 
   private doMoveEvent(ev: CalendarEvent, dateStr: string, h: number, m: number): void {
@@ -756,41 +748,12 @@ export class CalendarPage implements OnInit, OnDestroy {
     });
   }
 
-  // â”€â”€ Split modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  addSplitWhole(): void {
-    if (!this.splitTodo) return;
-    this.doCreateFromTodo(this.splitTodo, this.splitDate, this.splitHour, this.splitMinute, this.splitTodo.durationMinutes ?? 60);
-    this.showSplitModal = false; this.splitTodo = null;
-  }
-
-  confirmSplit(): void {
-    if (!this.splitTodo) return;
-    const partDur = this.splitSessionDuration();
-    let h = this.splitHour, m = this.splitMinute;
-    const requests = Array.from({ length: this.splitCount }, (_, i) => {
-      const start = new Date(`${this.splitDate}T${pad(h)}:${pad(m)}:00`);
-      const end   = new Date(start.getTime() + partDur * 60000);
-      const next  = new Date(end.getTime() + 15 * 60000);
-      h = next.getHours(); m = next.getMinutes();
-      return this.calendarService.createEvent({
-        title: `${this.splitTodo!.title} (${i + 1}/${this.splitCount})`,
-        start: start.toISOString(), end: end.toISOString(),
-        calendarType: this.splitTodo!.globalTodo ? 'household' : 'private',
-        todoRefId: this.splitTodo!.id,
-      });
-    });
-    forkJoin(requests).subscribe(evs => {
-      this.events = [...this.events, ...evs]; this.showSplitModal = false; this.splitTodo = null; this.cdr.detectChanges();
-    });
-  }
-
-  cancelSplit(): void { this.showSplitModal = false; this.splitTodo = null; }
-
   // â”€â”€ Event modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openNewEvent(dateStr?: string): void {
     const d = dateStr ?? this.iso(new Date());
     this.editingEvent = null;
     this.modalForm = { ...this.emptyForm(), date: d };
+    this.showMoreOptions = false;
     this.showModal = true; this.cdr.detectChanges();
   }
 
@@ -804,6 +767,7 @@ export class CalendarPage implements OnInit, OnDestroy {
     this.editingEvent = null;
     this.modalForm = { ...this.emptyForm(), date: day.dateStr,
       startTime: `${pad(h)}:${pad(m)}`, endTime: `${pad(Math.min(h + 1, 22))}:${pad(m)}` };
+    this.showMoreOptions = false;
     this.showModal = true; this.cdr.detectChanges();
   }
 
@@ -818,14 +782,25 @@ export class CalendarPage implements OnInit, OnDestroy {
     const s = new Date(ev.start);
     const en = ev.end ? new Date(ev.end) : new Date(s.getTime() + 3600000);
     this.modalForm = {
-      title: ev.title, date: ev.start.split('T')[0],
+      title: ev.title, date: localIsoDate(s),
       startTime: `${pad(s.getHours())}:${pad(s.getMinutes())}`,
       endTime:   `${pad(en.getHours())}:${pad(en.getMinutes())}`,
       calendarType: ev.calendarType ?? 'household',
       description: ev.description ?? '', location: ev.location ?? '',
       color: ev.color ?? '', allDay: ev.allDay ?? false,
     };
+    this.showMoreOptions = !!(ev.location || ev.description || ev.color);
     this.showModal = true; this.cdr.detectChanges();
+  }
+
+  /** Ticks off the task behind a planned block straight from the appointment dialog. */
+  completeLinkedTodo(): void {
+    const todo = this.linkedTodo(this.editingEvent);
+    if (!todo || todo.done) return;
+    const dateStr = this.modalForm.date;
+    this.closeModal();
+    this.completeTask({ kind: 'todo', key: `todo:${todo.id}`, title: todo.title, overdue: false,
+                        recurring: !!todo.recurrence, todo }, dateStr);
   }
 
   closeModal(): void { if (this.savingEvent) return; this.eventError = ""; this.showModal = false; this.editingEvent = null; }
@@ -861,6 +836,7 @@ export class CalendarPage implements OnInit, OnDestroy {
     request.pipe(finalize(() => { this.savingEvent = false; this.cdr.markForCheck(); })).subscribe({
       next: ev => {
         this.events = this.editingEvent ? this.events.map(e => e.id === ev.id ? ev : e) : [...this.events, ev];
+        if (!this.weekDays.some(d => d.dateStr === this.modalForm.date)) this.initWeekAndLoad(parseLocalDate(this.modalForm.date));
         this.savingEvent = false; this.closeModal(); this.cdr.markForCheck();
       },
       error: () => { this.eventError = 'Speichern fehlgeschlagen. Deine Eingaben bleiben erhalten.'; this.cdr.markForCheck(); },
@@ -875,33 +851,9 @@ export class CalendarPage implements OnInit, OnDestroy {
     });
   }
 
-  // â”€â”€ Availability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  addMember(): void {
-    if (!this.memberName.trim()) return;
-    this.calendarService.createMember({ name: this.memberName.trim() }).subscribe(m => {
-      this.members = [...this.members, m]; this.memberName = ''; this.cdr.detectChanges();
-    });
-  }
-
-  getAvailability(memberId: string, ds: string): MemberAvailability | undefined {
-    return this.availabilities.find(a => a.memberId === memberId && a.date === ds);
-  }
-
-  toggleLunch(memberId: string, ds: string, v: boolean): void {
-    const cur = this.getAvailability(memberId, ds);
-    this.calendarService.upsertAvailability({ id: cur?.id, memberId, date: ds, lunchPresent: v, dinnerPresent: cur?.dinnerPresent ?? true })
-      .subscribe(s => { this.availabilities = [...this.availabilities.filter(a => a.id !== s.id), s]; this.cdr.detectChanges(); });
-  }
-
-  toggleDinner(memberId: string, ds: string, v: boolean): void {
-    const cur = this.getAvailability(memberId, ds);
-    this.calendarService.upsertAvailability({ id: cur?.id, memberId, date: ds, lunchPresent: cur?.lunchPresent ?? true, dinnerPresent: v })
-      .subscribe(s => { this.availabilities = [...this.availabilities.filter(a => a.id !== s.id), s]; this.cdr.detectChanges(); });
-  }
-
   @HostListener('document:keydown.escape')
   onEsc(): void {
-    if (this.showSplitModal) { this.cancelSplit(); return; }
+    if (this.planTodo) { this.closePlan(); return; }
     if (this.showModal) { this.closeModal(); return; }
   }
 

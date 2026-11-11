@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from backend.api_errors import api_error
 
+from ..ingredient_units import normalize_name, readable, to_base
 from ..models import Ingredient, Recipe, ShoppingItem
 from ..serializers import ShoppingItemSerializer
 from .common import HasActiveHousehold, recalculate_menu_persons_for_range
@@ -144,10 +145,17 @@ class AddRecipeToShoppingListView(APIView):
                 return api_error('Die berechnete Zutatenmenge ist zu groß.', 400)
 
         cat_display = dict(Ingredient.CATEGORY_CHOICES)
-        ing_catalog = {i.name.lower(): i for i in Ingredient.objects.all()}
+        ing_catalog = {i.normalized_name: i for i in Ingredient.objects.all()}
+        household = request.user.active_household
 
         created = []
         with transaction.atomic():
+            # Repeated adds raise open quantities instead of creating duplicate rows.
+            open_items = {}
+            for item in ShoppingItem.objects.select_for_update().filter(
+                household=household, list_type='manual', checked=False
+            ):
+                open_items.setdefault((normalize_name(item.name), to_base(None, item.unit)[1].casefold()), item)
             for ing in (recipe.ingredients or []):
                 name = (ing.get('name') or '').strip()
                 if not name:
@@ -157,19 +165,37 @@ class AddRecipeToShoppingListView(APIView):
                     qty = float(qty_raw) * scale if qty_raw is not None else None
                 except (TypeError, ValueError):
                     qty = None
-                unit = (ing.get('unit') or '').strip()
-                catalog_entry = ing_catalog.get(name.lower())
+                qty, unit = to_base(qty, (ing.get('unit') or '').strip())
+                key = (normalize_name(name), unit.casefold())
+                item = open_items.get(key)
+                if item is not None:
+                    current, current_unit = to_base(item.quantity, item.unit)
+                    if current_unit.casefold() == unit.casefold():
+                        known = [value for value in (current, qty) if value is not None]
+                        total = sum(known) if known else None
+                        item.quantity, item.unit = readable(round(total, 3) if total is not None else None, unit)
+                        item.quantity_incomplete = item.quantity_incomplete or qty is None or current is None
+                        sources = [s.strip() for s in item.suggestion.split('|') if s.strip()]
+                        if recipe.name not in sources:
+                            item.suggestion = ' | '.join(sources + [recipe.name])[:240]
+                        item.save()
+                        if item not in created:
+                            created.append(item)
+                        continue
+                quantity, unit = readable(round(qty, 3) if qty is not None else None, unit)
+                catalog_entry = ing_catalog.get(normalize_name(name))
                 category = cat_display.get(catalog_entry.category, catalog_entry.category) if catalog_entry else 'Sonstiges'
                 item = ShoppingItem.objects.create(
-                    household=request.user.active_household,
+                    household=household,
                     name=name,
-                    quantity=round(qty, 3) if qty is not None else None,
+                    quantity=quantity,
                     quantity_incomplete=qty is None,
                     unit=unit,
                     category=category,
                     suggestion=recipe.name,
                     list_type='manual',
                 )
+                open_items[key] = item
                 created.append(item)
 
         serializer = ShoppingItemSerializer(created, many=True)

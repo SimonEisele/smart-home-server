@@ -1,7 +1,7 @@
 import { Todo } from '../../todos/model/todos.model';
 import { CleaningTask } from '../../cleaning/model/cleaning.model';
 import {
-  HOUR_PX, buildWeek, cleaningEntriesForDay, cleaningNextDue, daysBetween, formatDuration, gridHeight, gridTop,
+  HOUR_PX, buildWeek, overlapColumns, cleaningEntriesForDay, cleaningNextDue, dayTasks, daysBetween, formatDuration, gridHeight, gridTop,
   parseLocalDate, todoOccurrences, weekLabel,
 } from './calendar.utils';
 
@@ -33,7 +33,8 @@ describe('calendar utils', () => {
       todo({ id: 'o', title: 'Once', startDate: new Date(2026, 10, 5, 10, 0).toISOString() }),
       todo({ id: 'x', title: 'Done', done: true, recurrence: 'daily', startDate: new Date(2026, 10, 2).toISOString() }),
     ], days);
-    expect(occ).toEqual({
+    const titles = Object.fromEntries(Object.entries(occ).map(([day, list]) => [day, list.map(t => t.title)]));
+    expect(titles).toEqual({
       '2026-11-02': ['Weekly', 'Every 2 days'],
       '2026-11-04': ['Every 2 days'],
       '2026-11-05': ['Once'],
@@ -45,9 +46,9 @@ describe('calendar utils', () => {
   it('places monthly todos on the same day, or the last day of shorter months', () => {
     const monthly = todo({ title: 'Miete', recurrence: 'monthly', startDate: new Date(2026, 0, 31, 8, 0).toISOString() });
     const nov = buildWeek(new Date(2026, 10, 30)).days; // 30.11. is the last day of November
-    expect(todoOccurrences([monthly], nov)).toEqual({ '2026-11-30': ['Miete'] });
+    expect(todoOccurrences([monthly], nov)).toEqual({ '2026-11-30': [monthly] });
     const bimonthly = { ...monthly, recurrenceInterval: 2 };
-    expect(todoOccurrences([bimonthly], nov)).toEqual({ '2026-11-30': ['Miete'] }); // Jan → Nov: 10 months
+    expect(todoOccurrences([bimonthly], nov)).toEqual({ '2026-11-30': [bimonthly] }); // Jan → Nov: 10 months
     expect(todoOccurrences([bimonthly], buildWeek(new Date(2026, 11, 31)).days)).toEqual({}); // Dec: 11 months
   });
 
@@ -64,6 +65,32 @@ describe('calendar utils', () => {
       { task: never, overdue: false }, { task: overdue, overdue: true },
     ]);
     expect(cleaningEntriesForDay(tasks, '2026-11-05', today)).toEqual([]);
+  });
+
+  it('lists tasks and cleaning per day and moves overdue one-off tasks to today', () => {
+    const today = new Date(2026, 10, 11, 10, 0);
+    const late = todo({ id: 'late', title: 'Steuern', dueDate: new Date(2026, 10, 9, 18).toISOString() });
+    const soon = todo({ id: 'soon', title: 'Velo', dueDate: new Date(2026, 10, 13, 18).toISOString() });
+    const weekly = todo({ id: 'w', title: 'Altpapier', recurrence: 'weekly', startDate: new Date(2026, 10, 9, 7).toISOString() });
+    const undated = todo({ id: 'u', title: 'Irgendwann' });
+    const bath = task({ id: 'bad', name: 'Bad', lastDoneAt: '2026-11-01' });
+    const all = [late, soon, weekly, undated];
+    expect(dayTasks(all, [bath], '2026-11-09', today).map(t => t.key)).toEqual(['todo:w']);
+    expect(dayTasks(all, [bath], '2026-11-11', today).map(t => [t.key, t.overdue])).toEqual([
+      ['todo:late', true], ['cleaning:bad', true],
+    ]);
+    expect(dayTasks(all, [bath], '2026-11-13', today).map(t => t.key)).toEqual(['todo:soon']);
+    expect(dayTasks(all, [bath], '2026-11-16', today).map(t => [t.key, t.recurring])).toEqual([['todo:w', true]]);
+  });
+
+  it('puts overlapping appointments side by side', () => {
+    const at = (h: number, m = 0) => new Date(2026, 10, 11, h, m).toISOString();
+    expect(overlapColumns([
+      { id: 'a', start: at(16), end: at(17, 30) },
+      { id: 'b', start: at(17, 45), end: at(19, 15) },
+      { id: 'c', start: at(19), end: at(20, 30) },
+      { id: 'd', start: at(21), end: at(22) },
+    ])).toEqual({ a: { col: 0, cols: 1 }, b: { col: 0, cols: 2 }, c: { col: 1, cols: 2 }, d: { col: 0, cols: 1 } });
   });
 
   it('maps times to grid pixels', () => {

@@ -1,3 +1,5 @@
+import { filtersChanged, loadFilters, saveFilters } from '../../../shared/utils/filter-memory';
+import { RouterLink } from '@angular/router';
 import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { localIsoDate } from '../../../shared/utils/date-utils';
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
@@ -9,6 +11,8 @@ import { AuthService } from '../../../core/auth/service/auth.service';
 import { finalize, switchMap } from 'rxjs';
 
 type FilterMode = 'all' | 'overdue' | 'upcoming';
+interface CleaningFilters { status: FilterMode; room: string; }
+const DEFAULT_FILTERS: CleaningFilters = { status: 'all', room: '' };
 
 interface TaskForm {
   name: string;
@@ -39,13 +43,13 @@ const CATEGORY_ICONS: Record<CleaningCategory, string> = {
 @Component({
   selector: 'cleaning-page',
   standalone: true,
-  imports: [DialogDirective, CommonModule, FormsModule],
+  imports: [DialogDirective, CommonModule, FormsModule, RouterLink],
   templateUrl: './cleaning.page.html',
   styleUrl: './cleaning.page.css',
 })
 export class CleaningPage implements OnInit {
   tasks: CleaningTask[] = [];
-  filter: FilterMode = 'all';
+  filters: CleaningFilters = loadFilters('cleaning', DEFAULT_FILTERS);
   expandedTaskId: string | null = null;
 
   showModal = false;
@@ -91,16 +95,40 @@ export class CleaningPage implements OnInit {
 
   // ── Filtering ────────────────────────────────────────────────────────────────
 
-  get filtered(): CleaningTask[] {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return this.tasks.filter(t => {
-      if (!t.isActive) return false;
-      if (this.filter === 'overdue') return this.isOverdue(t);
-      if (this.filter === 'upcoming') return !this.isOverdue(t) && this.isDueSoon(t);
-      return true;
-    });
+  setFilter(change: Partial<CleaningFilters>): void {
+    this.filters = { ...this.filters, ...change };
+    saveFilters('cleaning', this.filters);
   }
+
+  resetFilters(): void { this.setFilter(DEFAULT_FILTERS); }
+
+  get filtersActive(): boolean { return filtersChanged(this.filters, DEFAULT_FILTERS); }
+
+  /** Rooms that actually have tasks; the room filter only appears with two or more. */
+  get rooms(): CleaningCategory[] {
+    return [...new Set(this.tasks.filter(t => t.isActive).map(t => t.category))];
+  }
+
+  private matches(t: CleaningTask, status: FilterMode, room: string): boolean {
+    if (!t.isActive || (room && t.category !== room)) return false;
+    if (status === 'overdue') return this.isOverdue(t);
+    if (status === 'upcoming') return !this.isOverdue(t) && this.isDueSoon(t);
+    return true;
+  }
+
+  statusCount(status: FilterMode): number {
+    return this.tasks.filter(t => this.matches(t, status, this.filters.room)).length;
+  }
+
+  /** Most urgent first: overdue (never done first), then by next due date. */
+  get filtered(): CleaningTask[] {
+    const due = (t: CleaningTask) => this.nextDue(t)?.getTime() ?? -Infinity;
+    return this.tasks
+      .filter(t => this.matches(t, this.filters.status, this.filters.room))
+      .sort((a, b) => due(a) - due(b) || a.name.localeCompare(b.name, 'de'));
+  }
+
+  get activeCount(): number { return this.tasks.filter(t => t.isActive).length; }
 
   get overdueCount(): number {
     return this.tasks.filter(t => t.isActive && this.isOverdue(t)).length;

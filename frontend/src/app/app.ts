@@ -5,11 +5,12 @@ import { Navbar } from './core/navbar/navbar';
 import { AuthService } from './core/auth/service/auth.service';
 import { ErrorNoticeService } from './shared/services/error-notice.service';
 import { RecipeCookOverlay } from './shared/recipe-cook-overlay/recipe-cook-overlay';
+import { AssistantLauncher } from './shared/assistant/assistant-launcher';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [AsyncPipe, Navbar, RouterOutlet, RecipeCookOverlay],
+  imports: [AsyncPipe, Navbar, RouterOutlet, RecipeCookOverlay, AssistantLauncher],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

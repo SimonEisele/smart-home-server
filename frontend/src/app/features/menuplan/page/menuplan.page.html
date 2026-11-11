@@ -5,6 +5,10 @@
             <h1 class="page-title">Menüplan</h1>
         </div>
         <div class="page-actions">
+            <div class="segmented" role="group" aria-label="Ansicht"><button [class.active]="view === 'plan'"
+                    [attr.aria-pressed]="view === 'plan'" (click)="view = 'plan'">Menü</button><button
+                    [class.active]="view === 'attendance'" [attr.aria-pressed]="view === 'attendance'"
+                    (click)="view = 'attendance'">Wer isst mit?</button></div>
             <button class="btn-primary" [disabled]="loading || !!loadError || menuSaving"
                 (click)="openExportModal()">Einkauf vorbereiten</button>
         </div>
@@ -16,14 +20,18 @@
                 aria-label="Nächste Woche">›</button><button class="btn-secondary btn-sm" [disabled]="menuSaving"
                 (click)="goToday()">Diese Woche</button></div>
     </div>
+    @if (view === 'plan') {
     <div class="planning-summary"><span><strong>{{ plannedCount }}</strong> von 21 Mahlzeiten
-            geplant</span><span><strong>{{ extrasCount }}</strong> Extras</span><a routerLink="/calendar">Anwesenheiten
-            im Kalender pflegen →</a></div>
-    @if (loading) { <p class="loading-state" role="status">Menüplan wird geladen …</p> }
+            geplant</span><span><strong>{{ extrasCount }}</strong> Extras</span><button class="link-btn"
+            (click)="view = 'attendance'">Wer isst mit? eintragen →</button></div>
+    }
+    @if (loading && view === 'plan') { <p class="loading-state" role="status">Menüplan wird geladen …</p> }
     @if (loadError) { <div class="form-feedback" role="alert">{{ loadError }} <button class="btn-ghost"
             (click)="loadWeek()">Erneut versuchen</button></div> }
     @if (menuError && !activePicker) { <div class="form-feedback" role="alert">{{ menuError }}</div> }
-    @if (!loading && !loadError) {
+    @if (view === 'attendance') {
+    <app-meal-attendance [days]="attendanceDays" (changed)="refreshPersons()"></app-meal-attendance>
+    } @else if (!loading && !loadError) {
     <div class="week-grid">
         @for (day of days; track day.dateStr) {
         <article class="day-col" [class.today]="day.isToday">
@@ -34,8 +42,9 @@
             @for (meal of MEALS; track meal) {
             <section class="meal-slot" [class.filled]="getMealRecipe(day.dateStr,meal)"
                 [class.is-leftovers]="getMealLeftoversRef(day.dateStr,meal)">
-                <header class="meal-label"><span>{{ MEAL_LABELS[meal] }}</span><small>{{
-                        getMealPersons(day.dateStr,meal) }} Pers.</small></header>
+                <header class="meal-label"><span>{{ MEAL_LABELS[meal] }}</span><button class="persons-btn"
+                        (click)="showAttendance()" [attr.aria-label]="getMealPersons(day.dateStr,meal) + ' Personen – wer isst mit?'">{{
+                        getMealPersons(day.dateStr,meal) }} Pers.</button></header>
                 <button class="meal-choice" [disabled]="menuSaving" (click)="openPicker(day.dateStr,meal)"
                     [attr.aria-label]="MEAL_LABELS[meal] + ' am ' + day.dateStr + ' planen'">
                     @if (getMealRecipe(day.dateStr,meal); as recipe) { <strong>{{ recipe.name }}</strong><span
@@ -49,8 +58,10 @@
                 <div class="meal-foot"><span>@if (getMealRecipe(day.dateStr,meal)) { @if
                         (getMealLeftoverPersons(day.dateStr,meal)>0) { + {{ getMealLeftoverPersons(day.dateStr,meal) }}
                         Pers. für Reste } @else if (getMealPersons(day.dateStr,meal)===0) { Keine Anwesenheiten } }
-                        @else { Kein zusätzlicher Einkauf }</span><button [disabled]="menuSaving"
-                        (click)="clearMeal(day.dateStr,meal,$event)"
+                        @else { Kein zusätzlicher Einkauf }</span>@if (getMealRecipe(day.dateStr,meal)) {<button
+                        class="meal-cook" (click)="cookMeal(day.dateStr,meal,$event)"
+                        [attr.aria-label]="MEAL_LABELS[meal] + ' am ' + day.dateStr + ' kochen'">Kochen</button>}<button
+                        [disabled]="menuSaving" (click)="clearMeal(day.dateStr,meal,$event)"
                         [attr.aria-label]="MEAL_LABELS[meal] + ' am ' + day.dateStr + ' entfernen'">×</button></div>
                 }
             </section>
@@ -89,14 +100,20 @@
             @if (menuSaving) { <p role="status">Planung wird gespeichert …</p> }
             @if (pickerTab==='recipe') {
             <label for="recipe-search">Rezept suchen</label><input id="recipe-search" class="picker-search"
-                [(ngModel)]="pickerSearch" placeholder="Name oder Beschreibung" [disabled]="menuSaving" />
+                [(ngModel)]="pickerSearch" placeholder="Name, Beschreibung oder Zutat" [disabled]="menuSaving" />
             <div class="recipe-list">@for (recipe of filteredRecipes; track recipe.id) { <button class="recipe-item"
                     [disabled]="menuSaving" (click)="selectRecipe(recipe)"><strong>{{ recipe.name }}</strong>@if
                     (recipe.description) { <span class="ri-desc">{{ recipe.description }}</span> }<span
                         class="ri-badges">@if (recipe.durationMinutes) { {{ recipe.durationMinutes }} Min. · }{{
-                        recipe.baseServings }} {{ recipe.servingType || 'Portionen' }}</span></button> }@empty { <p
-                    class="picker-empty">Keine passenden Rezepte. <a routerLink="/recipes"
-                        (click)="closePicker()">Rezepte verwalten →</a></p> }</div>
+                        recipe.baseServings }} {{ recipe.servingType || 'Portionen' }}</span></button> }
+                @if (otherRecipes.length) { <p class="recipe-group-label">{{ picker.meal === 'extra' ? 'Hauptgerichte'
+                    : 'Weitere Rezepte' }}</p>
+                @for (recipe of otherRecipes; track recipe.id) { <button class="recipe-item" [disabled]="menuSaving"
+                    (click)="selectRecipe(recipe)"><strong>{{ recipe.name }}</strong><span class="ri-badges">{{
+                        recipeCategoryLabel(recipe) }}@if (recipe.durationMinutes) { · {{ recipe.durationMinutes }}
+                        Min. }</span></button> } }
+                @if (!filteredRecipes.length && !otherRecipes.length) { <p class="picker-empty">Keine passenden
+                    Rezepte. <a routerLink="/recipes" (click)="closePicker()">Rezepte verwalten →</a></p> }</div>
             } @else {
             <div class="leftover-list">@for (option of leftoversOptions; track option.ref) { <button
                     class="leftover-item" [disabled]="menuSaving" (click)="selectLeftovers(option.ref)"><strong>{{
@@ -169,8 +186,7 @@
                                     [attr.aria-label]="extra.recipe.name + ': Menge'" /></label></div> } }
                     </div>
                     }
-                    <a [routerLink]="exporting ? null : '/calendar'" [attr.aria-disabled]="exporting"
-                        (click)="closeExportModal()">Anwesenheiten prüfen →</a>
+                    <button class="link-btn" [disabled]="exporting" (click)="showAttendance()">Wer isst mit? prüfen →</button>
                 </section>
                 <section class="export-preview" aria-live="polite">
                     <header class="export-section-head">
@@ -182,6 +198,8 @@
                     @if (preview; as plan) {
                     @if (plan.warnings.length) { <div class="form-feedback" role="alert">@for (warning of plan.warnings;
                         track $index) { <p>{{ warning }}</p> }</div> }
+                    @if (plan.notices?.length) { <div class="export-notices" role="status">@for (notice of
+                        plan.notices; track $index) { <p>{{ notice }}</p> }</div> }
                     @if (plan.meals.length) { <div class="export-serving-summary">@for (row of plan.meals; track
                         row.key) { <span>{{ row.recipe }}: <strong>{{ row.servings }} {{ row.servingType
                                 }}</strong></span> }</div> }

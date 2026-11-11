@@ -32,22 +32,23 @@
                 + Artikel</button>
         </div>
     </header>
-    <section class="toolbar" aria-label="Einkauf filtern">
-        <div class="segmented" role="group" aria-label="Ansicht">
-            <button *ngFor="let tab of ['all', 'manual', 'menuplan']" [class.active]="activeTab === tab"
-                [attr.aria-pressed]="activeTab === tab"
-                (click)="activeTab = $any(tab); weekFilter = ''; confirmClear = false">
-                {{ tab === 'all' ? 'Alles' : tab === 'manual' ? 'Artikel & Rezepte' : 'Menüplan' }}
-            </button>
+    <section class="filter-bar" aria-label="Einkauf filtern">
+        <div class="filter-chips" role="group" aria-label="Liste">
+            <button *ngFor="let tab of tabs" class="chip" [class.active]="activeTab === tab.value"
+                [attr.aria-pressed]="activeTab === tab.value" (click)="setTab(tab.value)">{{ tab.label }}<span
+                    class="count">{{ tabCount(tab.value) }}</span></button>
         </div>
-        <label class="search"><span class="sr-only">Artikel oder Rezept suchen</span><input type="search"
-                [(ngModel)]="search" (ngModelChange)="confirmClear = false"
-                placeholder="Artikel oder Rezept suchen…" /></label><label
-            *ngIf="activeTab !== 'manual' && weeks.length"><span class="sr-only">Kalenderwoche</span><select
-                [(ngModel)]="weekFilter" (ngModelChange)="confirmClear = false">
-                <option value="">Alle Wochen</option>
-                <option *ngFor="let week of weeks" [value]="week">{{ weekTagLabel(week) }}</option>
-            </select></label>
+        <label class="filter-search"><span class="sr-only">Artikel oder Rezept suchen</span><input type="search"
+                [(ngModel)]="search" (ngModelChange)="filtersChanged()" placeholder="Artikel oder Rezept" /><button
+                type="button" class="filter-clear" *ngIf="search" (click)="search = ''; filtersChanged()"
+                aria-label="Suche leeren">×</button></label>
+        <select class="filter-select" [class.is-set]="!!weekFilter" *ngIf="activeTab !== 'manual' && weeks.length"
+            aria-label="Kalenderwoche" [(ngModel)]="weekFilter" (ngModelChange)="filtersChanged()">
+            <option value="">Alle Wochen</option>
+            <option *ngFor="let week of weeks" [value]="week">{{ weekTagLabel(week) }}</option>
+        </select>
+        <div class="filter-end" *ngIf="filtersActive"><button class="filter-reset"
+                (click)="resetFilters()">Zurücksetzen</button></div>
     </section>
     <div class="progress-panel">
         <strong>{{ uncheckedCount }} offen</strong>

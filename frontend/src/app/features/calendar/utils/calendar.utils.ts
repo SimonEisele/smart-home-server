@@ -65,9 +65,9 @@ function recursOn(todo: Todo, base: Date, day: Date): boolean {
   }
 }
 
-/** Titles of open todos per day of the given week. */
-export function todoOccurrences(todos: Todo[], days: DayEntry[]): Record<string, string[]> {
-  const occ: Record<string, string[]> = {};
+/** Open todos per day of the given week (one-off todos on their date, recurring ones on each occurrence). */
+export function todoOccurrences(todos: Todo[], days: DayEntry[]): Record<string, Todo[]> {
+  const occ: Record<string, Todo[]> = {};
   for (const todo of todos) {
     if (todo.done) continue;
     const anchor = todo.startDate || todo.dueDate;
@@ -75,10 +75,52 @@ export function todoOccurrences(todos: Todo[], days: DayEntry[]): Record<string,
     const base = new Date(anchor);
     if (isNaN(base.getTime())) continue;
     for (const day of days) {
-      if (recursOn(todo, base, day.date)) occ[day.dateStr] = [...(occ[day.dateStr] ?? []), todo.title];
+      if (recursOn(todo, base, day.date)) occ[day.dateStr] = [...(occ[day.dateStr] ?? []), todo];
     }
   }
   return occ;
+}
+
+/** Something to tick off on a day: a task or a cleaning job. */
+export interface DayTask {
+  kind: 'todo' | 'cleaning';
+  key: string;
+  title: string;
+  overdue: boolean;
+  recurring: boolean;
+  todo?: Todo;
+  cleaning?: CleaningTask;
+}
+
+/** A one-off todo is overdue once its (due or start) day has passed. */
+export function todoOverdue(todo: Todo, today = new Date()): boolean {
+  const anchor = todo.dueDate || todo.startDate;
+  if (todo.done || todo.recurrence || !anchor) return false;
+  return daysBetween(new Date(anchor), today) > 0;
+}
+
+/**
+ * Everything to tick off on `dateStr`: dated and recurring todos plus due cleaning.
+ * Overdue one-off todos and cleaning move to today instead of staying on past days.
+ */
+export function dayTasks(todos: Todo[], cleaning: CleaningTask[], dateStr: string, today = new Date()): DayTask[] {
+  const day = parseLocalDate(dateStr);
+  const offset = daysBetween(today, day);
+  const tasks: DayTask[] = [];
+  for (const todo of todos) {
+    if (todo.done) continue;
+    const anchor = todo.startDate || todo.dueDate;
+    const overdue = todoOverdue(todo, today);
+    const onDay = !!anchor && !overdue && recursOn(todo, new Date(anchor), day);
+    if (onDay || (overdue && offset === 0)) {
+      tasks.push({ kind: 'todo', key: `todo:${todo.id}`, title: todo.title, overdue, recurring: !!todo.recurrence, todo });
+    }
+  }
+  for (const entry of cleaningEntriesForDay(cleaning, dateStr, today)) {
+    tasks.push({ kind: 'cleaning', key: `cleaning:${entry.task.id}`, title: entry.task.name,
+                 overdue: entry.overdue, recurring: true, cleaning: entry.task });
+  }
+  return tasks.sort((a, b) => Number(b.overdue) - Number(a.overdue));
 }
 
 /** Next due day of a cleaning task; never done means due today. */
@@ -119,4 +161,30 @@ export function formatDuration(min?: number | null): string {
   if (!min) return '';
   const h = Math.floor(min / 60), m = min % 60;
   return m ? `${h}h${m}` : `${h}h`;
+}
+
+/**
+ * Side-by-side columns for overlapping appointments of one day.
+ * Returns, per event id, its column and the number of columns in its overlap group.
+ */
+export function overlapColumns(events: { id: string; start: string; end?: string | null }[]):
+    Record<string, { col: number; cols: number }> {
+  const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start));
+  const result: Record<string, { col: number; cols: number }> = {};
+  let group: string[] = [];
+  let colEnds: number[] = [];
+  let groupEnd = -Infinity;
+  const close = () => { for (const id of group) result[id].cols = colEnds.length; group = []; colEnds = []; };
+  for (const ev of sorted) {
+    const start = new Date(ev.start).getTime();
+    const end = ev.end ? new Date(ev.end).getTime() : start + 3_600_000;
+    if (start >= groupEnd) close();
+    let col = colEnds.findIndex(colEnd => colEnd <= start);
+    if (col === -1) { col = colEnds.length; colEnds.push(end); } else colEnds[col] = end;
+    result[ev.id] = { col, cols: 1 };
+    group.push(ev.id);
+    groupEnd = Math.max(groupEnd, end);
+  }
+  close();
+  return result;
 }

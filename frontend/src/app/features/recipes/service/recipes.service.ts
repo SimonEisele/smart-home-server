@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { Ingredient, Recipe } from '../model/recipes.model';
+import { UnlinkedIngredient } from '../../ingredients/model/ingredient.model';
 
 @Injectable({ providedIn: 'root' })
 export class RecipesService {
@@ -34,6 +35,20 @@ export class RecipesService {
 
   updateIngredient(id: number, data: Partial<Ingredient>): Observable<Ingredient> {
     return this.http.patch<{ data: Ingredient }>(`${environment.apiUrl}/ingredients/${id}/`, data).pipe(map(r => r.data));
+  }
+
+  /** Freely typed recipe ingredients of the active WG that are not in the catalog. */
+  getUnlinkedIngredients(): Observable<UnlinkedIngredient[]> {
+    return this.http
+      .get<{ data: UnlinkedIngredient[] }>(`${environment.apiUrl}/ingredients/unlinked/`)
+      .pipe(map((r) => r.data));
+  }
+
+  /** Folds `id` into `targetId`; recipes using the duplicate then use the target. */
+  mergeIngredient(id: number, targetId: number): Observable<Ingredient> {
+    return this.http
+      .post<{ data: Ingredient }>(`${environment.apiUrl}/ingredients/${id}/merge/`, { targetId })
+      .pipe(map((r) => r.data));
   }
 
   deleteIngredient(id: number): Observable<void> {

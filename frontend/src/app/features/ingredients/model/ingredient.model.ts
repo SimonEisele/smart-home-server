@@ -9,6 +9,13 @@ export interface Ingredient {
   usageCount?: number;
 }
 
+export interface UnlinkedIngredient {
+  name: string;
+  suggestedUnit: string;
+  recipes: string[];
+  usageCount: number;
+}
+
 export const INGREDIENT_CATEGORIES = [
   { value: 'gemuese', label: 'Gemüse' },
   { value: 'obst', label: 'Obst' },

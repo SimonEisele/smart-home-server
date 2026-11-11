@@ -8,12 +8,7 @@
             <h1 class="page-title">Kalender</h1>
         </div>
         <div class="page-actions">
-            <div class="segmented" role="group" aria-label="Kalenderansicht"><button
-            [class.active]="calendarView === 'schedule'" [attr.aria-pressed]="calendarView === 'schedule'"
-            (click)="calendarView = 'schedule'">Termine & Aufgaben</button><button
-            [class.active]="calendarView === 'attendance'" [attr.aria-pressed]="calendarView === 'attendance'"
-            (click)="calendarView = 'attendance'">Anwesenheiten & Mahlzeiten</button></div>
-            <button [hidden]="calendarView !== 'schedule'" class="btn-primary" (click)="openNewEvent()">+ Termin</button>
+            <button class="btn-primary" (click)="openNewEvent()">+ Termin</button>
         </div>
     </header>
 
@@ -22,129 +17,80 @@
             <button class="btn-icon" (click)="prevWeek()" aria-label="Vorherige Woche">‹</button>
             <span class="week-nav-label">{{ weekLabel }}</span>
             <button class="btn-icon" (click)="nextWeek()" aria-label="Nächste Woche">›</button>
-            <button class="btn-secondary btn-sm" (click)="goToday()">Heute</button>
+            <button class="btn-secondary btn-sm" [hidden]="isCurrentWeek" (click)="goToday()">Heute</button>
         </div>
-        <div class="chip-group cal-filters" role="group" aria-label="Anzeigen" [hidden]="calendarView !== 'schedule'">
-            <button class="chip filter-wg" [class.active]="showHousehold" [attr.aria-pressed]="showHousehold"
-                (click)="showHousehold = !showHousehold">WG</button>
-            <button class="chip filter-private" [class.active]="showPrivate" [attr.aria-pressed]="showPrivate"
-                (click)="showPrivate = !showPrivate">Privat</button>
-            <button class="chip filter-todos" [class.active]="showTodos" [attr.aria-pressed]="showTodos"
-                (click)="showTodos = !showTodos">Aufgaben</button>
+        <div class="cal-legend" role="group" aria-label="Anzeigen">
+            <button class="legend-item legend-wg" [class.off]="!showHousehold" [attr.aria-pressed]="showHousehold"
+                (click)="showHousehold = !showHousehold"><i aria-hidden="true"></i>WG</button>
+            <button class="legend-item legend-private" [class.off]="!showPrivate" [attr.aria-pressed]="showPrivate"
+                (click)="showPrivate = !showPrivate"><i aria-hidden="true"></i>Privat</button>
+            <button class="legend-item legend-todo" [class.off]="!showTodos" [attr.aria-pressed]="showTodos"
+                (click)="showTodos = !showTodos"><i aria-hidden="true"></i>Aufgaben</button>
+            <button class="legend-item legend-cleaning" [class.off]="!showCleaning" [attr.aria-pressed]="showCleaning"
+                (click)="showCleaning = !showCleaning"><i aria-hidden="true"></i>Putzen</button>
         </div>
     </div>
 
     @if (planningError) { <div class="form-feedback" role="alert">{{ planningError }}</div> }
-    @if (calendarView === 'attendance') {
-    <section class="attendance-workspace" aria-labelledby="attendance-heading">
-        <header class="attendance-heading">
-            <div>
-                <h2 id="attendance-heading">Wer isst mit?</h2>
-            </div>
-        </header>
-        @if (isHouseholdAccount) { <p class="attendance-note">Du siehst die Planung der WG. Eigene Anwesenheiten trägst
-            du über dein persönliches Konto ein.</p> }
-        @if (attendanceLoading) { <p role="status">Anwesenheiten werden geladen …</p> }
-        @if (attendanceError) { <div class="form-feedback" role="alert">{{ attendanceError }} <button class="btn-ghost"
-                (click)="loadAttendance()">Neu laden</button></div> }
-        <div class="attendance-days">
-            @for (day of weekDays; track day.dateStr) {
-            <article class="attendance-day" [class.is-today]="day.isToday">
-                <header>
-                    <h3>{{ day.dayName }} <span>{{ day.dayNum }}.{{ day.month }}.</span> @if (day.isToday) {
-                        <small>Heute</small> }
-                    </h3>
-                    @if (!isHouseholdAccount) { <button class="attendance-day-action"
-                        [disabled]="attendanceLoading || !attendanceReady || attendancePending.has(day.dateStr)"
-                        (click)="toggleWholeDay(day.dateStr)">{{ allMealsActive(day.dateStr) ? 'Tag abmelden' : 'Ganzer
-                        Tag' }}</button> }
-                </header>
-                @for (meal of MEALS; track meal.key) {
-                <div class="attendance-meal">
-                    <div class="attendance-meal-top">
-                        @if (!isHouseholdAccount) {
-                        <button class="attendance-toggle" [class.is-present]="mealIsActive(day.dateStr, meal.key)"
-                            [attr.aria-pressed]="mealIsActive(day.dateStr, meal.key)"
-                            [attr.aria-label]="meal.label + ' am ' + day.dateStr + ': ' + (mealIsActive(day.dateStr, meal.key) ? 'Ich esse mit' : 'Ich esse nicht mit')"
-                            [disabled]="attendanceLoading || !attendanceReady || attendancePending.has(day.dateStr)"
-                            (click)="toggleMealAttendance(day.dateStr, meal.key)">
-                            <span class="attendance-check" aria-hidden="true">{{ mealIsActive(day.dateStr, meal.key) ?
-                                '✓' : '–' }}</span><span>{{ meal.label }}<small>{{ mealIsActive(day.dateStr, meal.key) ?
-                                    'Ich esse mit' : 'Ich esse nicht mit' }}</small></span>
-                        </button>
-                        } @else { <strong>{{ meal.label }}</strong> }
-                        <span class="attendance-count">{{ mealAttendeesForDay(day.dateStr, meal.key).length +
-                            externalGuestsForMeal(day.dateStr, meal.key).length }} Pers.</span>
-                    </div>
-                    <div class="attendance-people">
-                        @for (a of mealAttendeesForDay(day.dateStr, meal.key); track a.id) { <span
-                            class="attendance-person">{{ a.userId === currentUserId ? 'Ich' : attendanceDisplayName(a)
-                            }}</span> }
-                        @for (g of externalGuestsForMeal(day.dateStr, meal.key); track g.id) { <span
-                            class="attendance-person guest">{{ g.name }} <small>Gast</small><button
-                                [disabled]="guestDeleting.has(g.id)" (click)="removeExternalGuest(g.id, $event)"
-                                [attr.aria-label]="g.name + ' entfernen'">×</button></span> }
-                    </div>
-                    <button class="attendance-add-guest" (click)="openAddGuest(day.dateStr, meal.key, $event)">+ Gast
-                        hinzufügen</button>
-                </div>
-                }
-                @if (attendancePending.has(day.dateStr)) { <span class="attendance-saving" role="status">Wird
-                    gespeichert …</span> }
-            </article>
+    <!-- ── Phone: agenda per day ─────────────────────────────────────────────── -->
+    <section class="agenda-view" aria-label="Wochenagenda">
+        @if (openTodos.length) {
+        <div class="agenda-tasks">
+            <h2>Noch einplanen</h2>
+            @for (todo of openTodos; track todo.id) {
+            <div class="agenda-task"><span><strong>{{ todo.title }}</strong><small>{{ formatDuration(todo.durationMinutes)
+                    }}@if (todo.durationMinutes && todo.dueDate) { · }{{ todoDueLabel(todo) }}</small></span><button
+                    (click)="openPlan(todo, undefined, undefined, 0, $event)">Einplanen</button></div>
             }
         </div>
-    </section>
-
-    } @else {
-    <section class="agenda-view" aria-label="Wochenagenda">
-        <div class="agenda-tasks" *ngIf="openTodos.length">
-            <h2>Aufgaben einplanen</h2>
-            <div *ngFor="let todo of openTodos" class="agenda-task"><span>{{ todo.title }}</span><button
-                    (click)="openSplitDirect(todo, $event)">Einplanen</button></div>
-        </div>
-        <article class="agenda-day" *ngFor="let day of weekDays" [class.agenda-today]="day.isToday">
+        }
+        @for (day of weekDays; track day.dateStr) {
+        <article class="agenda-day" [class.agenda-today]="day.isToday">
             <header>
-                <h2>{{ day.dayName }} <span>{{ day.dayNum }}.</span> <small *ngIf="day.isToday">Heute</small></h2>
+                <h2>{{ day.dayName }} <span>{{ day.dayNum }}.{{ day.month }}.</span> @if (day.isToday) { <small>Heute</small> }</h2>
                 <button (click)="openNewEvent(day.dateStr)"
                     [attr.aria-label]="'Termin am ' + day.dateStr + ' hinzufügen'">+ Termin</button>
             </header>
-            <button *ngFor="let event of allDayEventsForDay(day.dateStr)" class="agenda-event"
-                (click)="onEvClick(event, $event)"><span>Ganztägig</span><strong>{{ event.title }}</strong></button>
-            <button *ngFor="let event of eventsForDay(day.dateStr)" class="agenda-event"
-                (click)="onEvClick(event, $event)"><span>{{ event.start | date:'HH:mm' }}<small>{{ event.end |
-                        date:'HH:mm' }}</small></span><strong>{{ event.title }}<small *ngIf="event.location">{{
-                        event.location }}</small></strong></button>
-            <a *ngFor="let cleaning of cleaningEventsForDay(day.dateStr)" class="agenda-cleaning"
-                routerLink="/cleaning">Reinigung: {{ cleaning.task.name }}</a>
-            <p class="agenda-empty"
-                *ngIf="!eventsForDay(day.dateStr).length && !allDayEventsForDay(day.dateStr).length && !cleaningEventsForDay(day.dateStr).length">
-                Noch keine Termine.</p>
+            @for (item of tasksForDay(day.dateStr); track item.key) {
+            <div class="day-task agenda-check" [class.overdue]="item.overdue" [class.is-cleaning]="item.kind === 'cleaning'">
+                <button class="task-check" [disabled]="completing.has(item.key)"
+                    (click)="completeTask(item, day.dateStr, $event)"
+                    [attr.aria-label]="item.title + (item.kind === 'cleaning' ? ' als geputzt markieren' : ' erledigen')"></button>
+                <span class="task-title">{{ item.title }}</span>
+                <small>{{ item.overdue ? 'überfällig' : item.kind === 'cleaning' ? 'Putzen' : item.recurring ? 'wiederkehrend' : 'fällig' }}</small>
+            </div>
+            }
+            @for (event of allDayEventsForDay(day.dateStr); track event.id) {
+            <button class="agenda-event" (click)="onEvClick(event, $event)"><span>Ganztägig</span><strong>{{ event.title }}</strong></button>
+            }
+            @for (event of eventsForDay(day.dateStr); track event.id) {
+            <button class="agenda-event" [class.agenda-private]="event.calendarType === 'private'"
+                [class.agenda-linked]="!!event.todoRefId" (click)="onEvClick(event, $event)"><span>{{ event.start | date:'HH:mm' }}<small>{{
+                        event.end | date:'HH:mm' }}</small></span><strong>{{ event.title }}@if (event.location) { <small>{{
+                        event.location }}</small> }</strong></button>
+            }
+            @if (!eventsForDay(day.dateStr).length && !allDayEventsForDay(day.dateStr).length && !tasksForDay(day.dateStr).length) {
+            <p class="agenda-empty">Frei.</p>
+            }
         </article>
+        }
     </section>
 
-    <!-- ── Main layout: sidebar + week grid ────────────────────────────────── -->
+    <!-- ── Desktop: sidebar + week grid ──────────────────────────────────────── -->
     <div class="cal-main">
 
-        <!-- Todo sidebar -->
         <aside class="todo-sidebar"
             [class.sidebar-drop-target]="sidebarDragOver || (touchOverSidebar && !!touchDragEvent?.todoRefId)"
             (dragover)="onSidebarDragover($event)" (dragleave)="onSidebarDragleave($event)"
             (drop)="onSidebarDrop($event)">
-            <div class="sidebar-title">Noch nicht eingeplant</div>
+            <div class="sidebar-title">Noch einplanen</div>
             @if (sidebarDragOver || (touchOverSidebar && touchDragEvent?.todoRefId)) {
-            <div class="sidebar-delete-hint">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                    style="width:14px;height:14px;flex-shrink:0">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-                Planung entfernen · Aufgabe behalten
-            </div>
+            <div class="sidebar-delete-hint">Hier ablegen: Planung entfernen, Aufgabe bleibt</div>
             }
             @if (openTodos.length === 0) {
-            <div class="sidebar-empty">Alle offenen Aufgaben dieser Woche sind eingeplant.</div>
+            <div class="sidebar-empty">Alle offenen Aufgaben haben einen Zeitblock. <a routerLink="/todos">Aufgaben →</a></div>
+            } @else {
+            <p class="sidebar-help">In den Kalender ziehen oder „Einplanen“ wählen.</p>
             }
             @for (todo of openTodos; track todo.id) {
             <div class="todo-drag-item" draggable="true" (dragstart)="onTodoDragstart($event, todo)"
@@ -152,117 +98,93 @@
                 <span class="priority-dot prio-{{ todo.priority ?? 'medium' }}"></span>
                 <div class="todo-drag-info">
                     <span class="todo-drag-title">{{ todo.title }}</span>
-                    @if (todo.durationMinutes) {
-                    <span class="todo-drag-dur">{{ formatDuration(todo.durationMinutes) }}</span>
-                    }
-                </div> @if (todo.durationMinutes) {
-                <button class="split-direct-btn" (click)="openSplitDirect(todo, $event)" title="Aufteilen">⧁</button>
-                } <span class="drag-handle">⠿</span>
+                    <span class="todo-drag-dur" [class.is-overdue]="todo.dueDate && todoDueLabel(todo).startsWith('Über')">{{
+                        formatDuration(todo.durationMinutes) || 'ohne Dauer' }}@if (todo.dueDate) { · {{ todoDueLabel(todo) }} }</span>
+                </div>
+                <button class="plan-btn" (click)="openPlan(todo, undefined, undefined, 0, $event)"
+                    (touchstart)="$event.stopPropagation()" [attr.aria-label]="todo.title + ' einplanen'">Einplanen</button>
             </div>
             }
+            <a class="sidebar-link" routerLink="/cleaning">Putzplan →</a>
         </aside>
 
-        <!-- Week grid -->
         <div class="cal-grid-outer">
-
-            <!-- Day headers row -->
             <div class="day-headers-row">
                 <div class="time-gutter-head"></div>
                 @for (day of weekDays; track day.dateStr) {
                 <div class="day-header" [class.today-head]="day.isToday">
-                    <span class="day-name">{{ day.dayName }}</span>
-                    <span class="day-num" [class.today-num]="day.isToday">{{ day.dayNum }}</span>
-                    <!-- All-day events -->
+                    <button class="day-head-btn" (click)="openNewEvent(day.dateStr)"
+                        [attr.aria-label]="'Termin am ' + day.dateStr + ' hinzufügen'"><span class="day-name">{{ day.dayName
+                            }}</span><span class="day-num" [class.today-num]="day.isToday">{{ day.dayNum }}</span></button>
                     @for (ev of allDayEventsForDay(day.dateStr); track ev.id) {
                     <div class="allday-ev ev-{{ ev.calendarType ?? 'household' }}" (click)="onEvClick(ev, $event)">{{
                         ev.title }}</div>
                     }
-                    <!-- Cleaning task pills -->
-                    @for (ce of cleaningEventsForDay(day.dateStr); track ce.task.id) {
-                    <a class="allday-ev ev-cleaning" [class.ev-cleaning-overdue]="ce.overdue" routerLink="/cleaning"
-                        title="{{ ce.task.name }}">
-                        {{ ce.task.name }}
-                    </a>
-                    }
-                    <!-- Todo occurrence pills -->
-                    @if (showTodos && todoOccurrences[day.dateStr]?.length) {
-                    <div class="todo-occ-pills">
-                        @for (t of todoOccurrences[day.dateStr]; track t) {
-                        <span class="todo-pill">{{ t }}</span>
-                        }
+                    @for (item of tasksForDay(day.dateStr); track item.key) {
+                    <div class="day-task" [class.overdue]="item.overdue" [class.is-cleaning]="item.kind === 'cleaning'"
+                        [title]="item.title + (item.overdue ? ' (überfällig)' : '')">
+                        <button class="task-check" [disabled]="completing.has(item.key)"
+                            (click)="completeTask(item, day.dateStr, $event)"
+                            [attr.aria-label]="item.title + (item.kind === 'cleaning' ? ' als geputzt markieren' : ' erledigen')"></button>
+                        <span class="task-title" [class.clickable]="item.todo && !item.recurring"
+                            (click)="openDayTask(item, day.dateStr)">{{ item.title }}</span>
                     </div>
                     }
                 </div>
                 }
             </div>
 
-            <!-- Scrollable time grid -->
             <div class="grid-scroll" id="grid-scroll">
                 <div class="grid-inner">
-
-                    <!-- Hour labels -->
                     <div class="time-gutter">
                         @for (h of gridHours; track h) {
                         <div class="hour-label">{{ h }}:00</div>
                         }
                     </div>
-
-                    <!-- Day columns -->
                     <div class="day-cols">
                         @for (day of weekDays; track day.dateStr) {
                         <div class="day-col" [class.today-col]="day.isToday" [attr.data-date]="day.dateStr"
                             (dragover)="onColDragover($event, day)" (drop)="onColDrop($event, day)"
                             (click)="onColClick($event, day)">
-
-                            <!-- Hour-line backgrounds -->
                             @for (h of gridHours; track h) {
                             <div class="hour-row"></div>
                             }
-
-                            <!-- Timed events -->
                             @for (ev of eventsForDay(day.dateStr); track ev.id) {
                             <div [class]="evClass(ev)" [class.ev-dragging]="touchDraggingEventId === ev.id"
                                 [style.top.px]="evTop(ev)" [style.height.px]="evHeight(ev)"
+                                [style.left]="evLane(ev, day.dateStr).left" [style.width]="evLane(ev, day.dateStr).width"
                                 [style.backgroundColor]="evColor(ev) || null" draggable="true"
                                 (dragstart)="onEvDragstart($event, ev)" (touchstart)="onEvTouchStart($event, ev)"
                                 (click)="onEvClick(ev, $event)">
-                                <span class="ev-time">{{ ev.start | date:'HH:mm' }}</span>
+                                <span class="ev-time">{{ ev.start | date:'HH:mm' }}@if (ev.end) {–{{ ev.end | date:'HH:mm' }}}</span>
                                 <span class="ev-title">{{ ev.title }}</span>
-                                @if (ev.todoRefId) { <span class="ev-todo-badge">{{ linkedTodo(ev)?.done ? 'Erledigt' :
-                                    'Aufgabe' }}</span> }
-                                @if (ev.location) { <span class="ev-location"> {{ ev.location }}</span> }
+                                @if (ev.location) { <span class="ev-location">{{ ev.location }}</span> }
                                 <div class="resize-handle" draggable="true" (dragstart)="onResizeDragstart($event, ev)"
                                     (touchstart)="onResizeTouchStart($event, ev)" (click)="$event.stopPropagation()">
                                 </div>
                             </div>
                             }
-
-                            <!-- Drop preview -->
                             @if (dropPreview && dropPreview.dateStr === day.dateStr) {
                             <div class="drop-prev" [style.top.px]="dropPreview.top" [style.height.px]="dropPreview.h">
                                 <span class="drop-time">{{ dropPreview.label }}</span>
                             </div>
                             }
-
-                            <!-- Current-time indicator -->
                             @if (day.isToday && nowVisible) {
                             <div class="now-line" [style.top.px]="nowTop">
                                 <div class="now-dot"></div>
                             </div>
                             }
-
                         </div>
                         }
-                    </div><!-- .day-cols -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                </div><!-- .grid-inner -->
-            </div><!-- .grid-scroll -->
-
-        </div><!-- .cal-grid-outer -->
-    </div><!-- .cal-main -->
+    @if (undoAction) {
+    <div class="undo-toast" role="status"><span>{{ undoAction.message }}</span><button (click)="undo()">Rückgängig</button></div>
     }
-
-
 </section>
 
 <!-- ── Event modal ─────────────────────────────────────────────────────────── -->
@@ -277,66 +199,64 @@
 
         <div class="modal-body">
             <div class="form-feedback" role="alert" *ngIf="eventError">{{ eventError }}</div>
-            @if (editingEvent?.todoRefId) { <div class="linked-task-note"><strong>Mit einer Aufgabe verknüpft</strong>
-                <p>Titel, Beschreibung und Sichtbarkeit kommen aus der Aufgabe. Hier bearbeitest du ihren Zeitblock.
-                    Weitere Zeitblöcke bleiben beim Entfernen dieser Planung erhalten.</p><a routerLink="/todos"
-                    (click)="closeModal()">Aufgaben verwalten →</a>@if (linkedTodo(editingEvent)?.done) { <span> ·
-                    Bereits erledigt</span> }
+            @if (editingEvent?.todoRefId) { <div class="linked-task-note"><strong>Zeitblock für eine Aufgabe</strong>
+                <p>Titel und Sichtbarkeit kommen aus der Aufgabe. Hier verschiebst du nur den Block.</p>
+                <div class="linked-actions">@if (linkedTodo(editingEvent); as todo) { @if (!todo.done) { <button
+                        class="btn-secondary btn-sm" (click)="completeLinkedTodo()">✓ Aufgabe erledigt</button> } @else {
+                    <span class="linked-done">Bereits erledigt</span> } }<a routerLink="/todos" (click)="closeModal()">Zur
+                        Aufgabe →</a></div>
             </div> }
-            <input class="glass-input" [readonly]="!!editingEvent?.todoRefId" [(ngModel)]="modalForm.title"
-                placeholder="Titel *" autofocus />
+            <input class="glass-input title-input" [readonly]="!!editingEvent?.todoRefId" [(ngModel)]="modalForm.title"
+                placeholder="Titel" aria-label="Titel" />
 
-            <div class="form-row">
-                <label>Datum</label>
-                <input class="glass-input" type="date" [(ngModel)]="modalForm.date" />
-            </div>
-
-            <div class="form-row">
-                <label>
-                    <input type="checkbox" [(ngModel)]="modalForm.allDay" />
-                    Ganztägig
-                </label>
-            </div>
-
-            @if (!modalForm.allDay) {
-            <div class="form-row time-row">
-                <div>
-                    <label>Von</label>
-                    <input class="glass-input" type="time" [(ngModel)]="modalForm.startTime" step="900" />
-                </div>
-                <div>
-                    <label>Bis</label>
-                    <input class="glass-input" type="time" [(ngModel)]="modalForm.endTime" step="900" />
-                </div>
-            </div>
+            @if (!editingEvent?.todoRefId) {
+            <div class="segmented type-switch" role="group" aria-label="Kalender"><button type="button"
+                    [class.active]="modalForm.calendarType === 'household'"
+                    [attr.aria-pressed]="modalForm.calendarType === 'household'"
+                    (click)="modalForm.calendarType = 'household'">WG</button><button type="button"
+                    [class.active]="modalForm.calendarType === 'private'"
+                    [attr.aria-pressed]="modalForm.calendarType === 'private'"
+                    (click)="modalForm.calendarType = 'private'">Nur für mich</button></div>
             }
 
-            <div class="form-row">
-                <label>Kalender</label>
-                <select class="glass-input" [disabled]="!!editingEvent?.todoRefId" [(ngModel)]="modalForm.calendarType">
-                    <option value="household">WG-Kalender</option>
-                    <option value="private">Privat</option>
-                </select>
+            <div class="form-row time-row">
+                <div class="date-field">
+                    <label for="ev-date">Datum</label>
+                    <input id="ev-date" class="glass-input" type="date" [(ngModel)]="modalForm.date" />
+                </div>
+                @if (!modalForm.allDay) {
+                <div>
+                    <label for="ev-start">Von</label>
+                    <input id="ev-start" class="glass-input" type="time" [(ngModel)]="modalForm.startTime" step="900" />
+                </div>
+                <div>
+                    <label for="ev-end">Bis</label>
+                    <input id="ev-end" class="glass-input" type="time" [(ngModel)]="modalForm.endTime" step="900" />
+                </div>
+                }
             </div>
+            <label class="check-row"><input type="checkbox" [(ngModel)]="modalForm.allDay" /> Ganztägig</label>
 
+            @if (!showMoreOptions) {
+            <button type="button" class="more-toggle" (click)="showMoreOptions = true">+ Ort, Notiz, Farbe</button>
+            } @else {
             <div class="form-row">
-                <label>Ort</label>
-                <input class="glass-input" [(ngModel)]="modalForm.location" placeholder="Ort (optional)" />
+                <label for="ev-location">Ort</label>
+                <input id="ev-location" class="glass-input" [(ngModel)]="modalForm.location" placeholder="Optional" />
             </div>
-
             <div class="form-row">
-                <label>Beschreibung</label>
-                <textarea class="glass-input" [readonly]="!!editingEvent?.todoRefId" [(ngModel)]="modalForm.description"
-                    placeholder="Notizen…" rows="2"></textarea>
+                <label for="ev-notes">Notiz</label>
+                <textarea id="ev-notes" class="glass-input" [readonly]="!!editingEvent?.todoRefId"
+                    [(ngModel)]="modalForm.description" placeholder="Optional" rows="2"></textarea>
             </div>
-
             <div class="form-row color-row">
                 <label>Farbe</label>
-                <input class="color-picker" type="color" [(ngModel)]="modalForm.color" />
+                <input class="color-picker" type="color" [(ngModel)]="modalForm.color" aria-label="Farbe" />
                 @if (modalForm.color) {
                 <button class="btn-ghost btn-sm" (click)="modalForm.color = ''">Zurücksetzen</button>
                 }
             </div>
+            }
         </div>
 
         <div class="modal-foot">
@@ -353,71 +273,50 @@
 </div>
 }
 
-<!-- ── Split modal ──────────────────────────────────────────────────────────── -->
-@if (showSplitModal && splitTodo) {
-<div class="modal-backdrop" (click)="cancelSplit()">
-    <div class="modal-panel split-panel" (click)="$event.stopPropagation()" aria-label="Termin" appDialog
-        (dialogDismiss)="cancelSplit()">
+<!-- ── Einplanen ─────────────────────────────────────────────────────────────── -->
+@if (planTodo; as todo) {
+<div class="modal-backdrop" (click)="closePlan()">
+    <div class="modal-panel plan-panel" (click)="$event.stopPropagation()" aria-label="Aufgabe einplanen" appDialog
+        (dialogDismiss)="closePlan()">
         <div class="modal-head">
-            <h3>Todo aufteilen</h3>
-            <button class="modal-close" (click)="cancelSplit()">✕</button>
+            <div>
+                <h3>Einplanen</h3>
+                <p class="plan-subtitle">{{ todo.title }}@if (todo.dueDate) { · {{ todoDueLabel(todo) }} }</p>
+            </div>
+            <button class="modal-close" (click)="closePlan()" [disabled]="planSaving" aria-label="Schliessen">✕</button>
         </div>
         <div class="modal-body">
-            <p class="split-todo-name">{{ splitTodo.title }}</p>
-            <p class="split-total">Gesamtdauer: {{ formatDuration(splitTodo.durationMinutes) }}</p>
-            <div class="split-date-row">
-                <div>
-                    <label>Datum</label>
-                    <input class="glass-input" type="date" [(ngModel)]="splitDate" />
+            @if (planError) { <div class="form-feedback" role="alert">{{ planError }}</div> }
+            <div class="form-row time-row">
+                <div class="date-field">
+                    <label for="plan-date">Datum</label>
+                    <input id="plan-date" class="glass-input" type="date" [(ngModel)]="planForm.date" />
                 </div>
                 <div>
-                    <label>Startzeit</label>
-                    <input class="glass-input" type="time" [(ngModel)]="splitTimeStr" step="900" />
+                    <label for="plan-time">Beginn</label>
+                    <input id="plan-time" class="glass-input" type="time" step="900" [(ngModel)]="planForm.time" />
+                </div>
+                <div>
+                    <label for="plan-duration">Dauer (Min.)</label>
+                    <input id="plan-duration" class="glass-input" type="number" min="5" step="15"
+                        [(ngModel)]="planForm.duration" />
                 </div>
             </div>
-            <div class="split-stepper">
-                <button class="stepper-btn" (click)="splitCount = splitCount > 2 ? splitCount - 1 : 2">−</button>
-                <div class="split-display">
-                    <span class="split-n">{{ splitCount }}×</span>
-                    <span class="split-dur">{{ formatDuration(splitSessionDuration()) }}</span>
-                </div>
-                <button class="stepper-btn" (click)="splitCount = splitCount + 1">+</button>
+            <div class="plan-blocks">
+                <span>Aufteilen</span>
+                <div class="plan-stepper"><button class="stepper-btn" (click)="setPlanBlocks(-1)"
+                        [disabled]="planForm.blocks <= 1" aria-label="Weniger Blöcke">−</button><strong>{{ planForm.blocks === 1 ?
+                        'Ein Block' : planForm.blocks + ' Blöcke' }}</strong><button class="stepper-btn"
+                        (click)="setPlanBlocks(1)" [disabled]="planForm.blocks >= 8" aria-label="Mehr Blöcke">+</button></div>
+                <small>{{ planForm.blocks === 1 ? formatDuration(planBlockMinutes) || planBlockMinutes + ' Min.' :
+                    'je ' + planBlockMinutes + ' Min., 15 Min. Pause dazwischen' }}</small>
             </div>
-            <p class="split-note">Jede Einheit mit 15 Min. Pause</p>
         </div>
         <div class="modal-foot">
-            <button class="btn-ghost" (click)="cancelSplit()">Abbrechen</button>
-            <button class="btn-outline" (click)="addSplitWhole()">Als Ganzes ({{
-                formatDuration(splitTodo.durationMinutes) }})</button>
-            <button class="btn-primary" (click)="confirmSplit()">Aufteilen</button>
+            <button class="btn-ghost" (click)="closePlan()" [disabled]="planSaving">Abbrechen</button>
+            <button class="btn-primary" (click)="confirmPlan()" [disabled]="planSaving">{{ planSaving ? 'Wird eingeplant …' :
+                'Einplanen' }}</button>
         </div>
-    </div>
-</div>
-}
-
-@if (addingGuestFor; as target) {
-<div class="modal-backdrop" (click)="closeAddGuest()">
-    <div class="modal-panel attendance-guest-dialog" appDialog aria-label="Gast hinzufügen"
-        (dialogDismiss)="closeAddGuest()" (click)="$event.stopPropagation()">
-        <header class="modal-head">
-            <div>
-                <h3>Gast hinzufügen</h3>
-                <p>{{ target.dateStr | date:'EEEE, d. MMMM' }} · {{ mealLabel(target.meal) }}</p>
-            </div><button class="modal-close" [disabled]="guestSaving" (click)="closeAddGuest()"
-                aria-label="Schliessen">×</button>
-        </header>
-        <form (ngSubmit)="submitAddGuest()">
-            <div class="modal-body">
-                @if (guestError) { <div class="form-feedback" role="alert">{{ guestError }}</div> }<label
-                    for="guest-name">Name des Gasts</label><input id="guest-name" name="guestName"
-                    [(ngModel)]="newGuestName" maxlength="100" placeholder="Zum Beispiel Alex"
-                    [disabled]="guestSaving" />
-            </div>
-            <footer class="modal-foot"><button type="button" class="btn-ghost" [disabled]="guestSaving"
-                    (click)="closeAddGuest()">Abbrechen</button><button type="submit" class="btn-primary"
-                    [disabled]="guestSaving || !newGuestName.trim()">{{ guestSaving ? 'Wird gespeichert …' : 'Gast
-                    hinzufügen' }}</button></footer>
-        </form>
     </div>
 </div>
 }

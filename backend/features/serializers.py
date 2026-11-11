@@ -74,15 +74,26 @@ class TodoSerializer(serializers.ModelSerializer):
     progress = serializers.IntegerField(required=False, allow_null=True)
     createdBy = serializers.PrimaryKeyRelatedField(source='created_by', read_only=True)
     doneByName = serializers.SerializerMethodField()
+    plannedSlots = serializers.SerializerMethodField()
 
     class Meta:
         model = Todo
         fields = [
             'id', 'title', 'description', 'priority', 'done', 'startDate', 'dueDate', 'progress',
             'durationMinutes', 'recurrence', 'recurrenceInterval', 'globalTodo', 'createdBy',
-            'doneByName', 'created_at', 'updated_at'
+            'doneByName', 'plannedSlots', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'createdBy', 'doneByName', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'createdBy', 'doneByName', 'plannedSlots', 'created_at', 'updated_at']
+
+    def get_plannedSlots(self, obj):
+        """Calendar blocks of this task; lists pass them in bulk via the context."""
+        slots = self.context.get('planned_slots')
+        if slots is None:
+            from .views.todos import planned_slots
+            slots = planned_slots(obj.household_id, [obj.id])
+        return [{'id': slot['id'], 'start': serializers.DateTimeField().to_representation(slot['start']),
+                 'end': serializers.DateTimeField().to_representation(slot['end']) if slot['end'] else None}
+                for slot in slots.get(obj.id, [])]
 
     def validate(self, attrs):
         start = attrs.get('start_date', getattr(self.instance, 'start_date', None))
@@ -260,13 +271,13 @@ class RecipeSerializer(serializers.ModelSerializer):
 
 class MenuRatingSerializer(serializers.ModelSerializer):
     cookingDurationMinutes = serializers.IntegerField(
-        source='cooking_duration_minutes', required=False, allow_null=True
+        source='cooking_duration_minutes', required=False, allow_null=True, min_value=0
     )
-    easeRating = serializers.IntegerField(source='ease_rating', required=False, allow_null=True)
+    easeRating = serializers.IntegerField(source='ease_rating', required=False, allow_null=True, min_value=1, max_value=5)
     pricePerformanceRating = serializers.IntegerField(
-        source='price_performance_rating', required=False, allow_null=True
+        source='price_performance_rating', required=False, allow_null=True, min_value=1, max_value=5
     )
-    tasteRating = serializers.IntegerField(source='taste_rating', required=False, allow_null=True)
+    tasteRating = serializers.IntegerField(source='taste_rating', required=False, allow_null=True, min_value=1, max_value=5)
 
     class Meta:
         model = MenuRating
@@ -282,9 +293,9 @@ class MenuSerializer(serializers.ModelSerializer):
     breakfastLeftoversRef = serializers.CharField(source='breakfast_leftovers_ref', required=False, allow_null=True, allow_blank=True)
     lunchLeftoversRef = serializers.CharField(source='lunch_leftovers_ref', required=False, allow_null=True, allow_blank=True)
     dinnerLeftoversRef = serializers.CharField(source='dinner_leftovers_ref', required=False, allow_null=True, allow_blank=True)
-    lunchPersons = serializers.IntegerField(source='lunch_persons', required=False)
-    dinnerPersons = serializers.IntegerField(source='dinner_persons', required=False)
-    breakfastPersons = serializers.IntegerField(source='breakfast_persons', required=False)
+    lunchPersons = serializers.IntegerField(source='lunch_persons', required=False, min_value=0)
+    dinnerPersons = serializers.IntegerField(source='dinner_persons', required=False, min_value=0)
+    breakfastPersons = serializers.IntegerField(source='breakfast_persons', required=False, min_value=0)
     extraRecipeIds = serializers.JSONField(source='extra_recipe_ids', required=False)
     rating = MenuRatingSerializer(required=False)
 
@@ -363,12 +374,13 @@ class MenuSerializer(serializers.ModelSerializer):
         payload['lunchRecipe'] = RecipeSerializer(instance.lunch_recipe).data if instance.lunch_recipe else None
         payload['dinnerRecipe'] = RecipeSerializer(instance.dinner_recipe).data if instance.dinner_recipe else None
         payload['rating'] = MenuRatingSerializer(instance.rating).data if hasattr(instance, 'rating') else None
-        # Resolve extra recipe objects
-        extra_ids = instance.extra_recipe_ids or []
+        # Extras keep their planned order; ids of deleted recipes are skipped.
+        extra_ids = [str(i) for i in instance.extra_recipe_ids or []]
         if extra_ids:
-            from .models import Recipe as RecipeModel
-            extras_qs = RecipeModel.objects.filter(id__in=[str(i) for i in extra_ids])
-            payload['extraRecipes'] = RecipeSerializer(extras_qs, many=True).data
+            from .views.common import RECIPE_PREFETCH
+            extras = {str(r.id): r for r in Recipe.objects.filter(
+                household_id=instance.household_id, id__in=extra_ids).prefetch_related(*RECIPE_PREFETCH)}
+            payload['extraRecipes'] = RecipeSerializer([extras[i] for i in extra_ids if i in extras], many=True).data
         else:
             payload['extraRecipes'] = []
         return payload

@@ -5,29 +5,39 @@
         <div class="page-heading">
             <p class="eyebrow">Alltag</p>
             <h1 class="page-title">Reinigung</h1>
-            <div class="badges">
-                <span class="badge">{{ tasks.length }} Aufgaben</span>
-                <span class="badge badge-danger" *ngIf="overdueCount > 0">{{ overdueCount }} überfällig</span>
-                <span class="badge badge-warn" *ngIf="upcomingCount > 0">{{ upcomingCount }} bald fällig</span>
-            </div>
+            <p class="page-subtitle">{{ activeCount }} Putzaufgaben{{ overdueCount ? ' · ' + overdueCount + ' überfällig' : '' }}</p>
         </div>
         <div class="page-actions">
+        <a class="btn-secondary" routerLink="/calendar">Im Kalender</a>
         <button class="btn-primary" (click)="openAdd()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                 <path d="M12 5v14M5 12h14" />
             </svg>
-            Neue Aufgabe
+            Neue Putzaufgabe
         </button>
         </div>
     </header>
 
     <!-- Filter -->
-    <div class="toolbar chip-group" role="group" aria-label="Reinigung filtern">
-        <button class="chip" [class.active]="filter === 'all'" (click)="filter = 'all'">Alle</button>
-        <button class="chip chip-danger" [class.active]="filter === 'overdue'"
-            (click)="filter = 'overdue'">Überfällig</button>
-        <button class="chip chip-warn" [class.active]="filter === 'upcoming'" (click)="filter = 'upcoming'">Bald
-            fällig</button>
+    <div class="filter-bar" role="group" aria-label="Putzplan filtern">
+        <div class="filter-chips" role="group" aria-label="Status">
+            @for (option of [{ v: 'all', l: 'Alle' }, { v: 'overdue', l: 'Überfällig' }, { v: 'upcoming', l: 'Bald fällig' }]; track option.v) {
+            <button class="chip" [class.chip-danger]="option.v === 'overdue'" [class.chip-warn]="option.v === 'upcoming'"
+                [class.active]="filters.status === option.v" [attr.aria-pressed]="filters.status === option.v"
+                (click)="setFilter({ status: $any(option.v) })">{{ option.l }}<span class="count">{{ statusCount($any(option.v))
+                    }}</span></button>
+            }
+        </div>
+        @if (rooms.length > 1 || filters.room) {
+        <select class="filter-select" [class.is-set]="!!filters.room" aria-label="Raum" [ngModel]="filters.room"
+            (ngModelChange)="setFilter({ room: $event })">
+            <option value="">Alle Räume</option>
+            @for (room of rooms; track room) { <option [value]="room">{{ categoryLabels[room] }}</option> }
+        </select>
+        }
+        @if (filtersActive) {
+        <div class="filter-end"><button class="filter-reset" (click)="resetFilters()">Zurücksetzen</button></div>
+        }
     </div>
 
     <!-- Task List -->
@@ -132,7 +142,9 @@
         </div>
     </div>
 
-    <p class="empty-state" *ngIf="filtered.length === 0 && tasks.length > 0">Keine Aufgaben für diesen Filter.</p>
+    <p class="empty-state" *ngIf="filtered.length === 0 && tasks.length > 0">{{ filters.status === 'overdue' ? 'Nichts
+        überfällig – sauber!' : 'Keine Putzaufgaben für diese Filter.' }} <button class="filter-reset"
+            *ngIf="filtersActive" (click)="resetFilters()">Filter zurücksetzen</button></p>
     <p class="empty-state" *ngIf="!loading && !loadError && tasks.length === 0">Noch keine Reinigungsaufgaben. Lege jetzt
         eine an!</p>
 
@@ -142,7 +154,7 @@
 <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
     <div class="modal-panel" aria-label="Reinigung" appDialog (dialogDismiss)="closeModal()">
         <div class="modal-header">
-            <h3>{{ modalMode === 'add' ? 'Neue Aufgabe' : 'Aufgabe bearbeiten' }}</h3>
+            <h3>{{ modalMode === 'add' ? 'Neue Putzaufgabe' : 'Putzaufgabe bearbeiten' }}</h3>
             <button class="modal-close" (click)="closeModal()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                     <path d="M18 6L6 18M6 6l12 12" />

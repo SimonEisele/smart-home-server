@@ -1,6 +1,6 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
-import { finalize, forkJoin } from 'rxjs';
+import { finalize, forkJoin, of } from 'rxjs';
 import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { localIsoDate } from '../../../shared/utils/date-utils';
 import { Component, HostListener, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
@@ -12,6 +12,10 @@ import { RecipesService } from '../../recipes/service/recipes.service';
 import { Recipe } from '../../recipes/model/recipes.model';
 import { ShoppinglistService, MenuExportPlan, MenuExportRequest } from '../../shoppinglist/service/shoppinglist.service';
 import { apiErrorMessage } from '../../../shared/utils/api-error';
+import { ingredientKey } from '../../ingredients/model/ingredient.model';
+import { RecipeCookService } from '../../../shared/services/recipe-cook.service';
+import { MealAttendance } from '../attendance/meal-attendance';
+import { DayEntry as CalendarDay, buildWeek } from '../../calendar/utils/calendar.utils';
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner';
 export type PickerMode = MealType | 'extra';
@@ -21,7 +25,7 @@ interface DayEntry { date: Date; dateStr: string; isToday: boolean; }
 @Component({
   selector: 'app-menuplan-page',
   standalone: true,
-  imports: [DialogDirective, CommonModule, FormsModule, RouterLink],
+  imports: [DialogDirective, CommonModule, FormsModule, RouterLink, MealAttendance],
   templateUrl: './menuplan.page.html',
   styleUrl: './menuplan.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,7 +33,12 @@ interface DayEntry { date: Date; dateStr: string; isToday: boolean; }
 export class MenuplanPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute, {optional:true});
+  private readonly cookService = inject(RecipeCookService);
   private openExportAfterLoad = false;
+  private personsTimer: ReturnType<typeof setTimeout> | null = null;
+  /** "plan": the weekly menu; "attendance": who eats along, which sets the person counts. */
+  view: 'plan' | 'attendance' = 'plan';
+  attendanceDays: CalendarDay[] = [];
   private loadRevision = 0;
   private previewRevision = 0;
   loading = false;
@@ -79,7 +88,11 @@ export class MenuplanPage implements OnInit {
 
   ngOnInit(): void {
     this.openExportAfterLoad = this.route?.snapshot?.queryParamMap?.get('export')==='true';
-    this.initWeek(new Date());
+    if (this.route?.snapshot?.queryParamMap?.get('view') === 'attendance') this.view = 'attendance';
+    this.destroyRef.onDestroy(() => { if (this.personsTimer) clearTimeout(this.personsTimer); });
+    // ?date=YYYY-MM-DD (e.g. from the assistant) opens that week.
+    const date = this.route?.snapshot?.queryParamMap?.get('date');
+    this.initWeek(date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T12:00:00`) : new Date());
     this.exportWeekStart = this.toIsoDate(this.weekStart);
     this.loadWeek();
   }
@@ -90,6 +103,7 @@ export class MenuplanPage implements OnInit {
     const day = d.getDay();
     d.setDate(d.getDate() + (day === 0 ? -6 : 1) - day);
     this.weekStart = d;
+    this.attendanceDays = buildWeek(d).days;
     const todayStr = this.toIsoDate(new Date());
     this.days = Array.from({ length: 7 }, (_, i) => {
       const di = new Date(d);
@@ -213,16 +227,45 @@ export class MenuplanPage implements OnInit {
     return `${this.DAY_NAMES[entry.date.getDay()]}., ${entry.date.getDate()}.${entry.date.getMonth() + 1}.`;
   }
 
+  /** Main meals suggest "Mahlzeit" recipes first, extras everything else; the rest stays selectable. */
+  private isSuggested(recipe: Recipe): boolean {
+    const main = !recipe.category || recipe.category === 'mahlzeit';
+    return this.activePicker?.meal === 'extra' ? !main : main;
+  }
+
+  private matchesSearch(recipe: Recipe): boolean {
+    const q = ingredientKey(this.pickerSearch);
+    if (!q) return true;
+    return ingredientKey(
+      `${recipe.name} ${recipe.description ?? ''} ${recipe.ingredients.map(i => i.name).join(' ')}`,
+    ).includes(q);
+  }
+
   get filteredRecipes(): Recipe[] {
-    const q = this.pickerSearch.toLowerCase();
-    const isExtra = this.activePicker?.meal === 'extra';
-    const byCategory = isExtra
-      ? this.recipes.filter(r => r.category && r.category !== 'mahlzeit')
-      : this.recipes.filter(r => !r.category || r.category === 'mahlzeit');
-    if (!q) return byCategory;
-    return byCategory.filter(r =>
-      r.name.toLowerCase().includes(q) || (r.description ?? '').toLowerCase().includes(q)
-    );
+    return this.recipes.filter(r => this.isSuggested(r) && this.matchesSearch(r));
+  }
+
+  get otherRecipes(): Recipe[] {
+    return this.recipes.filter(r => !this.isSuggested(r) && this.matchesSearch(r));
+  }
+
+  recipeCategoryLabel(recipe: Recipe): string {
+    return this.RECIPE_CATEGORY_LABELS[recipe.category ?? 'mahlzeit'] ?? 'Sonstiges';
+  }
+
+  /** Opens the shared cooking view for a planned meal, scaled to the people eating it. */
+  cookMeal(dateStr: string, meal: MealType, e: MouseEvent): void {
+    e.stopPropagation();
+    const recipe = this.getMealRecipe(dateStr, meal);
+    if (!recipe) return;
+    this.cookService.open({
+      date: dateStr,
+      meal,
+      recipe,
+      source: 'menuplan',
+      persons: Math.max(1, this.getMealEffectivePersons(dateStr, meal)),
+      weekTag: '',
+    });
   }
 
   get leftoversOptions(): Array<{ ref: string; label: string; recipeName: string }> {
@@ -427,12 +470,34 @@ export class MenuplanPage implements OnInit {
     },error:()=>{this.exportError='Der Export wurde nicht abgeschlossen. Bitte die Vorschau neu laden und erneut versuchen.';this.preview=null;}});
   }
 
+  showAttendance(): void {
+    if (this.showExportModal) this.closeExportModal();
+    this.view = 'attendance';
+  }
+
+  /** Attendance changed: fetch the recalculated person counts quietly (debounced while clicking through). */
+  refreshPersons(): void {
+    if (this.personsTimer) clearTimeout(this.personsTimer);
+    this.personsTimer = setTimeout(() => {
+      const revision = this.loadRevision;
+      const from = new Date(this.weekStart); from.setDate(from.getDate() - 7);
+      this.menuService.getMenus(this.toIsoDate(from), 21).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(menus => {
+        if (revision !== this.loadRevision) return;
+        this.leftoverMenus = Object.fromEntries(menus.map(m => [m.date, m]));
+        this.menus = Object.fromEntries(menus.filter(m => this.days.some(d => d.dateStr === m.date)).map(m => [m.date, m]));
+        this.cdr.markForCheck();
+      });
+    }, 600);
+  }
+
   // Week requests are ignored after navigation to a different week.
   loadWeek(): void {
     const revision=++this.loadRevision;
     this.loading=true;this.loadError='';this.menuError='';
     const from=new Date(this.weekStart);from.setDate(from.getDate()-7);
-    forkJoin({menus:this.menuService.getMenus(this.toIsoDate(from),21),recipes:this.recipesService.getRecipes()})
+    // Recipes do not change while paging through weeks; load them once per visit.
+    const recipes$ = this.recipes.length ? of(this.recipes) : this.recipesService.getRecipes();
+    forkJoin({menus:this.menuService.getMenus(this.toIsoDate(from),21),recipes:recipes$})
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:result=>{
         if(revision!==this.loadRevision)return;
         this.leftoverMenus=Object.fromEntries(result.menus.map(m=>[m.date,m]));

@@ -110,6 +110,8 @@ export interface MenuExportPlan {
     servingType: string;
   }>;
   warnings: string[];
+  /** Hints that do not block the export, e.g. a recipe without ingredients. */
+  notices?: string[];
   weekTag: string;
   blocked: boolean;
   previewToken: string;

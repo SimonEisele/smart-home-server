@@ -1,3 +1,4 @@
+import { filtersChanged, loadFilters, saveFilters } from '../../../shared/utils/filter-memory';
 import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { RouterLink } from '@angular/router';
 import {
@@ -73,6 +74,7 @@ export class ShoppinglistPage implements OnInit {
   ingredients: Ingredient[] = [];
   recipes: Recipe[] = [];
   categories = CATEGORY_ORDER;
+  private static readonly DEFAULT_FILTERS = { activeTab: 'all' as ListTab, search: '', weekFilter: '' };
   activeTab: ListTab = 'all';
   search = '';
   weekFilter = '';
@@ -104,6 +106,7 @@ export class ShoppinglistPage implements OnInit {
     private cdr: ChangeDetectorRef,
   ) {}
   ngOnInit(): void {
+    Object.assign(this, loadFilters('shopping', ShoppinglistPage.DEFAULT_FILTERS));
     this.reload();
     this.recipesService
       .getIngredients()
@@ -159,6 +162,39 @@ export class ShoppinglistPage implements OnInit {
     this.busy = false;
     this.cdr.markForCheck();
   }
+  readonly tabs: Array<{ value: ListTab; label: string }> = [
+    { value: 'all', label: 'Alles' },
+    { value: 'manual', label: 'Artikel & Rezepte' },
+    { value: 'menuplan', label: 'Menüplan' },
+  ];
+
+  setTab(tab: ListTab): void {
+    this.activeTab = tab;
+    this.weekFilter = '';
+    this.filtersChanged();
+  }
+
+  /** Remembers the view for the session and drops a pending "clear checked" confirmation. */
+  filtersChanged(): void {
+    this.confirmClear = false;
+    saveFilters('shopping', { activeTab: this.activeTab, search: this.search, weekFilter: this.weekFilter });
+  }
+
+  get filtersActive(): boolean {
+    return filtersChanged({ activeTab: this.activeTab, search: this.search, weekFilter: this.weekFilter },
+      ShoppinglistPage.DEFAULT_FILTERS);
+  }
+
+  resetFilters(): void {
+    this.activeTab = 'all'; this.search = ''; this.weekFilter = '';
+    this.filtersChanged();
+  }
+
+  /** Open items per tab, ignoring the search, so the tabs show how much is where. */
+  tabCount(tab: ListTab): number {
+    return this.items.filter(i => !i.checked && (tab === 'all' || (tab === 'menuplan') === (i.listType === 'menuplan'))).length;
+  }
+
   private get filteredItems(): ShoppingItem[] {
     const q = this.search.trim().toLocaleLowerCase('de');
     return this.items.filter(

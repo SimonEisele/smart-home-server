@@ -27,11 +27,16 @@ describe('Ingredient management workflow', () => {
     createIngredient: vi.fn(),
     updateIngredient: vi.fn(),
     deleteIngredient: vi.fn(),
+    getUnlinkedIngredients: vi.fn(),
+    mergeIngredient: vi.fn(),
   };
   let page: IngredientsPage;
   beforeEach(() => {
     vi.resetAllMocks();
     service.getIngredients.mockReturnValue(of([flour, archived]));
+    service.getUnlinkedIngredients.mockReturnValue(
+      of([{ name: 'Bärlauch', suggestedUnit: 'Bund', recipes: ['Pesto'], usageCount: 1 }]),
+    );
     TestBed.configureTestingModule({
       imports: [IngredientsPage],
       providers: [{ provide: RecipesService, useValue: service }],
@@ -127,5 +132,37 @@ describe('Ingredient management workflow', () => {
   it('keeps a legacy custom unit available when editing', () => {
     page.startEdit({ ...flour, defaultUnit: 'Glas' });
     expect(page.formUnits).toContain('Glas');
+  });
+  it('offers free recipe ingredients for the catalog and drops them once added', () => {
+    expect(page.unlinked.length).toBe(1);
+    page.addFromUnlinked(page.unlinked[0]);
+    expect(page.form).toEqual(expect.objectContaining({ name: 'Bärlauch', defaultUnit: 'Bund' }));
+    service.createIngredient.mockReturnValue(
+      of({ id: 9, name: 'Bärlauch', category: 'gewuerze', subcategory: '', defaultUnit: 'Bund', usageCount: 1 }),
+    );
+    page.save();
+    expect(page.unlinked).toEqual([]);
+  });
+  it('merges a duplicate into the chosen ingredient', () => {
+    const duplicate: Ingredient = { ...flour, id: 3, name: 'Weissmehl', usageCount: 1 };
+    service.getIngredients.mockReturnValue(of([flour, duplicate]));
+    page.load();
+    page.startEdit(duplicate);
+    page.startMerge();
+    expect(page.mergeTargets.map((i) => i.id)).toEqual([1]);
+    page.mergeTargetId = 1;
+    service.mergeIngredient.mockReturnValue(of({ ...flour, usageCount: 3 }));
+    page.merge();
+    expect(service.mergeIngredient).toHaveBeenCalledWith(3, 1);
+    expect(page.ingredients.map((i) => [i.id, i.usageCount])).toEqual([[1, 3]]);
+    expect(page.modal).toBeNull();
+  });
+  it('counts per status and filters ingredients used in recipes', () => {
+    service.getIngredients.mockReturnValue(of([flour, archived, { ...flour, id: 5, name: 'Zimt', usageCount: 0 }]));
+    page.load();
+    expect([page.statusCount('active'), page.statusCount('used'), page.statusCount('archived'), page.statusCount('all')]).toEqual([2, 1, 1, 3]);
+    page.status = 'used';
+    expect(page.filtered.map(i => i.name)).toEqual(['Mehl']);
+    expect(page.filtersActive).toBe(true);
   });
 });

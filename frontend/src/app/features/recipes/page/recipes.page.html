@@ -8,26 +8,33 @@
             <button class="btn-primary" type="button" (click)="openAdd()">+ Neues Rezept</button>
         </div>
     </header>
-    <div class="recipe-filters">
-        <label>Rezept suchen<input aria-label="Rezept suchen" type="search" [(ngModel)]="search"
-                placeholder="Name oder Zutat" /></label><label>Kategorie<select aria-label="Rezeptkategorie filtern"
-                [(ngModel)]="categoryFilter">
-                <option value="">Alle Kategorien</option>
-                <option *ngFor="let cat of recipeCategories" [value]="cat.value">{{ cat.label }}</option>
-            </select></label><label>Sortierung<select aria-label="Rezepte sortieren" [(ngModel)]="sort">
+    <div class="filter-bar" role="search" aria-label="Rezepte filtern">
+        <label class="filter-search"><span class="sr-only">Rezept suchen</span><input aria-label="Rezept suchen"
+                type="search" [(ngModel)]="search" (ngModelChange)="persistFilters()" placeholder="Name oder Zutat" />@if
+            (search) {<button type="button" class="filter-clear" (click)="search = ''; persistFilters()"
+                aria-label="Suche leeren">×</button>}</label>
+        <div class="filter-chips" role="group" aria-label="Kategorie">
+            <button class="chip" [class.active]="!categoryFilter" [attr.aria-pressed]="!categoryFilter"
+                (click)="categoryFilter = ''; persistFilters()">Alle<span class="count">{{ searchCount }}</span></button>
+            @for (cat of categoryOptions; track cat.value) {
+            <button class="chip" [class.active]="categoryFilter === cat.value" [attr.aria-pressed]="categoryFilter === cat.value"
+                (click)="categoryFilter = categoryFilter === cat.value ? '' : cat.value; persistFilters()">{{ cat.label }}<span
+                    class="count">{{ cat.count }}</span></button>
+            }
+        </div>
+        <div class="filter-end">
+            @if (filtersActive) { <button class="filter-reset" (click)="resetFilters()">Zurücksetzen</button> }
+            <select class="filter-select" aria-label="Rezepte sortieren" [(ngModel)]="sort" (ngModelChange)="persistFilters()">
                 <option value="name">Name A–Z</option>
                 <option value="recent">Zuletzt bearbeitet</option>
                 <option value="duration">Kürzeste Dauer</option>
-            </select></label>
+            </select>
+        </div>
     </div>
     <div class="form-feedback" role="alert" *ngIf="loadError">
         {{ loadError }} <button class="btn-secondary" type="button" (click)="loadData()">Erneut laden</button>
     </div>
     <p class="loading-state" role="status" *ngIf="loading">Rezepte werden geladen…</p>
-    <div class="list-caption" *ngIf="!loading && !loadError">
-        {{ filtered.length }} {{ filtered.length === 1 ? 'Rezept' : 'Rezepte'
-        }}
-    </div>
     <div class="recipes-grid" *ngIf="!loading && !loadError">
         <article class="recipe-card" *ngFor="let recipe of filtered; trackBy: trackByRecipe">
             <div class="card-top">
@@ -73,7 +80,7 @@
     <option *ngFor="let unit of ingredientUnits" [value]="unit"></option>
 </datalist>
 <div class="recipe-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
-    <section class="recipe-editor" appDialog aria-label="Rezept bearbeiten" (dialogDismiss)="closeModal()">
+    <section class="recipe-editor" appDialog aria-label="Rezept bearbeiten" (dialogDismiss)="requestClose()">
         <header class="editor-header">
             <div>
                 <span class="eyebrow">Rezeptsammlung</span>
@@ -83,7 +90,7 @@
                     }}
                 </h2>
             </div>
-            <button class="btn-ghost" type="button" aria-label="Rezeptdialog schließen" (click)="closeModal()"
+            <button class="btn-ghost" type="button" aria-label="Rezeptdialog schließen" (click)="requestClose()"
                 [disabled]="saving || ingredientSaving">
                 ✕
             </button>
@@ -173,7 +180,21 @@
                             <div>
                                 <h3>Zutaten für {{ form.baseServings }} {{ form.servingType }}</h3>
                             </div>
-                            <button type="button" class="btn-ghost" (click)="addIngredient()">+ Zutat</button>
+                            <div class="heading-actions"><button type="button" class="btn-ghost"
+                                    [class.active]="importMode === 'ingredients'"
+                                    (click)="openImport('ingredients')">Liste einfügen</button><button type="button"
+                                    class="btn-ghost" (click)="addIngredient()">+ Zutat</button></div>
+                        </div>
+                        <div class="import-panel" *ngIf="importMode === 'ingredients'">
+                            <label>Zutatenliste<textarea aria-label="Zutatenliste einfügen" rows="6"
+                                    [(ngModel)]="importText"
+                                    placeholder="Eine Zutat pro Zeile, zum Beispiel:&#10;500 g Mehl&#10;1/2 TL Salz&#10;2 Zwiebeln&#10;Pfeffer"></textarea></label>
+                            <p class="helper">Menge und Einheit werden erkannt, Katalogzutaten automatisch verknüpft.</p>
+                            <div class="prompt-actions"><button type="button" class="btn-ghost"
+                                    (click)="importMode = null">Abbrechen</button><button type="button"
+                                    class="btn-primary" [disabled]="!importPreviewCount" (click)="applyImport()">
+                                    {{ importPreviewCount }} {{ importPreviewCount === 1 ? 'Zutat' : 'Zutaten' }}
+                                    übernehmen</button></div>
                         </div>
                         <p class="helper" *ngIf="catalogError">{{ catalogError }}</p>
                         <div class="ingredient-edit" *ngFor="let ing of form.ingredients; let i = index">
@@ -181,26 +202,38 @@
                                 }}<input [attr.aria-label]="'Zutat ' + (i + 1) + ' Name'" list="ingredient-catalog"
                                     maxlength="100" [(ngModel)]="ing.name" (focus)="ingredientPrevNames[i] = ing.name"
                                     (input)="onIngredientNameInput(i)" (change)="onIngredientNameChange(i)"
+                                    (keydown.enter)="onIngredientNameChange(i); onIngredientEnter(i, $event)"
                                     placeholder="Zutat wählen oder frei eingeben" /></label><label>Menge<input
                                     [attr.aria-label]="'Zutat ' + (i + 1) + ' Menge'" type="number" min="0" step="any"
                                     [(ngModel)]="ing.quantityPerPerson" (change)="onRecipeIngredientQtyUnitChange(i)"
-                                    placeholder="Nach Bedarf" /></label><label>Einheit<input
+                                    (keydown.enter)="onIngredientEnter(i, $event)" placeholder="Nach Bedarf" /></label><label>Einheit<input
                                     [attr.aria-label]="'Zutat ' + (i + 1) + ' Einheit'" list="recipe-units"
                                     maxlength="20" [(ngModel)]="ing.unit" (change)="onRecipeIngredientQtyUnitChange(i)"
-                                    placeholder="g, ml, Stück" /></label><label
+                                    (keydown.enter)="onIngredientEnter(i, $event)" placeholder="g, ml, Stück" /></label><label
                                 *ngIf="form.sections.length">Abschnitt<select
                                     [attr.aria-label]="'Zutat ' + (i + 1) + ' Abschnitt'" [(ngModel)]="ing.sectionId">
                                     <option [ngValue]="undefined">Allgemein</option>
                                     <option *ngFor="let sec of form.sections" [ngValue]="sec.id">
                                         {{ sec.title || 'Unbenannter Abschnitt' }}
                                     </option>
-                                </select></label><button type="button" class="btn-ghost remove"
-                                [attr.aria-label]="'Zutat ' + (i + 1) + ' entfernen'" (click)="removeIngredient(i)">
-                                ✕
-                            </button>
+                                </select></label>
+                            <div class="row-actions"><button type="button" class="btn-ghost"
+                                    [attr.aria-label]="'Zutat ' + (i + 1) + ' nach oben'" [disabled]="i === 0"
+                                    (click)="moveIngredient(i, -1)">↑</button><button type="button" class="btn-ghost"
+                                    [attr.aria-label]="'Zutat ' + (i + 1) + ' nach unten'"
+                                    [disabled]="i === form.ingredients.length - 1"
+                                    (click)="moveIngredient(i, 1)">↓</button><button type="button"
+                                    class="btn-ghost remove" [attr.aria-label]="'Zutat ' + (i + 1) + ' entfernen'"
+                                    (click)="removeIngredient(i)">✕</button></div>
                         </div>
                         <p class="empty-inline" *ngIf="!form.ingredients.length">
-                            Noch keine Zutaten. Füge die erste Gesamtmenge hinzu.
+                            Noch keine Zutaten. Füge die erste Gesamtmenge hinzu oder füge eine ganze Liste ein.
+                        </p>
+                        <p class="helper" *ngIf="form.ingredients.length">Tipp: Enter springt in die nächste
+                            Zeile.</p>
+                        <p class="helper unlinked-hint" *ngIf="!catalogError && unlinkedIngredientNames.length">
+                            Nicht im Katalog: {{ unlinkedIngredientNames.join(', ') }}. Diese Zutaten landen beim
+                            Einkauf unter „Sonstiges“.
                         </p>
                         <div class="catalog-prompt" *ngIf="newIngredientPrompt">
                             <p>
@@ -235,7 +268,20 @@
                             <div>
                                 <h3>Schritt für Schritt</h3>
                             </div>
-                            <button type="button" class="btn-ghost" (click)="addStep()">+ Schritt</button>
+                            <div class="heading-actions"><button type="button" class="btn-ghost"
+                                    [class.active]="importMode === 'steps'" (click)="openImport('steps')">Text
+                                    einfügen</button><button type="button" class="btn-ghost"
+                                    (click)="addStep()">+ Schritt</button></div>
+                        </div>
+                        <div class="import-panel" *ngIf="importMode === 'steps'">
+                            <label>Zubereitung<textarea aria-label="Zubereitung einfügen" rows="8"
+                                    [(ngModel)]="importText"
+                                    placeholder="Ein Schritt pro Zeile oder Absätze durch Leerzeilen getrennt. Nummerierungen wie „1.“ werden entfernt."></textarea></label>
+                            <div class="prompt-actions"><button type="button" class="btn-ghost"
+                                    (click)="importMode = null">Abbrechen</button><button type="button"
+                                    class="btn-primary" [disabled]="!importPreviewCount" (click)="applyImport()">
+                                    {{ importPreviewCount }} {{ importPreviewCount === 1 ? 'Schritt' : 'Schritte' }}
+                                    übernehmen</button></div>
                         </div>
                         <article class="step-edit" *ngFor="let step of form.steps; let i = index">
                             <header>
@@ -306,13 +352,22 @@
                     </section>
                 </fieldset>
             </div>
-            <footer class="editor-footer">
-                <button type="button" class="delete-action" *ngIf="modalMode === 'edit'"
-                    (click)="showDeleteConfirm = true" [disabled]="saving">
-                    Löschen
-                </button>
+            <footer class="editor-footer discard-bar" *ngIf="showDiscardConfirm" role="alert">
+                <span>Ungespeicherte Änderungen verwerfen?</span>
                 <div>
-                    <button type="button" class="btn-ghost" (click)="closeModal()"
+                    <button type="button" class="btn-ghost" (click)="showDiscardConfirm = false">
+                        Weiter bearbeiten</button><button type="button" class="delete-action" (click)="closeModal()">
+                        Verwerfen</button><button type="button" class="btn-primary" (click)="save()"
+                        [disabled]="saving || ingredientSaving">Speichern</button>
+                </div>
+            </footer>
+            <footer class="editor-footer" *ngIf="!showDiscardConfirm">
+                <div class="footer-secondary" *ngIf="modalMode === 'edit'"><button type="button"
+                        class="delete-action" (click)="showDeleteConfirm = true" [disabled]="saving">
+                        Löschen</button><button type="button" class="btn-ghost" (click)="duplicate()"
+                        [disabled]="saving">Duplizieren</button></div>
+                <div>
+                    <button type="button" class="btn-ghost" (click)="requestClose()"
                         [disabled]="saving || ingredientSaving">
                         Abbrechen</button><button type="button" class="btn-primary" (click)="save()"
                         [disabled]="saving || ingredientSaving">

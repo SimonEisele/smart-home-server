@@ -87,7 +87,8 @@ INSTALLED_APPS = [
 
     # Eigene Apps
     'users',
-    'features'
+    'features',
+    'assistant',
 ]
 
 REST_FRAMEWORK = {
@@ -107,6 +108,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'login': os.environ.get('DJANGO_LOGIN_RATE', '10/min'),
         'auth': os.environ.get('DJANGO_AUTH_RATE', '30/min'),
+        # Caps the cost of the language model per person.
+        'assistant': os.environ.get('ASSISTANT_RATE', '40/hour'),
     },
 }
 

@@ -1,3 +1,4 @@
+import { filtersChanged, loadFilters, saveFilters } from '../../../shared/utils/filter-memory';
 import { Component, OnInit, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
@@ -10,9 +11,12 @@ import {
   INGREDIENT_CATEGORIES,
   INGREDIENT_UNITS,
   ingredientKey,
+  UnlinkedIngredient,
 } from '../model/ingredient.model';
 import { apiErrorMessage } from '../../../shared/utils/api-error';
 
+type StatusFilter = 'active' | 'used' | 'archived' | 'all';
+const DEFAULT_FILTERS = { search: '', category: '', status: 'active' as StatusFilter };
 interface IngredientForm {
   name: string;
   category: string;
@@ -33,11 +37,14 @@ export class IngredientsPage implements OnInit {
   ingredients: Ingredient[] = [];
   search = '';
   category = '';
-  status: 'active' | 'archived' | 'all' = 'active';
+  status: StatusFilter = 'active';
   loading = false;
   loadError = '';
   message = '';
-  modal: 'edit' | 'delete' | null = null;
+  modal: 'edit' | 'delete' | 'merge' | null = null;
+  unlinked: UnlinkedIngredient[] = [];
+  showAllUnlinked = false;
+  mergeTargetId: number | null = null;
   selected: Ingredient | null = null;
   form: IngredientForm = this.emptyForm();
   saving = false;
@@ -47,6 +54,7 @@ export class IngredientsPage implements OnInit {
     private cdr: ChangeDetectorRef,
   ) {}
   ngOnInit(): void {
+    Object.assign(this, loadFilters('ingredients', DEFAULT_FILTERS));
     this.load();
   }
   load(): void {
@@ -72,20 +80,109 @@ export class IngredientsPage implements OnInit {
           this.cdr.markForCheck();
         },
       });
+    this.loadUnlinked();
+  }
+
+  /** Free-text recipe ingredients; optional, so a failure only hides the hint. */
+  loadUnlinked(): void {
+    this.service
+      .getUnlinkedIngredients()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          this.unlinked = list;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.unlinked = [];
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  get visibleUnlinked(): UnlinkedIngredient[] {
+    return this.showAllUnlinked ? this.unlinked : this.unlinked.slice(0, 6);
+  }
+
+  /** Opens the new-ingredient form prefilled from a free recipe ingredient. */
+  addFromUnlinked(item: UnlinkedIngredient): void {
+    this.openAdd();
+    this.form.name = item.name;
+    this.form.defaultUnit = item.suggestedUnit;
+  }
+
+  get mergeTargets(): Ingredient[] {
+    return this.ingredients
+      .filter((i) => i.id !== this.selected?.id && !i.archived)
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  }
+
+  get mergeTarget(): Ingredient | undefined {
+    return this.ingredients.find((i) => i.id === this.mergeTargetId);
+  }
+
+  startMerge(): void {
+    if (this.saving || !this.selected) return;
+    this.mergeTargetId = null;
+    this.formError = '';
+    this.modal = 'merge';
+  }
+
+  merge(): void {
+    if (this.saving || !this.selected || !this.mergeTarget) return;
+    const source = this.selected;
+    const target = this.mergeTarget;
+    this.saving = true;
+    this.formError = '';
+    this.service
+      .mergeIngredient(source.id, target.id)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          this.saving = false;
+          this.cdr.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (merged) => {
+          this.ingredients = this.ingredients.filter((i) => i.id !== source.id);
+          this.upsert(merged);
+          this.modal = null;
+          this.message = `„${source.name}“ wurde mit „${merged.name}“ zusammengeführt.`;
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          this.formError = this.errorText(error, 'Zusammenführen fehlgeschlagen. Bitte erneut versuchen.');
+          this.cdr.markForCheck();
+        },
+      });
+  }
+  private matches(i: Ingredient, status: StatusFilter): boolean {
+    const q = ingredientKey(this.search);
+    const statusOk =
+      status === 'all' ||
+      (status === 'archived' ? !!i.archived : !i.archived && (status === 'active' || (i.usageCount ?? 0) > 0));
+    return (
+      statusOk &&
+      (!this.category || i.category === this.category) &&
+      (!q ||
+        ingredientKey(`${i.name} ${i.subcategory} ${this.catLabel(i.category)} ${i.defaultUnit}`).includes(q))
+    );
   }
   get filtered(): Ingredient[] {
-    const q = ingredientKey(this.search);
     return this.ingredients
-      .filter(
-        (i) =>
-          (this.status === 'all' || (this.status === 'archived') === !!i.archived) &&
-          (!this.category || i.category === this.category) &&
-          (!q ||
-            ingredientKey(
-              `${i.name} ${i.subcategory} ${this.catLabel(i.category)} ${i.defaultUnit}`,
-            ).includes(q)),
-      )
+      .filter((i) => this.matches(i, this.status))
       .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  }
+  /** Count per status chip within the current search and category. */
+  statusCount(status: StatusFilter): number {
+    return this.ingredients.filter((i) => this.matches(i, status)).length;
+  }
+  persistFilters(): void {
+    saveFilters('ingredients', { search: this.search, category: this.category, status: this.status });
+  }
+  get filtersActive(): boolean {
+    return filtersChanged({ search: this.search, category: this.category, status: this.status }, DEFAULT_FILTERS);
   }
   get activeCount(): number {
     return this.ingredients.filter((i) => !i.archived).length;
@@ -117,6 +214,7 @@ export class IngredientsPage implements OnInit {
     this.search = '';
     this.category = '';
     this.status = 'active';
+    this.persistFilters();
   }
   openAdd(): void {
     if (this.saving) return;
@@ -171,9 +269,12 @@ export class IngredientsPage implements OnInit {
       )
       .subscribe({
         next: (ingredient) => {
+          const created = !this.selected;
           this.upsert(ingredient);
           this.modal = null;
           this.message = `${ingredient.name} wurde gespeichert.`;
+          // New catalog entries link matching free recipe ingredients on the server.
+          if (created) this.unlinked = this.unlinked.filter((u) => ingredientKey(u.name) !== ingredientKey(ingredient.name));
           this.cdr.markForCheck();
         },
         error: (error) => {

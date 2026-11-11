@@ -1,3 +1,6 @@
+import { filtersChanged, loadFilters, saveFilters } from '../../../shared/utils/filter-memory';
+import { ingredientKey as searchKey } from '../../ingredients/model/ingredient.model';
+import { RouterLink } from '@angular/router';
 import { localIsoDate } from '../../../shared/utils/date-utils';
 import { DialogDirective } from '../../../shared/directives/dialog.directive';
 import { Component, OnInit, HostListener, ChangeDetectorRef } from '@angular/core';
@@ -6,26 +9,31 @@ import { FormsModule } from '@angular/forms';
 import { TodosService } from '../service/todos.service';
 import { Todo } from '../model/todos.model';
 import { AuthService } from '../../../core/auth/service/auth.service';
-import { finalize, switchMap } from 'rxjs';
+import { finalize, map, switchMap } from 'rxjs';
 
-type FilterMode = 'all' | 'open' | 'done' | 'overdue' | 'global' | 'private';
+type StatusFilter = 'open' | 'overdue' | 'done' | 'all';
+type ScopeFilter = 'all' | 'global' | 'private';
+interface TodoFilters { status: StatusFilter; scope: ScopeFilter; search: string; }
+const DEFAULT_FILTERS: TodoFilters = { status: 'open', scope: 'all', search: '' };
+const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 @Component({
   selector: 'todos-page',
   standalone: true,
-  imports: [DialogDirective, CommonModule, FormsModule],
+  imports: [DialogDirective, CommonModule, FormsModule, RouterLink],
   templateUrl: './todos.page.html',
   styleUrl: './todos.page.css',
 })
 export class TodosPage implements OnInit {
   todos: Todo[] = [];
-  filter: FilterMode = 'all';
+  filters: TodoFilters = loadFilters('todos', DEFAULT_FILTERS);
   showModal = false;
   saving = false;
   formError = '';
   loading = false;
   loadError = '';
   pendingIds = new Set<string>();
+  notice = '';
   modalMode: 'add' | 'edit' = 'add';
 
   form: Partial<Todo> = this.emptyForm();
@@ -52,20 +60,45 @@ export class TodosPage implements OnInit {
   }
 
   // ---- Filtering ----
-  get filtered(): Todo[] {
-    const now = new Date();
-    return this.todos.filter(t => {
-      if (this.filter === 'open') return !t.done;
-      if (this.filter === 'done') return t.done;
-      if (this.filter === 'overdue') return !t.done && !!t.dueDate && new Date(t.dueDate) < now;
-      if (this.filter === 'global') return !!t.globalTodo;
-      if (this.filter === 'private') return !t.globalTodo;
-      return true;
-    });
+  /** Status, scope (WG/Privat) and search combine; each chip counts within the other two. */
+  setFilter(change: Partial<TodoFilters>): void {
+    this.filters = { ...this.filters, ...change };
+    saveFilters('todos', this.filters);
   }
 
+  resetFilters(): void { this.setFilter(DEFAULT_FILTERS); }
+
+  get filtersActive(): boolean { return filtersChanged(this.filters, DEFAULT_FILTERS); }
+
+  private matches(t: Todo, status: StatusFilter, scope: ScopeFilter): boolean {
+    const q = searchKey(this.filters.search);
+    if (q && !searchKey(`${t.title} ${t.description ?? ''}`).includes(q)) return false;
+    if (scope === 'global' && !t.globalTodo) return false;
+    if (scope === 'private' && t.globalTodo) return false;
+    if (status === 'open') return !t.done;
+    if (status === 'overdue') return this.isOverdue(t);
+    if (status === 'done') return t.done;
+    return true;
+  }
+
+  statusCount(status: StatusFilter): number {
+    return this.todos.filter(t => this.matches(t, status, this.filters.scope)).length;
+  }
+
+  scopeCount(scope: ScopeFilter): number {
+    return this.todos.filter(t => this.matches(t, this.filters.status, scope)).length;
+  }
+
+  get filtered(): Todo[] {
+    return this.todos.filter(t => this.matches(t, this.filters.status, this.filters.scope));
+  }
+
+  /** Overdue first, then by due date, then by priority. */
   get openTodos(): Todo[] {
-    return this.filtered.filter(t => !t.done);
+    const due = (t: Todo) => (t.dueDate ? new Date(t.dueDate).getTime() : Infinity);
+    return this.filtered.filter(t => !t.done).sort((a, b) =>
+      Number(this.isOverdue(b)) - Number(this.isOverdue(a)) || due(a) - due(b) ||
+      (PRIORITY_RANK[a.priority ?? 'medium'] - PRIORITY_RANK[b.priority ?? 'medium']));
   }
 
   get doneTodos(): Todo[] {
@@ -111,12 +144,41 @@ export class TodosPage implements OnInit {
     event.stopPropagation();
     if (this.pendingIds.has(todo.id)) return;
     this.pendingIds.add(todo.id);
-    this.todosService.updateTodo(todo.id, { done: !todo.done }).pipe(finalize(() => {
+    this.notice = '';
+    // Completing goes through the server: recurring tasks move on to their next date instead of closing.
+    const request = todo.done
+      ? this.todosService.updateTodo(todo.id, { done: false })
+      : this.todosService.completeTodo(todo.id).pipe(map(result => {
+          if (result.advancedTo) {
+            const next = new Date(`${result.advancedTo}T12:00:00`);
+            this.notice = `„${todo.title}“ erledigt – nächstes Mal am ${next.toLocaleDateString('de-CH')}.`;
+          }
+          return result.data;
+        }));
+    request.pipe(finalize(() => {
       this.pendingIds.delete(todo.id); this.cdr.markForCheck();
     })).subscribe({ next: updated => {
-      this.todos = this.todos.map(t => t.id === updated.id ? updated : t);
+      this.todos = this.todos.map(t => t.id === updated.id ? { ...updated, plannedSlots: updated.plannedSlots ?? t.plannedSlots } : t);
       this.cdr.markForCheck();
     } });
+  }
+
+  /** First upcoming calendar block of a task (or the last one if all are past). */
+  nextSlot(todo: Todo): { start: Date; date: string } | null {
+    const slots = (todo.plannedSlots ?? []).map(slot => new Date(slot.start)).sort((a, b) => a.getTime() - b.getTime());
+    if (!slots.length) return null;
+    const now = Date.now();
+    const start = slots.find(d => d.getTime() >= now) ?? slots[slots.length - 1];
+    return { start, date: localIsoDate(start) };
+  }
+
+  slotLabel(todo: Todo): string {
+    const slot = this.nextSlot(todo);
+    if (!slot) return '';
+    const day = slot.start.toLocaleDateString('de-CH', { weekday: 'short', day: 'numeric', month: 'numeric' });
+    const time = slot.start.toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' });
+    const more = (todo.plannedSlots?.length ?? 0) > 1 ? ` (+${todo.plannedSlots!.length - 1})` : '';
+    return `${day}, ${time}${more}`;
   }
 
   // ---- Modal ----

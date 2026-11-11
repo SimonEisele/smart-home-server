@@ -11,43 +11,68 @@
       </button>
     </div>
   </header>
-  <div class="summary" aria-label="Katalogübersicht">
-    <div>
-      <strong>{{ activeCount }}</strong
-      ><span>Aktive Zutaten</span>
-    </div>
-    <div>
-      <strong>{{ usedCount }}</strong
-      ><span>In Rezepten verwendet</span>
-    </div>
-    <div>
-      <strong>{{ archivedCount }}</strong
-      ><span>Archiviert</span>
-    </div>
-  </div>
   <div class="notice success" role="status" *ngIf="message">{{ message }}</div>
+  <section class="unlinked" *ngIf="unlinked.length" aria-label="Zutaten ohne Katalogeintrag">
+    <header>
+      <div>
+        <h2>{{ unlinked.length }} {{ unlinked.length === 1 ? 'Zutat' : 'Zutaten' }} aus Rezepten fehlen im Katalog</h2>
+        <p>Frei getippte Zutaten landen beim Einkauf unter „Sonstiges“. Nimm sie auf, damit sie richtig einsortiert werden.</p>
+      </div>
+    </header>
+    <ul>
+      <li *ngFor="let item of visibleUnlinked">
+        <span
+          ><strong>{{ item.name }}</strong
+          ><small [title]="item.recipes.join(', ')"
+            >in {{ item.usageCount }} {{ item.usageCount === 1 ? 'Rezept' : 'Rezepten' }}</small
+          ></span
+        ><button class="btn-secondary" type="button" (click)="addFromUnlinked(item)"
+          [attr.aria-label]="item.name + ' in den Katalog aufnehmen'">Aufnehmen</button>
+      </li>
+    </ul>
+    <button class="btn-ghost show-more" type="button" *ngIf="unlinked.length > 6"
+      (click)="showAllUnlinked = !showAllUnlinked">
+      {{ showAllUnlinked ? 'Weniger anzeigen' : 'Alle ' + unlinked.length + ' anzeigen' }}
+    </button>
+  </section>
   <section class="catalog" aria-label="Zutatenkatalog">
-    <div class="filters">
-      <label class="search"
-        >Zutat suchen<input
+    <div class="filter-bar catalog-filters" role="search" aria-label="Zutaten filtern">
+      <label class="filter-search"
+        ><span class="sr-only">Zutat suchen</span
+        ><input
           aria-label="Zutat suchen"
           type="search"
           [(ngModel)]="search"
+          (ngModelChange)="persistFilters()"
           placeholder="Name, Kategorie oder Einheit"
-      /></label>
-      <label
-        >Kategorie<select aria-label="Kategorie" [(ngModel)]="category">
-          <option value="">Alle Kategorien</option>
-          <option *ngFor="let cat of categories" [value]="cat.value">{{ cat.label }}</option>
-        </select></label
+        />@if (search) {<button type="button" class="filter-clear" (click)="search = ''; persistFilters()"
+          aria-label="Suche leeren">×</button>}</label
       >
-      <label
-        >Status<select aria-label="Status" [(ngModel)]="status">
-          <option value="active">Aktive Zutaten</option>
-          <option value="archived">Archiviert</option>
-          <option value="all">Alle Zutaten</option>
-        </select></label
+      <div class="filter-chips" role="group" aria-label="Status">
+        @for (option of [{ v: 'active', l: 'Aktiv' }, { v: 'used', l: 'In Rezepten' }, { v: 'archived', l: 'Archiviert' }, { v: 'all', l: 'Alle' }]; track option.v) {
+          <button
+            class="chip"
+            [class.active]="status === option.v"
+            [attr.aria-pressed]="status === option.v"
+            (click)="status = $any(option.v); persistFilters()"
+          >
+            {{ option.l }}<span class="count">{{ statusCount($any(option.v)) }}</span>
+          </button>
+        }
+      </div>
+      <select
+        class="filter-select"
+        [class.is-set]="!!category"
+        aria-label="Kategorie"
+        [(ngModel)]="category"
+        (ngModelChange)="persistFilters()"
       >
+        <option value="">Alle Kategorien</option>
+        <option *ngFor="let cat of categories" [value]="cat.value">{{ cat.label }}</option>
+      </select>
+      @if (filtersActive) {
+        <div class="filter-end"><button class="filter-reset" (click)="resetFilters()">Zurücksetzen</button></div>
+      }
     </div>
     <div class="state" role="status" *ngIf="loading">Zutaten werden geladen…</div>
     <div class="state" *ngIf="loadError" role="alert">
@@ -119,7 +144,7 @@
     class="ingredient-dialog"
     appDialog
     [attr.aria-label]="
-      modal === 'delete' ? 'Zutat löschen' : selected ? 'Zutat bearbeiten' : 'Neue Zutat'
+      modal === 'delete' ? 'Zutat löschen' : modal === 'merge' ? 'Zutat zusammenführen' : selected ? 'Zutat bearbeiten' : 'Neue Zutat'
     "
     (dialogDismiss)="closeModal()"
     (click)="$event.stopPropagation()"
@@ -128,7 +153,9 @@
       <div>
         <span class="eyebrow">Zutatenkatalog</span>
         <h2>
-          {{ modal === 'delete' ? 'Zutat löschen?' : selected ? selected.name : 'Neue Zutat' }}
+          {{
+            modal === 'delete' ? 'Zutat löschen?' : modal === 'merge' ? 'Zusammenführen' : selected ? selected.name : 'Neue Zutat'
+          }}
         </h2>
       </div>
       <button class="btn-secondary"
@@ -212,6 +239,8 @@
             [disabled]="saving || (selected.usageCount || 0) > 0"
           >
             Löschen</button
+          ><button class="btn-secondary" type="button" (click)="startMerge()" [disabled]="saving">
+            Zusammenführen…</button
           ><small *ngIf="(selected.usageCount || 0) > 0"
             >Verwendete Zutaten können archiviert werden.</small
           >
@@ -228,6 +257,34 @@
         </button>
       </footer>
     </form>
+    <ng-container *ngIf="modal === 'merge'">
+      <div class="dialog-body">
+        <p>
+          Doppelte Einträge wie „Zwiebel“ und „Zwiebeln“ zusammenführen. Alle Rezepte mit „{{
+            selected?.name
+          }}“ verwenden danach die gewählte Zutat, „{{ selected?.name }}“ wird entfernt.
+        </p>
+        <label
+          >Behalten wird<select aria-label="Zielzutat" [(ngModel)]="mergeTargetId" [disabled]="saving">
+            <option [ngValue]="null">Zutat wählen</option>
+            <option *ngFor="let target of mergeTargets" [ngValue]="target.id">
+              {{ target.name }} · {{ catLabel(target.category) }}
+            </option>
+          </select></label
+        >
+        <p class="usage-note" *ngIf="mergeTarget">
+          {{ selected?.usageCount || 0 }} {{ selected?.usageCount === 1 ? 'Rezept wird' : 'Rezepte werden' }}
+          auf „{{ mergeTarget.name }}“ umgestellt. Der Katalog gilt für alle WGs.
+        </p>
+        <div class="notice error" role="alert" *ngIf="formError">{{ formError }}</div>
+      </div>
+      <footer class="dialog-footer">
+        <button class="btn-secondary" type="button" (click)="modal = 'edit'" [disabled]="saving">Zurück</button
+        ><button type="button" class="btn-primary" (click)="merge()" [disabled]="saving || !mergeTarget">
+          {{ saving ? 'Wird zusammengeführt…' : 'Zusammenführen' }}
+        </button>
+      </footer>
+    </ng-container>
     <ng-container *ngIf="modal === 'delete'">
       <div class="dialog-body">
         <p>„{{ selected?.name }}“ wird dauerhaft aus dem Katalog entfernt.</p>

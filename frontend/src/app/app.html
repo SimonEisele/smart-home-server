@@ -1,6 +1,7 @@
 <app-navbar></app-navbar>
 <main id="main-content" [class.signed-in]="auth.user$ | async"><router-outlet></router-outlet></main>
 <recipe-cook-overlay></recipe-cook-overlay>
+@if (auth.user$ | async) { <app-assistant-launcher></app-assistant-launcher> }
 @if (errorNotice.message()) {
   <div class="error-notice" role="alert">
     <span>{{ errorNotice.message() }}</span>

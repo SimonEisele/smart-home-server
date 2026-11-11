@@ -7,6 +7,7 @@ from uuid import UUID
 from django.db import transaction
 from django.utils.dateparse import parse_date
 from rest_framework.exceptions import ValidationError
+from .ingredient_units import readable, to_base
 from .models import Ingredient, Menu, Recipe, ShoppingItem
 
 MEALS = ('breakfast', 'lunch', 'dinner')
@@ -67,7 +68,7 @@ def build_export(household, payload):
     recipes = {str(r.id):r for r in Recipe.objects.filter(household=household)}
     catalog = {i.name.casefold():i for i in Ingredient.objects.all()}
     categories = dict(Ingredient.CATEGORY_CHOICES)
-    aggregate, rows, warnings = {}, [], []
+    aggregate, rows, warnings, notices = {}, [], [], []
     for ref, d, meal, extra_id in parsed:
         menu = menus.get(d)
         if not menu:
@@ -91,7 +92,8 @@ def build_export(household, payload):
         scale = servings/base
         rows.append({'key':ref,'recipe':recipe.name,'persons':persons,'leftoverPersons':leftover,'servings':round(servings, 3),'servingType':recipe.serving_type})
         if not recipe.ingredients:
-            warnings.append(f'{recipe.name}: Im Rezept sind keine Zutaten hinterlegt.')
+            # Informational only: an empty recipe adds nothing but must not block the export.
+            notices.append(f'{recipe.name}: Im Rezept sind keine Zutaten hinterlegt.')
         for ing in recipe.ingredients or []:
             if not isinstance(ing, dict): raise ValidationError({'ingredients':'Invalid recipe ingredient.'})
             name, unit = str(ing.get('name') or '').strip(), str(ing.get('unit') or '').strip()
@@ -99,6 +101,8 @@ def build_export(household, payload):
             raw = ing.get('quantityPerPerson', ing.get('quantity_per_person'))
             qty = None if raw is None or raw=='' else number(raw, f'quantity:{name}')*scale
             if qty is not None and not math.isfinite(qty): raise ValidationError({'quantity': 'Scaled quantity is invalid.'})
+            # g/kg and ml/cl/dl/l are summed in one row.
+            qty, unit = to_base(qty, unit)
             key = (name.casefold(), unit.casefold())
             if key not in aggregate:
                 entry = catalog.get(name.casefold())
@@ -112,8 +116,9 @@ def build_export(household, payload):
     for item in items:
         if item['quantity'] is not None:
             if not math.isfinite(item['quantity']): raise ValidationError({'quantity':'Total quantity is invalid.'})
+            item['quantity'], item['unit'] = readable(item['quantity'], item['unit'])
             item['quantity']=round(item['quantity'],2)
-    result={'data':items,'count':len(items),'meals':rows,'warnings':warnings,'weekTag':week_tag,'blocked':bool(warnings) or not items}
+    result={'data':items,'count':len(items),'meals':rows,'warnings':warnings,'notices':notices,'weekTag':week_tag,'blocked':bool(warnings) or not items}
     result['previewToken']=hashlib.sha256(json.dumps(result,sort_keys=True,ensure_ascii=True).encode()).hexdigest()
     return result
 
@@ -124,10 +129,12 @@ def commit_export(household, plan, replace):
         type(household).objects.select_for_update().get(pk=household.pk)
         existing=list(ShoppingItem.objects.filter(household=household,list_type='menuplan',week_tag=plan['weekTag'])) if replace else []
         by_key={}
-        for item in existing: by_key.setdefault((item.name.strip().casefold(),item.unit.strip().casefold()),item)
+        def identity(name, unit):
+            return name.strip().casefold(), to_base(None, unit)[1].casefold()
+        for item in existing: by_key.setdefault(identity(item.name, item.unit),item)
         saved=[]
         for row in plan['data']:
-            item=by_key.get((row['name'].casefold(),row['unit'].casefold()))
+            item=by_key.get(identity(row['name'],row['unit']))
             if item is None: item=ShoppingItem(household=household,list_type='menuplan',week_tag=plan['weekTag'])
             elif item.quantity != row['quantity'] or item.quantity_incomplete != row['quantityIncomplete']: item.checked=False
             item.quantity_incomplete=row['quantityIncomplete'];item.name=row['name'];item.quantity=row['quantity'];item.unit=row['unit'];item.category=row['category'];item.suggestion=' | '.join(row['sources']) + (' · Menge im Rezept prüfen' if row['quantityIncomplete'] else '');item.save();saved.append(item)

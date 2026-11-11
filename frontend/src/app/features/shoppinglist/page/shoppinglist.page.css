@@ -54,10 +54,6 @@ select:focus {
     outline-offset: 1px;
 }
 
-.search {
-    flex: 1;
-    min-width: 200px;
-}
 
 .progress-panel {
     display: flex;
@@ -486,13 +482,6 @@ details summary {
         font-size: 1.7rem;
     }
 
-    .search {
-        min-width: 160px;
-    }
-
-    .toolbar>label:not(.search) {
-        width: 100%;
-    }
 
     .item-row {
         display: grid;

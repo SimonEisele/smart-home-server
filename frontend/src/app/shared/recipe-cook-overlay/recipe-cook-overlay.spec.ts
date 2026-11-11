@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { RecipeCookOverlay } from './recipe-cook-overlay';
+import { RecipeCookOverlay, timersInText } from './recipe-cook-overlay';
 
 describe('Cooking quantities', () => {
   it('preserves trailing zeros in whole ingredient quantities', () => {
@@ -94,6 +94,49 @@ describe('Shared cooking journey', () => {
       source: 'recipe',
       recipe: cookingRecipe,
     });
+  });
+  it('finds cooking times in step text', () => {
+    expect(timersInText('Zugedeckt 20 Minuten köcheln, dann 1 Std. ruhen lassen.').map(t => t.minutes)).toEqual([20, 60]);
+    expect(timersInText('10–15 Min. backen')).toEqual([{ minutes: 15, label: '15 Min.' }]);
+    expect(timersInText('Bei 180 °C backen')).toEqual([]);
+  });
+  it('runs a timer down, rings once and can be dismissed', () => {
+    const vibrate = vi.fn();
+    Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
+    overlay.startTimer(1, 0);
+    const timer = overlay.timers[0];
+    overlay.tickTimers(timer.endsAt - 30_000);
+    expect(overlay.formatTimer(overlay.timers[0].remaining)).toBe('0:30');
+    overlay.tickTimers(timer.endsAt + 10);
+    overlay.tickTimers(timer.endsAt + 2000);
+    expect(overlay.timers[0].done).toBe(true);
+    expect(vibrate).toHaveBeenCalledTimes(1);
+    overlay.dismissTimer(timer.id);
+    expect(overlay.timers).toEqual([]);
+  });
+  it('shows the finish screen after the last step and resumes at the first open step', () => {
+    overlay.setTab('steps');
+    expect(overlay.startLabel).toContain('starten');
+    overlay.completeStep();
+    overlay.setTab('full');
+    expect(overlay.startLabel).toBe('▶ Weiter bei Schritt 2');
+    overlay.setTab('steps');
+    overlay.completeStep();
+    expect(overlay.finished).toBe(true);
+    overlay.reviewSteps();
+    expect(overlay.finished).toBe(false);
+    expect(overlay.currentStep).toBe(1);
+  });
+  it('changes steps by swiping and ignores vertical scrolling', () => {
+    overlay.setTab('steps');
+    const touch = (x: number, y: number) => ({ changedTouches: [{ clientX: x, clientY: y }] }) as unknown as TouchEvent;
+    overlay.onTouchStart(touch(300, 300)); overlay.onTouchEnd(touch(310, 100));
+    expect(overlay.currentStep).toBe(0);
+    overlay.onTouchStart(touch(300, 300)); overlay.onTouchEnd(touch(150, 310));
+    expect(overlay.currentStep).toBe(1);
+    expect(overlay.completedCount).toBe(1);
+    overlay.onTouchStart(touch(100, 300)); overlay.onTouchEnd(touch(250, 300));
+    expect(overlay.currentStep).toBe(0);
   });
   it('starts at the recipe batch and preserves zero amounts', () => {
     expect(overlay.totalServings).toBe(4);

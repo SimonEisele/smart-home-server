@@ -1,23 +1,22 @@
 import { TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
-import { CalendarPage } from './calendar.page';
-import { CalendarService } from '../service/calendar.service';
-import { TodosService } from '../../todos/service/todos.service';
+import { MealAttendance } from './meal-attendance';
+import { CalendarService } from '../../calendar/service/calendar.service';
 import { AuthService } from '../../../core/auth/service/auth.service';
-import { UserMealAttendance, ExternalMealGuest } from '../model/calendar.model';
+import { UserMealAttendance, ExternalMealGuest } from '../../calendar/model/calendar.model';
 
 describe('Meal attendance workflows', () => {
   const service = {setMealAttendance:vi.fn(),addExternalGuest:vi.fn(),removeExternalGuest:vi.fn(),getMealAttendance:vi.fn(),getExternalGuests:vi.fn()};
-  let page: CalendarPage;
+  let page: MealAttendance;
   const date = '2026-10-05';
   const record: UserMealAttendance = { id:'a',userId:'me',userFirstName:'Simon',userLastName:'Eisele',date,breakfastPresent:false,lunchPresent:false,dinnerPresent:true };
   beforeEach(() => {
     vi.resetAllMocks();
-    TestBed.configureTestingModule({imports:[CalendarPage],providers:[{provide:CalendarService,useValue:service},{provide:TodosService,useValue:{}},{provide:AuthService,useValue:{}}]});
-    page=TestBed.createComponent(CalendarPage).componentInstance;
+    TestBed.configureTestingModule({imports:[MealAttendance],providers:[{provide:CalendarService,useValue:service},{provide:AuthService,useValue:{}}]});
+    page=TestBed.createComponent(MealAttendance).componentInstance;
     page.currentUserId='me';page.attendanceReady=true;
-    page.weekDays=Array.from({length:7},(_,i)=>({date:new Date(date),dateStr:i===0?date:'2026-10-'+(6+i),isToday:i===0,dayName:'Mo',dayNum:5+i,month:10}));page.mealAttendances=[{...record}];
+    page.days=Array.from({length:7},(_,i)=>({date:new Date(date),dateStr:i===0?date:'2026-10-'+(6+i),isToday:i===0,dayName:'Mo',dayNum:5+i,month:10}));page.mealAttendances=[{...record}];
   });
   it('preserves other meals and prevents overlapping updates for the same day',()=>{
     const pending=new Subject<UserMealAttendance>();service.setMealAttendance.mockReturnValue(pending);
@@ -51,7 +50,13 @@ describe('Meal attendance workflows', () => {
     page.mealAttendances=[record,{...record,id:'b',date:'2026-10-06'}];expect(page.attendanceDisplayName(record)).toBe('Simon');
     page.mealAttendances.push({...record,id:'c',userId:'other',userLastName:'Müller'});expect(page.attendanceDisplayName(record)).toBe('Simon Eisele');
   });
+  it('tells the menu plan about every saved change and signs up for the whole week',()=>{
+    const changed=vi.fn();page.changed.subscribe(changed);
+    service.setMealAttendance.mockImplementation((d:string,b:boolean,l:boolean,n:boolean)=>of({...record,id:d,date:d,breakfastPresent:b,lunchPresent:l,dinnerPresent:n}));
+    page.toggleWholeWeek();
+    expect(service.setMealAttendance).toHaveBeenCalledTimes(7);expect(page.allWeekActive).toBe(true);expect(changed).toHaveBeenCalledTimes(7);
+  });
   it('discards a previous week response after navigating',()=>{
-    const pending=new Subject<UserMealAttendance[]>();service.getMealAttendance.mockReturnValue(pending);service.getExternalGuests.mockReturnValue(of([]));page.loadAttendance();page.weekDays=[{...page.weekDays[0],dateStr:'2026-10-12'}];pending.next([record]);pending.complete();expect(page.attendanceReady).toBe(false);
+    const pending=new Subject<UserMealAttendance[]>();service.getMealAttendance.mockReturnValue(pending);service.getExternalGuests.mockReturnValue(of([]));page.loadAttendance();page.days=[{...page.days[0],dateStr:'2026-10-12'}];pending.next([record]);pending.complete();expect(page.attendanceReady).toBe(false);
   });
 });

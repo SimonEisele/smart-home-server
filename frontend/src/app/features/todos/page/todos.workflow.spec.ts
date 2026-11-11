@@ -7,7 +7,7 @@ import { AuthService } from '../../../core/auth/service/auth.service';
 import { Todo } from '../model/todos.model';
 
 describe('Task editing workflows', () => {
-  const service = { getUserTodos: vi.fn(() => of([] as Todo[])), addTodo: vi.fn(), updateTodo: vi.fn(), deleteTodo: vi.fn() };
+  const service = { getUserTodos: vi.fn(() => of([] as Todo[])), addTodo: vi.fn(), updateTodo: vi.fn(), deleteTodo: vi.fn(), completeTodo: vi.fn() };
   let page: TodosPage;
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -45,8 +45,43 @@ describe('Task editing workflows', () => {
   });
   it('uses the server response when completing a recurring task', () => {
     const task:Todo = { id:'weekly', title:'Wöchentlich', done:false, recurrence:'weekly' };
-    page.todos = [task]; service.updateTodo.mockReturnValue(of({ ...task, dueDate:'2026-10-12T12:00:00Z' }));
+    page.todos = [task];
+    service.completeTodo.mockReturnValue(of({ data: { ...task, dueDate:'2026-10-12T12:00:00Z' }, advancedTo:'2026-10-12',
+      previous: { done:false } }));
     page.toggleDone(task, new Event('click'));
+    expect(service.completeTodo).toHaveBeenCalledWith('weekly');
     expect(page.todos[0].done).toBe(false); expect(page.todos[0].dueDate).toBe('2026-10-12T12:00:00Z');
+    expect(page.notice).toContain('nächstes Mal');
+  });
+  it('reopens a finished task with a plain update', () => {
+    const task:Todo = { id:'t', title:'Velo', done:true };
+    page.todos = [task]; service.updateTodo.mockReturnValue(of({ ...task, done:false }));
+    page.toggleDone(task, new Event('click'));
+    expect(service.updateTodo).toHaveBeenCalledWith('t', { done:false }); expect(page.todos[0].done).toBe(false);
+  });
+  it('shows when a task is planned in the calendar', () => {
+    const task:Todo = { id:'t', title:'Keller', done:false,
+      plannedSlots:[{ id:'e', start:new Date(2099, 0, 5, 14, 0).toISOString(), end:null }] };
+    expect(page.nextSlot(task)?.date).toBe('2099-01-05');
+    expect(page.slotLabel(task)).toContain('14:00');
+  });
+  it('combines status, WG/Privat and search, with counts per chip, and remembers them', () => {
+    const past = new Date(Date.now() - 86_400_000).toISOString();
+    page.todos = [
+      { id: 'a', title: 'Steuern', done: false, dueDate: past },
+      { id: 'b', title: 'Altpapier', done: false, globalTodo: true },
+      { id: 'c', title: 'Velo', done: true },
+    ];
+    expect(page.openTodos.map(t => t.id)).toEqual(['a', 'b']);
+    expect([page.statusCount('open'), page.statusCount('overdue'), page.statusCount('done'), page.statusCount('all')]).toEqual([2, 1, 1, 3]);
+    page.setFilter({ scope: 'global' });
+    expect(page.openTodos.map(t => t.id)).toEqual(['b']);
+    expect(page.statusCount('overdue')).toBe(0);
+    page.setFilter({ scope: 'all', status: 'done', search: 'vel' });
+    expect(page.doneTodos.map(t => t.id)).toEqual(['c']);
+    expect(page.filtersActive).toBe(true);
+    expect(JSON.parse(sessionStorage.getItem('filters:todos')!)).toEqual({ status: 'done', scope: 'all', search: 'vel' });
+    page.resetFilters();
+    expect(page.filters).toEqual({ status: 'open', scope: 'all', search: '' });
   });
 });
