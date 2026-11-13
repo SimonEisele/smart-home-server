@@ -43,20 +43,21 @@ class _CheckedRedirects(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def fetch(url):
+def fetch(url, max_bytes=MAX_BYTES, accept='text/html,*/*;q=0.5'):
+    """Loads a public URL as text; also used for subscribed calendars (iCal links)."""
     check_public_url(url)
     opener = urllib.request.build_opener(_CheckedRedirects)
     request = urllib.request.Request(url, headers={
-        'User-Agent': USER_AGENT, 'Accept': 'text/html,*/*;q=0.5', 'Accept-Language': 'de-CH,de;q=0.9,en;q=0.5'})
+        'User-Agent': USER_AGENT, 'Accept': accept, 'Accept-Language': 'de-CH,de;q=0.9,en;q=0.5'})
     try:
         with opener.open(request, timeout=TIMEOUT_SECONDS) as response:
-            raw = response.read(MAX_BYTES + 1)
+            raw = response.read(max_bytes + 1)
             charset = response.headers.get_content_charset() or 'utf-8'
     except urllib.error.HTTPError as error:
         raise FetchError(f'Die Seite antwortet mit Fehler {error.code}.') from error
     except (urllib.error.URLError, TimeoutError) as error:
         raise FetchError('Die Seite ist nicht erreichbar.') from error
-    if len(raw) > MAX_BYTES:
+    if len(raw) > max_bytes:
         raise FetchError('Die Seite ist zu gross.')
     return raw.decode(charset, errors='replace')
 

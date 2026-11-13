@@ -444,3 +444,59 @@ class WeatherLocation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
+
+# Subscribed external calendars (Outlook, Google, iCloud … via their iCal link)
+class ExternalCalendar(models.Model):
+    VISIBILITY_CHOICES = [
+        ('private', 'Nur ich'),
+        ('busy', 'WG sieht «belegt»'),
+        ('shared', 'WG sieht alles'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.CASCADE, related_name='external_calendars')
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='external_calendars')
+    name = models.CharField(max_length=80)
+    url = models.URLField(max_length=2000)
+    color = models.CharField(max_length=20, default='#6366f1')
+    visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='private')
+    enabled = models.BooleanField(default=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=300, blank=True)
+    event_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+
+class ExternalEvent(models.Model):
+    """One occurrence of an event from a subscribed calendar (recurring events are expanded)."""
+    calendar = models.ForeignKey(ExternalCalendar, on_delete=models.CASCADE, related_name='events')
+    uid = models.CharField(max_length=255)
+    title = models.CharField(max_length=300, blank=True)
+    description = models.TextField(blank=True)
+    location = models.CharField(max_length=300, blank=True)
+    start = models.DateTimeField()
+    end = models.DateTimeField(null=True, blank=True)
+    all_day = models.BooleanField(default=False)
+    # Free/busy as the source calendar marks it (TRANSP:TRANSPARENT = free).
+    busy = models.BooleanField(default=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['calendar', 'start'])]
+        ordering = ['start']
+
+
+# Secret link for subscribing to the WG calendar from Outlook, Google, the phone …
+class CalendarFeedToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='calendar_feed_tokens')
+    household = models.ForeignKey(Household, on_delete=models.CASCADE, related_name='calendar_feed_tokens')
+    token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'household'], name='one_feed_token_per_member')]

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { CalendarEvent, ExternalMealGuest, HouseholdMember, MemberAvailability, UserMealAttendance } from '../model/calendar.model';
+import { CalendarEvent, ExternalCalendar, ExternalMealGuest, HouseholdMember, MemberAvailability, UserMealAttendance } from '../model/calendar.model';
 import { CleaningTask } from '../../cleaning/model/cleaning.model';
 
 @Injectable({ providedIn: 'root' })
@@ -31,6 +31,45 @@ export class CalendarService {
     return this.http.delete<{ success: boolean }>(`${environment.apiUrl}/calendar-events/${id}/`).pipe(
       map(() => void 0)
     );
+  }
+
+  // ── Linked calendars ────────────────────────────────────────────────────
+  getExternalCalendars(): Observable<ExternalCalendar[]> {
+    return this.http.get<{ data: ExternalCalendar[] }>(`${environment.apiUrl}/calendar/external/`).pipe(map(r => r.data));
+  }
+
+  createExternalCalendar(calendar: Partial<ExternalCalendar>): Observable<ExternalCalendar> {
+    return this.http.post<{ data: ExternalCalendar }>(`${environment.apiUrl}/calendar/external/`, calendar)
+      .pipe(map(r => r.data));
+  }
+
+  updateExternalCalendar(id: string, patch: Partial<ExternalCalendar>): Observable<ExternalCalendar> {
+    return this.http.patch<{ data: ExternalCalendar }>(`${environment.apiUrl}/calendar/external/${id}/`, patch)
+      .pipe(map(r => r.data));
+  }
+
+  deleteExternalCalendar(id: string): Observable<void> {
+    return this.http.delete(`${environment.apiUrl}/calendar/external/${id}/`).pipe(map(() => void 0));
+  }
+
+  syncExternalCalendar(id: string): Observable<ExternalCalendar> {
+    return this.http.post<{ data: ExternalCalendar }>(`${environment.apiUrl}/calendar/external/${id}/sync/`, {})
+      .pipe(map(r => r.data));
+  }
+
+  /** Occurrences from linked calendars; `refreshing` means newer data arrives in a few seconds. */
+  getExternalEvents(start: string, end: string): Observable<{ events: CalendarEvent[]; refreshing: boolean }> {
+    return this.http
+      .get<{ data: CalendarEvent[]; refreshing?: boolean }>(
+        `${environment.apiUrl}/calendar/external-events/?start=${start}&end=${end}`)
+      .pipe(map(r => ({ events: r.data.map(e => ({ ...e, source: 'external' as const })), refreshing: !!r.refreshing })));
+  }
+
+  /** Personal subscription link of the WG calendar (absolute URL). */
+  getFeedLink(renew = false): Observable<string> {
+    const url = `${environment.apiUrl}/calendar/feed/`;
+    const request = renew ? this.http.post<{ data: { path: string } }>(url, {}) : this.http.get<{ data: { path: string } }>(url);
+    return request.pipe(map(r => new URL(r.data.path, new URL(environment.apiUrl, window.location.origin)).href));
   }
 
   getMembers(): Observable<HouseholdMember[]> {

@@ -248,3 +248,91 @@ describe('Separate cooking step popup', () => {
     expect(fixture.nativeElement.querySelector('[role=dialog]').getAttribute('aria-label')).toBe('Kochen');
   });
 });
+
+describe('Cooking in the background', () => {
+  const stew = {
+    id: 'stew', name: 'Eintopf', baseServings: 2, ingredients: [],
+    steps: [
+      { order: 1, description: 'Anbraten.', ingredients: [] },
+      { order: 2, description: '40 Minuten schmoren.', ingredients: [] },
+    ],
+  };
+  const slot = { date: '2026-11-13', meal: 'dinner' as const, weekTag: '2026-W46', persons: 2, recipe: stew };
+
+  function setup() {
+    TestBed.configureTestingModule({ providers: [{ provide: ShoppinglistService, useValue: {} }] });
+    const fixture = TestBed.createComponent(RecipeCookOverlay);
+    fixture.componentInstance.ngOnInit();
+    return { overlay: fixture.componentInstance, cook: TestBed.inject(RecipeCookService) };
+  }
+
+  beforeEach(() => localStorage.clear());
+  afterEach(() => { vi.useRealTimers(); localStorage.clear(); });
+
+  it('closes an untouched recipe but keeps a started one running when closed', () => {
+    const { overlay, cook } = setup();
+    cook.open(slot);
+    overlay.close();
+    expect(overlay.slot).toBeNull();
+
+    cook.open(slot);
+    overlay.setTab('steps');
+    overlay.completeStep();
+    overlay.startTimer(40, 1);
+    overlay.close();
+    expect(overlay.minimized).toBe(true);
+    expect(overlay.slot?.recipe.id).toBe('stew');
+    expect(overlay.miniStatus).toBe('Schritt 2 von 2');
+    expect(overlay.miniTimer?.minutes).toBe(40);
+
+    // Opening the same recipe again continues where it was.
+    cook.open({ ...slot });
+    expect(overlay.minimized).toBe(false);
+    expect(overlay.currentStep).toBe(1);
+    expect(overlay.timers.length).toBe(1);
+    overlay.dismissTimer(overlay.timers[0].id);
+  });
+
+  it('asks before ending a started recipe', () => {
+    const { overlay, cook } = setup();
+    cook.open(slot);
+    overlay.toggleIngredient('x');
+    overlay.minimize();
+    overlay.requestEnd();
+    expect(overlay.minimized).toBe(false);
+    expect(overlay.confirmingEnd).toBe(true);
+    overlay.endCooking();
+    expect(overlay.slot).toBeNull();
+    expect(localStorage.getItem('cook:session')).toBeNull();
+  });
+
+  it('picks a minimized recipe up again after a reload, with its timers', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 13, 18, 0));
+    let { overlay, cook } = setup();
+    cook.open(slot);
+    overlay.setTab('steps');
+    overlay.nextStep();
+    overlay.startTimer(40, 1);
+    overlay.minimize();
+    TestBed.resetTestingModule();
+
+    vi.setSystemTime(new Date(2026, 10, 13, 18, 15));
+    ({ overlay, cook } = setup());
+    expect(overlay.slot?.recipe.name).toBe('Eintopf');
+    expect(overlay.minimized).toBe(true);
+    expect(overlay.currentStep).toBe(1);
+    expect(overlay.timers[0].remaining).toBe(25 * 60);
+    overlay.endCooking();
+  });
+
+  it('says so when a new recipe replaces one that was cooking', () => {
+    const { overlay, cook } = setup();
+    cook.open(slot);
+    overlay.toggleIngredient('x');
+    overlay.minimize();
+    cook.open({ ...slot, recipe: { ...stew, id: 'soup', name: 'Suppe' } });
+    expect(overlay.replacedName).toBe('Eintopf');
+    expect(overlay.minimized).toBe(false);
+  });
+});

@@ -6,7 +6,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
-import { CalendarEvent } from '../model/calendar.model';
+import { CalendarEvent, ExternalCalendar } from '../model/calendar.model';
+import { CalendarLinks } from '../links/calendar-links';
 import { CalendarService } from '../service/calendar.service';
 import { TodosService } from '../../todos/service/todos.service';
 import { Todo } from '../../todos/model/todos.model';
@@ -23,11 +24,13 @@ interface UndoAction { message: string; run: () => void; }
 interface EvModalForm { title: string; date: string; startTime: string; endTime: string; calendarType: string; description: string; location: string; color: string; allDay: boolean; }
 interface ResizePreview { evId: string; newH: number; newEnd: string; }
 
+const HIDDEN_CALENDARS_KEY = 'calendar:hidden-linked';
+
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [DialogDirective, CommonModule, FormsModule, RouterLink],
+  imports: [DialogDirective, CommonModule, FormsModule, RouterLink, CalendarLinks],
   templateUrl: './calendar.page.html',
   styleUrl: './calendar.page.css',
 })
@@ -56,6 +59,14 @@ export class CalendarPage implements OnInit, OnDestroy {
   planError = '';
 
   showMoreOptions = false;
+
+  // Linked calendars (Outlook, Google … via iCal), read only
+  externalCalendars: ExternalCalendar[] = [];
+  externalEvents: CalendarEvent[] = [];
+  hiddenCalendars = new Set<string>(this.readHiddenCalendars());
+  showLinks = false;
+  externalDetail: CalendarEvent | null = null;
+  private externalRetry: ReturnType<typeof setTimeout> | null = null;
 
   // Filters
   showHousehold = true;
@@ -126,7 +137,11 @@ export class CalendarPage implements OnInit, OnDestroy {
     this.nowTimer = setInterval(() => { this.updateNow(); this.cdr.detectChanges(); }, 30000);
   }
 
-  ngOnDestroy(): void { clearInterval(this.nowTimer); if (this.undoTimer) clearTimeout(this.undoTimer); }
+  ngOnDestroy(): void {
+    clearInterval(this.nowTimer);
+    if (this.undoTimer) clearTimeout(this.undoTimer);
+    if (this.externalRetry) clearTimeout(this.externalRetry);
+  }
 
   /** Scrolls the time grid to the current time, or the first appointment of a week without today. */
   private scrollGrid(): void {
@@ -165,6 +180,7 @@ export class CalendarPage implements OnInit, OnDestroy {
   // â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   private load(): void {
     this.loadEvents();
+    this.loadCalendars();
     this.calendarService.getCleaningTasks().subscribe(t => { this.cleaningTasks = t; this.cdr.detectChanges(); });
     this.todosService.getUserTodos().subscribe(t => {
       this.todos = t;
@@ -185,6 +201,99 @@ export class CalendarPage implements OnInit, OnDestroy {
       this.cdr.detectChanges();
       this.scrollGrid();
     });
+    this.loadExternalEvents(true);
+  }
+
+  // ── Linked calendars ──────────────────────────────────────────────────────
+  loadCalendars(): void {
+    this.calendarService.getExternalCalendars().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: calendars => { this.externalCalendars = calendars; this.cdr.markForCheck(); },
+      error: () => { /* the app's own calendar keeps working */ },
+    });
+  }
+
+  /** Linked calendars refresh in the background; when they do, ask once more a little later. */
+  private loadExternalEvents(retry: boolean): void {
+    if (this.externalRetry) { clearTimeout(this.externalRetry); this.externalRetry = null; }
+    const start = this.weekDays[0].dateStr, end = this.weekDays[6].dateStr;
+    this.calendarService.getExternalEvents(start, end).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ events, refreshing }) => {
+        if (this.weekDays[0]?.dateStr !== start) return;
+        this.externalEvents = events;
+        this.cdr.markForCheck();
+        if (refreshing && retry) {
+          this.externalRetry = setTimeout(() => { this.loadExternalEvents(false); this.loadCalendars(); }, 8000);
+        }
+      },
+      error: () => { this.externalEvents = []; this.cdr.markForCheck(); },
+    });
+  }
+
+  onCalendarsChanged(calendars: ExternalCalendar[]): void {
+    this.externalCalendars = calendars;
+    this.loadExternalEvents(false);
+  }
+
+  calendarOf(ev: CalendarEvent | null): ExternalCalendar | undefined {
+    return ev?.calendarId ? this.externalCalendars.find(c => c.id === ev.calendarId) : undefined;
+  }
+
+  /** Where an appointment lives: WG, private, or the linked calendar with its owner. */
+  sourceLabel(ev: CalendarEvent): string {
+    if (ev.source === 'external') {
+      const calendar = this.calendarOf(ev);
+      if (!calendar) return ev.calendarName || 'Verknüpfter Kalender';
+      return calendar.isOwner ? calendar.name : `${calendar.ownerName} · ${calendar.name}`;
+    }
+    return ev.calendarType === 'private' ? 'Privat' : 'WG';
+  }
+
+  calendarChipLabel(calendar: ExternalCalendar): string {
+    return calendar.isOwner ? calendar.name : `${calendar.ownerName} · ${calendar.name}`;
+  }
+
+  get visibleCalendars(): ExternalCalendar[] { return this.externalCalendars.filter(c => c.enabled); }
+
+  toggleCalendar(id: string): void {
+    this.hiddenCalendars.has(id) ? this.hiddenCalendars.delete(id) : this.hiddenCalendars.add(id);
+    this.hiddenCalendars = new Set(this.hiddenCalendars);
+    try { localStorage.setItem(HIDDEN_CALENDARS_KEY, JSON.stringify([...this.hiddenCalendars])); } catch { /* not kept */ }
+  }
+
+  private readHiddenCalendars(): string[] {
+    try {
+      const value = JSON.parse(localStorage.getItem(HIDDEN_CALENDARS_KEY) ?? '[]');
+      return Array.isArray(value) ? value.filter(v => typeof v === 'string') : [];
+    } catch { return []; }
+  }
+
+  private shownExternal(): CalendarEvent[] {
+    return this.externalEvents.filter(ev => !this.hiddenCalendars.has(ev.calendarId ?? ''));
+  }
+
+  isExternal(ev: CalendarEvent | null): boolean { return ev?.source === 'external'; }
+
+  calendarColor(ev: CalendarEvent): string | null {
+    return ev.source === 'external' ? this.calendarOf(ev)?.color ?? ev.calendarColor ?? '#64748b' : null;
+  }
+
+  openExternal(ev: CalendarEvent): void { this.externalDetail = ev; this.cdr.markForCheck(); }
+
+  closeExternal(): void { this.externalDetail = null; }
+
+  /** "Mo 16.11., 09:00–10:00" or "16.–20.11., ganztägig" for the read-only detail. */
+  externalWhen(ev: CalendarEvent): string {
+    const start = new Date(ev.start), end = ev.end ? new Date(ev.end) : null;
+    const days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    const day = (d: Date) => `${days[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}.`;
+    const time = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    if (ev.allDay) {
+      const last = end ? new Date(end.getTime() - 86400000) : start;
+      return localIsoDate(last) > localIsoDate(start) ? `${day(start)} – ${day(last)}, ganztägig` : `${day(start)}, ganztägig`;
+    }
+    if (!end) return `${day(start)}, ${time(start)}`;
+    return localIsoDate(end) === localIsoDate(start)
+      ? `${day(start)}, ${time(start)}–${time(end)}` : `${day(start)} ${time(start)} – ${day(end)} ${time(end)}`;
   }
 
   // â”€â”€ Computed views â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -274,17 +383,27 @@ export class CalendarPage implements OnInit, OnDestroy {
   }
 
   eventsForDay(dateStr: string): CalendarEvent[] {
-    return this.events.filter(ev => {
+    const own = this.events.filter(ev => {
       if (ev.allDay) return false;
       if (!ev.start || localIsoDate(new Date(ev.start)) !== dateStr) return false;
       if (ev.calendarType === 'private'   && !this.showPrivate)   return false;
       if ((ev.calendarType ?? 'household') === 'household' && !this.showHousehold) return false;
       return true;
-    }).sort((a, b) => a.start.localeCompare(b.start));
+    });
+    const linked = this.shownExternal().filter(ev => !ev.allDay && localIsoDate(new Date(ev.start)) === dateStr);
+    return [...own, ...linked].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   }
 
   allDayEventsForDay(dateStr: string): CalendarEvent[] {
-    return this.events.filter(ev => ev.allDay && ev.start && localIsoDate(new Date(ev.start)) === dateStr && (ev.calendarType === 'private' ? this.showPrivate : this.showHousehold));
+    const own = this.events.filter(ev => ev.allDay && ev.start && localIsoDate(new Date(ev.start)) === dateStr && (ev.calendarType === 'private' ? this.showPrivate : this.showHousehold));
+    // Linked all-day events may span several days (holidays); their end is exclusive.
+    const linked = this.shownExternal().filter(ev => {
+      if (!ev.allDay) return false;
+      const first = localIsoDate(new Date(ev.start));
+      const last = ev.end ? localIsoDate(new Date(new Date(ev.end).getTime() - 1)) : first;
+      return first <= dateStr && dateStr <= last;
+    });
+    return [...own, ...linked];
   }
 
   evTop(ev: CalendarEvent): number { return gridTop(new Date(ev.start)); }
@@ -303,6 +422,7 @@ export class CalendarPage implements OnInit, OnDestroy {
   get hasPrivateEvents(): boolean { return this.events.some(e => e.calendarType === 'private'); }
 
   evClass(ev: CalendarEvent): string {
+    if (ev.source === 'external') return `cal-ev ev-external${ev.busyOnly ? ' ev-busy' : ''}${ev.busy === false ? ' ev-free' : ''}`;
     const type = ev.calendarType ?? 'household';
     const todo = ev.todoRefId ? ' ev-todo' + (this.linkedTodo(ev)?.done ? ' ev-task-done' : '') : '';
     return `cal-ev ev-${type}${todo}`;
@@ -420,6 +540,7 @@ export class CalendarPage implements OnInit, OnDestroy {
 
   /** Calendar event body: defer to movement threshold (tap = open modal) */
   onEvTouchStart(e: TouchEvent, ev: CalendarEvent): void {
+    if (ev.source === 'external') return; // read only: a tap opens the details
     const touch = e.touches[0];
     this.touchStartX = touch.clientX;
     this.touchStartY = touch.clientY;
@@ -648,6 +769,7 @@ export class CalendarPage implements OnInit, OnDestroy {
   }
 
   onEvDragstart(e: DragEvent, ev: CalendarEvent): void {
+    if (ev.source === 'external') { e.preventDefault(); return; }
     e.stopPropagation();
     this.justDragged = true;
     this.dragEvent = ev; this.dragTodo = null;
@@ -774,6 +896,7 @@ export class CalendarPage implements OnInit, OnDestroy {
   onEvClick(ev: CalendarEvent, e: MouseEvent): void {
     e.stopPropagation();
     if (this.justDragged) { this.justDragged = false; return; }
+    if (ev.source === 'external') { this.openExternal(ev); return; }
     this.openEditEvent(ev);
   }
 
@@ -853,6 +976,7 @@ export class CalendarPage implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   onEsc(): void {
+    if (this.externalDetail) { this.closeExternal(); return; }
     if (this.planTodo) { this.closePlan(); return; }
     if (this.showModal) { this.closeModal(); return; }
   }

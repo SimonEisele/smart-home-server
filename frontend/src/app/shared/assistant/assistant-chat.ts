@@ -1,4 +1,4 @@
-import { AfterViewChecked, Component, ElementRef, Input, ViewChild, inject } from '@angular/core';
+import { Component, ElementRef, Injector, Input, ViewChild, afterNextRender, computed, effect, inject } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -12,19 +12,22 @@ import { AssistantProposal, AssistantService, ProposalType } from './assistant.s
   templateUrl: './assistant-chat.html',
   styleUrl: './assistant-chat.css',
 })
-export class AssistantChat implements AfterViewChecked {
+export class AssistantChat {
   readonly assistant = inject(AssistantService);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
   @Input() compact = false;
   @ViewChild('scroller') scroller?: ElementRef<HTMLElement>;
   @ViewChild('input') input?: ElementRef<HTMLTextAreaElement>;
   readonly status$ = this.assistant.status();
   draft = '';
-  private renderedCount = -1;
 
   readonly TYPE_LABELS: Record<ProposalType, string> = {
-    recipe: 'Rezept', event: 'Termin', todo: 'Aufgabe', shopping: 'Einkaufsliste', menu: 'Menüplan',
+    recipe: 'Neues Rezept', event: 'Neuer Termin', todo: 'Neue Aufgabe', shopping: 'Einkaufsliste',
+    menu: 'Menüplan', recipe_update: 'Rezept ändern', event_update: 'Termin ändern',
+    todo_update: 'Aufgabe ändern', shopping_update: 'Einkauf ändern',
   };
+  readonly STATUS_LABELS = { added: 'neu', changed: 'geändert', removed: 'entfernt', new: 'neu' } as const;
   readonly suggestions = [
     { label: 'Rezept von einem Link übernehmen', text: 'Bitte übernimm dieses Rezept: ' },
     { label: 'Was steht diese Woche an?', text: 'Was steht diese Woche an? Termine, Aufgaben und Putzen.' },
@@ -32,12 +35,26 @@ export class AssistantChat implements AfterViewChecked {
     { label: 'Einkauf fürs Wochenende', text: 'Was brauchen wir für die geplanten Gerichte am Wochenende? Setz es auf die Einkaufsliste.' },
   ];
 
-  ngAfterViewChecked(): void {
-    // Keep the newest message in view.
-    const count = this.assistant.messages().length + (this.assistant.sending() ? 1 : 0);
-    if (count !== this.renderedCount && this.scroller) {
-      this.renderedCount = count;
-      this.scroller.nativeElement.scrollTop = this.scroller.nativeElement.scrollHeight;
+  constructor() {
+    // Keep the newest message in view once it is on screen; saving a card does not move the view.
+    const turn = computed(() => `${this.assistant.messages().length}:${this.assistant.sending()}`);
+    effect(() => {
+      turn();
+      afterNextRender(() => this.scrollToLatest(), { injector: this.injector });
+    });
+  }
+
+  private scrollToLatest(): void {
+    const box = this.scroller?.nativeElement;
+    if (!box) return;
+    const last = this.assistant.messages().at(-1);
+    const sending = this.assistant.sending();
+    const answer = [...box.querySelectorAll<HTMLElement>('.message')].at(-1);
+    if (!sending && last?.role === 'assistant' && answer) {
+      // A fresh answer with long cards is read from its start, not from the last button.
+      box.scrollTop += answer.getBoundingClientRect().top - box.getBoundingClientRect().top - 8;
+    } else {
+      box.scrollTop = box.scrollHeight;
     }
   }
 
@@ -61,6 +78,8 @@ export class AssistantChat implements AfterViewChecked {
       field?.setSelectionRange(text.length, text.length);
     });
   }
+
+  isUpdate(proposal: AssistantProposal): boolean { return proposal.type.endsWith('_update'); }
 
   linkPath(proposal: AssistantProposal): string { return (proposal.link ?? '/').split('?')[0]; }
 

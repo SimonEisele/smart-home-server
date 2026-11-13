@@ -1,13 +1,12 @@
-<div class="cooking-backdrop" *ngIf="slot as active" (click)="activeTab === 'steps' ? onStepBackdropClick($event) : onBackdropClick($event)">
+<div class="cooking-backdrop" *ngIf="(minimized ? null : slot) as active" (click)="activeTab === 'steps' ? onStepBackdropClick($event) : onBackdropClick($event)">
     <section class="cooking-dialog" [class.mode-steps]="activeTab === 'steps'" appDialog
         [attr.aria-label]="activeTab === 'steps' ? 'Kochschritte' : 'Kochen'" (dialogDismiss)="onDismiss()">
 
         <!-- ── Header: name, amount, timers ─────────────────────────────────── -->
         <header class="cook-header">
-            <button type="button" class="icon-btn" (click)="activeTab === 'steps' ? setTab('full') : close()"
-                [disabled]="addingToShoppingList"
-                [attr.aria-label]="activeTab === 'steps' ? 'Zur Übersicht' : 'Kochmodus schließen'">{{ activeTab ===
-                'steps' ? '‹' : '✕' }}</button>
+            @if (activeTab === 'steps') {
+            <button type="button" class="icon-btn" (click)="setTab('full')" aria-label="Zur Übersicht">‹</button>
+            }
             <div class="cook-title">
                 <span class="eyebrow">{{ directRecipe ? 'Kochen' : MEAL_LABELS[active.meal] }}@if
                     (active.recipe.durationMinutes) { · {{ active.recipe.durationMinutes }} Min. }</span>
@@ -32,7 +31,28 @@
                     (click)="directRecipe ? adjustServings(1) : adjustPersons(1)"
                     [disabled]="addingToShoppingList">+</button>
             </div>
+            <div class="window-actions">
+                <button type="button" class="icon-btn minimize-btn" (click)="minimize()" [disabled]="addingToShoppingList"
+                    aria-label="Minimieren – im Hintergrund weiterkochen" title="Minimieren">
+                    <span aria-hidden="true"></span></button>
+                <button type="button" class="icon-btn" (click)="requestEnd()" [disabled]="addingToShoppingList"
+                    aria-label="Kochen beenden" title="Beenden">✕</button>
+            </div>
         </header>
+        @if (confirmingEnd) {
+        <div class="end-confirm" role="alertdialog" aria-labelledby="end-confirm-text">
+            <p id="end-confirm-text"><strong>Kochen beenden?</strong> Erledigte Schritte und laufende Timer gehen verloren.</p>
+            <div>
+                <button type="button" class="btn-ghost" (click)="confirmingEnd = false">Weiterkochen</button>
+                <button type="button" class="btn-ghost" (click)="minimize()">Minimieren</button>
+                <button type="button" class="btn-danger" (click)="endCooking()">Beenden</button>
+            </div>
+        </div>
+        }
+        @if (replacedName) {
+        <p class="replaced-note" role="status">«{{ replacedName }}» lief im Hintergrund und wurde beendet.
+            <button type="button" (click)="replacedName = ''" aria-label="Hinweis schliessen">✕</button></p>
+        }
 
         @if (timers.length) {
         <div class="timer-bar" role="status" aria-live="polite">
@@ -202,3 +222,19 @@
         }
     </section>
 </div>
+
+<!-- ── Minimized: cooking continues, timers keep running ────────────────────── -->
+@if (slot && minimized) {
+<div class="cook-mini" role="region" aria-label="Kochen im Hintergrund">
+    <button type="button" class="cook-mini-main" (click)="resume()"
+        [attr.aria-label]="'Weiterkochen: ' + slot.recipe.name + ', ' + miniStatus">
+        <span class="cook-mini-icon" aria-hidden="true">🍳</span>
+        <span class="cook-mini-text"><strong>{{ slot.recipe.name }}</strong><small>{{ miniStatus }}</small></span>
+        @if (miniTimer; as timer) {
+        <span class="cook-mini-timer" [class.done]="timer.done" aria-live="polite">⏱ {{ timer.done ? 'Fertig!' :
+            formatTimer(timer.remaining) }}@if (timers.length > 1) { <small>+{{ timers.length - 1 }}</small> }</span>
+        }
+    </button>
+    <button type="button" class="icon-btn cook-mini-close" (click)="requestEnd()" aria-label="Kochen beenden">✕</button>
+</div>
+}

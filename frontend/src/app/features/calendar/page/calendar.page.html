@@ -8,6 +8,7 @@
             <h1 class="page-title">Kalender</h1>
         </div>
         <div class="page-actions">
+            <button class="btn-secondary" (click)="showLinks = true">Kalender verbinden</button>
             <button class="btn-primary" (click)="openNewEvent()">+ Termin</button>
         </div>
     </header>
@@ -28,6 +29,13 @@
                 (click)="showTodos = !showTodos"><i aria-hidden="true"></i>Aufgaben</button>
             <button class="legend-item legend-cleaning" [class.off]="!showCleaning" [attr.aria-pressed]="showCleaning"
                 (click)="showCleaning = !showCleaning"><i aria-hidden="true"></i>Putzen</button>
+            @for (calendar of visibleCalendars; track calendar.id) {
+            <button class="legend-item legend-linked" [class.off]="hiddenCalendars.has(calendar.id)"
+                [attr.aria-pressed]="!hiddenCalendars.has(calendar.id)" [style.--cal-color]="calendar.color"
+                [title]="calendar.lastError ? calendar.lastError : ''" (click)="toggleCalendar(calendar.id)"><i
+                    aria-hidden="true"></i>{{ calendarChipLabel(calendar) }}@if (calendar.lastError) { <span
+                    class="legend-warn" aria-label="Fehler beim Aktualisieren">!</span> }</button>
+            }
         </div>
     </div>
 
@@ -61,13 +69,17 @@
             </div>
             }
             @for (event of allDayEventsForDay(day.dateStr); track event.id) {
-            <button class="agenda-event" (click)="onEvClick(event, $event)"><span>Ganztägig</span><strong>{{ event.title }}</strong></button>
+            <button class="agenda-event" [class.agenda-linked-cal]="isExternal(event)" [class.agenda-busy]="event.busyOnly"
+                [style.--cal-color]="calendarColor(event)" (click)="onEvClick(event, $event)"><span>Ganztägig</span><strong>{{
+                    event.title }}<small class="agenda-source">{{ sourceLabel(event) }}</small></strong></button>
             }
             @for (event of eventsForDay(day.dateStr); track event.id) {
-            <button class="agenda-event" [class.agenda-private]="event.calendarType === 'private'"
-                [class.agenda-linked]="!!event.todoRefId" (click)="onEvClick(event, $event)"><span>{{ event.start | date:'HH:mm' }}<small>{{
+            <button class="agenda-event" [class.agenda-private]="event.calendarType === 'private' && !isExternal(event)"
+                [class.agenda-linked]="!!event.todoRefId" [class.agenda-linked-cal]="isExternal(event)"
+                [class.agenda-busy]="event.busyOnly" [style.--cal-color]="calendarColor(event)"
+                (click)="onEvClick(event, $event)"><span>{{ event.start | date:'HH:mm' }}<small>{{
                         event.end | date:'HH:mm' }}</small></span><strong>{{ event.title }}@if (event.location) { <small>{{
-                        event.location }}</small> }</strong></button>
+                        event.location }}</small> }<small class="agenda-source">{{ sourceLabel(event) }}</small></strong></button>
             }
             @if (!eventsForDay(day.dateStr).length && !allDayEventsForDay(day.dateStr).length && !tasksForDay(day.dateStr).length) {
             <p class="agenda-empty">Frei.</p>
@@ -117,8 +129,9 @@
                         [attr.aria-label]="'Termin am ' + day.dateStr + ' hinzufügen'"><span class="day-name">{{ day.dayName
                             }}</span><span class="day-num" [class.today-num]="day.isToday">{{ day.dayNum }}</span></button>
                     @for (ev of allDayEventsForDay(day.dateStr); track ev.id) {
-                    <div class="allday-ev ev-{{ ev.calendarType ?? 'household' }}" (click)="onEvClick(ev, $event)">{{
-                        ev.title }}</div>
+                    <div class="allday-ev" [class]="isExternal(ev) ? 'allday-ev ev-external' + (ev.busyOnly ? ' ev-busy' : '')
+                        : 'allday-ev ev-' + (ev.calendarType ?? 'household')" [style.--cal-color]="calendarColor(ev)"
+                        [title]="ev.title + ' · ' + sourceLabel(ev)" (click)="onEvClick(ev, $event)">{{ ev.title }}</div>
                     }
                     @for (item of tasksForDay(day.dateStr); track item.key) {
                     <div class="day-task" [class.overdue]="item.overdue" [class.is-cleaning]="item.kind === 'cleaning'"
@@ -153,15 +166,18 @@
                             <div [class]="evClass(ev)" [class.ev-dragging]="touchDraggingEventId === ev.id"
                                 [style.top.px]="evTop(ev)" [style.height.px]="evHeight(ev)"
                                 [style.left]="evLane(ev, day.dateStr).left" [style.width]="evLane(ev, day.dateStr).width"
-                                [style.backgroundColor]="evColor(ev) || null" draggable="true"
+                                [style.backgroundColor]="evColor(ev) || null" [style.--cal-color]="calendarColor(ev)"
+                                [attr.draggable]="isExternal(ev) ? null : 'true'" [title]="ev.title + ' · ' + sourceLabel(ev)"
                                 (dragstart)="onEvDragstart($event, ev)" (touchstart)="onEvTouchStart($event, ev)"
                                 (click)="onEvClick(ev, $event)">
                                 <span class="ev-time">{{ ev.start | date:'HH:mm' }}@if (ev.end) {–{{ ev.end | date:'HH:mm' }}}</span>
                                 <span class="ev-title">{{ ev.title }}</span>
                                 @if (ev.location) { <span class="ev-location">{{ ev.location }}</span> }
+                                @if (isExternal(ev)) { <span class="ev-cal">{{ sourceLabel(ev) }}</span> } @else {
                                 <div class="resize-handle" draggable="true" (dragstart)="onResizeDragstart($event, ev)"
                                     (touchstart)="onResizeTouchStart($event, ev)" (click)="$event.stopPropagation()">
                                 </div>
+                                }
                             </div>
                             }
                             @if (dropPreview && dropPreview.dateStr === day.dateStr) {
@@ -319,4 +335,43 @@
         </div>
     </div>
 </div>
+}
+
+<!-- ── Appointment from a linked calendar (read only) ─────────────────────── -->
+@if (externalDetail; as ev) {
+<div class="modal-backdrop" (click)="closeExternal()">
+    <div class="modal-panel external-panel" (click)="$event.stopPropagation()" aria-labelledby="external-title" appDialog
+        (dialogDismiss)="closeExternal()">
+        <div class="modal-head">
+            <h3 id="external-title">{{ ev.title }}</h3>
+            <button class="modal-close" (click)="closeExternal()" aria-label="Schliessen">✕</button>
+        </div>
+        <div class="modal-body">
+            <dl class="external-facts">
+                <div><dt>Wann</dt><dd>{{ externalWhen(ev) }}@if (ev.busy === false) { · als frei markiert }</dd></div>
+                @if (ev.location) { <div><dt>Wo</dt><dd>{{ ev.location }}</dd></div> }
+                <div><dt>Kalender</dt><dd><span class="cal-dot" [style.background]="calendarColor(ev)"
+                            aria-hidden="true"></span>{{ sourceLabel(ev) }}</dd></div>
+            </dl>
+            @if (ev.busyOnly) {
+            <p class="external-note">{{ calendarOf(ev)?.ownerName }} teilt bei diesem Kalender nur, wann sie oder er belegt
+                ist.</p>
+            } @else if (ev.description) {
+            <p class="external-description">{{ ev.description }}</p>
+            }
+            <p class="external-note">Verknüpfter Kalender: ändern lässt sich der Termin nur im Original (z. B. Outlook).
+                @if (calendarOf(ev)?.lastSyncedAt) { Stand {{ calendarOf(ev)?.lastSyncedAt | date:'d.M. HH:mm' }}. }</p>
+        </div>
+        <div class="modal-foot">
+            @if (calendarOf(ev)?.isOwner) {
+            <button class="btn-ghost" (click)="closeExternal(); showLinks = true">Kalender verwalten</button>
+            }
+            <button class="btn-primary" (click)="closeExternal()">Schliessen</button>
+        </div>
+    </div>
+</div>
+}
+
+@if (showLinks) {
+<app-calendar-links (closed)="showLinks = false; loadCalendars()" (changed)="onCalendarsChanged($event)" />
 }

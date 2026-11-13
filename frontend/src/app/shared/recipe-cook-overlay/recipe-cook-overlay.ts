@@ -18,6 +18,25 @@ import { Recipe, RecipeIngredient, RecipeStep } from '../../features/recipes/mod
 
 interface CookTimer { id: number; label: string; minutes: number; endsAt: number; remaining: number; done: boolean; }
 
+/** What is kept when the cooking view is minimized, so a reload or a closed tab can pick it up again. */
+interface CookSession {
+  slot: CookSlot;
+  activeTab: 'full' | 'steps';
+  currentStep: number;
+  selectedSection: number | null;
+  checked: string[];
+  completed: number[];
+  timers: CookTimer[];
+  finished: boolean;
+  localPersons: number;
+  localUnitsPerPerson: number;
+  selectedServings: number;
+  savedAt: number;
+}
+
+const SESSION_KEY = 'cook:session';
+const SESSION_MAX_AGE = 12 * 60 * 60_000;
+
 /** "20 Minuten", "1 Std.", "10–15 Min." → minutes (upper bound of a range). */
 export function timersInText(text: string): Array<{ minutes: number; label: string }> {
   const found: Array<{ minutes: number; label: string }> = [];
@@ -63,6 +82,13 @@ export class RecipeCookOverlay implements OnInit {
   /** Phone/tablet portrait: which half of the overview is shown. */
   phonePane: 'ingredients' | 'steps' = 'ingredients';
   finished = false;
+  /** Cooking keeps going in the background; only a small bar is shown. */
+  minimized = false;
+  /** The ✕ asks first when there is progress to lose. */
+  confirmingEnd = false;
+  /** Set when opening a recipe replaced one that was still cooking in the background. */
+  replacedName = '';
+  private started = false;
   timers: CookTimer[] = [];
   private timerSeq = 0;
   private timerTick: ReturnType<typeof setInterval> | null = null;
@@ -78,7 +104,19 @@ export class RecipeCookOverlay implements OnInit {
     private cdr: ChangeDetectorRef,
   ) {}
   ngOnInit(): void {
+    const restore = this.readSession();
     this.cookService.slot$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((slot) => {
+      if (slot && this.slot && this.minimized && slot.recipe.id === this.slot.recipe.id) {
+        // Opening the recipe that is cooking in the background continues it.
+        this.resume();
+        return;
+      }
+      const previous = this.slot;
+      this.replacedName = slot && this.slot && this.hasProgress && slot.recipe.id !== this.slot.recipe.id
+        ? this.slot.recipe.name : '';
+      this.minimized = false;
+      this.confirmingEnd = false;
+      this.started = false;
       this.revision++;
       this.slot = slot;
       this.addedMessage = '';
@@ -96,15 +134,18 @@ export class RecipeCookOverlay implements OnInit {
       this.localPersons = slot?.persons ?? 1;
       this.localUnitsPerPerson = slot?.recipe.unitsPerPerson ?? 1;
       this.selectedServings = slot?.servings ?? slot?.recipe.baseServings ?? 4;
+      if (restore && slot === restore.slot) this.applySession(restore);
+      else if (!slot && previous) this.clearSession();
       this.updateWakeLock();
       this.cdr.markForCheck();
     });
+    if (restore) this.cookService.open(restore.slot);
     this.destroyRef.onDestroy(() => { this.releaseWakeLock(); this.clearTimers(); });
   }
 
   /** Keeps the screen on while a recipe is open, so it does not lock mid-step in the kitchen. */
   private updateWakeLock(): void {
-    if (!this.slot) {
+    if (!this.slot || (this.minimized && !this.timers.some(t => !t.done))) {
       this.releaseWakeLock();
       return;
     }
@@ -132,6 +173,8 @@ export class RecipeCookOverlay implements OnInit {
     if (document.visibilityState === 'visible') {
       this.wakeLock = null;
       this.updateWakeLock();
+    } else {
+      this.saveSession();
     }
   }
   get directRecipe(): boolean {
@@ -252,6 +295,7 @@ export class RecipeCookOverlay implements OnInit {
   }
   setTab(tab: 'full' | 'steps'): void {
     if (tab === 'steps' && (!this.steps.length || !this.validQuantity || this.addingToShoppingList)) return;
+    if (tab === 'steps') this.started = true;
     if (tab === 'steps' && this.activeTab === 'full' && this.completedCount && this.completedSteps.has(this.step?.order ?? -1)) {
       this.currentStep = this.firstOpenStep;
     }
@@ -416,8 +460,104 @@ export class RecipeCookOverlay implements OnInit {
         },
       });
   }
+  /** Cooking was started or something was ticked off, so closing would lose something. */
+  get hasProgress(): boolean {
+    return this.started || this.timers.length > 0 || this.completedSteps.size > 0 || this.checkedIngredients.size > 0;
+  }
+
+  /** Backdrop, Escape and back: keep a started recipe in the background, close an untouched one. */
   close(): void {
-    if (!this.addingToShoppingList) this.cookService.close();
+    if (this.addingToShoppingList) return;
+    if (this.hasProgress) this.minimize();
+    else this.cookService.close();
+  }
+
+  minimize(): void {
+    if (!this.slot || this.addingToShoppingList) return;
+    this.minimized = true;
+    this.confirmingEnd = false;
+    this.replacedName = '';
+    this.saveSession();
+    this.updateWakeLock();
+    this.cdr.markForCheck();
+  }
+
+  resume(): void {
+    this.minimized = false;
+    this.updateWakeLock();
+    this.cdr.markForCheck();
+    this.scrollContent();
+  }
+
+  /** ✕: ends cooking right away when nothing would be lost, otherwise asks first. */
+  requestEnd(): void {
+    if (this.addingToShoppingList) return;
+    if (!this.hasProgress) { this.cookService.close(); return; }
+    if (this.minimized) this.resume();
+    this.confirmingEnd = true;
+  }
+
+  endCooking(): void {
+    this.confirmingEnd = false;
+    this.clearSession();
+    this.cookService.close();
+  }
+
+  /** Text of the small bar while cooking runs in the background. */
+  get miniStatus(): string {
+    if (this.finished) return 'Alle Schritte erledigt';
+    if (this.activeTab === 'steps' && this.steps.length) return `Schritt ${this.currentStep + 1} von ${this.steps.length}`;
+    if (this.completedCount) return `${this.completedCount} von ${this.steps.length} Schritten erledigt`;
+    return 'Vorbereitung';
+  }
+
+  /** The timer to show in the small bar: a finished one first, else the one ending soonest. */
+  get miniTimer(): CookTimer | null {
+    return this.timers.find(t => t.done) ?? [...this.timers].sort((a, b) => a.endsAt - b.endsAt)[0] ?? null;
+  }
+
+  private saveSession(): void {
+    if (!this.slot || !this.hasProgress) return;
+    const session: CookSession = {
+      slot: this.slot, activeTab: this.activeTab, currentStep: this.currentStep, selectedSection: this.selectedSection,
+      checked: [...this.checkedIngredients], completed: [...this.completedSteps], timers: this.timers,
+      finished: this.finished, localPersons: this.localPersons, localUnitsPerPerson: this.localUnitsPerPerson,
+      selectedServings: this.selectedServings, savedAt: Date.now(),
+    };
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch { /* storage unavailable */ }
+  }
+
+  private readSession(): CookSession | null {
+    try {
+      const session = JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null') as CookSession | null;
+      if (session?.slot?.recipe && Date.now() - session.savedAt < SESSION_MAX_AGE) return session;
+    } catch { /* ignore broken data */ }
+    this.clearSession();
+    return null;
+  }
+
+  private clearSession(): void {
+    try { localStorage.removeItem(SESSION_KEY); } catch { /* storage unavailable */ }
+  }
+
+  private applySession(session: CookSession): void {
+    this.activeTab = session.activeTab === 'steps' ? 'steps' : 'full';
+    this.started = true;
+    this.selectedSection = session.selectedSection ?? null;
+    this.currentStep = Math.min(Math.max(0, session.currentStep || 0), Math.max(0, this.steps.length - 1));
+    this.checkedIngredients = new Set(session.checked ?? []);
+    this.completedSteps = new Set(session.completed ?? []);
+    this.finished = !!session.finished;
+    this.localPersons = session.localPersons || this.localPersons;
+    this.localUnitsPerPerson = session.localUnitsPerPerson || this.localUnitsPerPerson;
+    this.selectedServings = session.selectedServings || this.selectedServings;
+    this.timers = (session.timers ?? []).map(t => ({ ...t }));
+    this.timerSeq = Math.max(0, ...this.timers.map(t => t.id));
+    this.minimized = true;
+    if (this.timers.some(t => !t.done)) {
+      this.tickTimers();
+      this.timerTick ??= setInterval(() => this.tickTimers(), 1000);
+    }
   }
   onBackdropClick(event: MouseEvent): void {
     if (event.target === event.currentTarget) this.close();
@@ -427,8 +567,10 @@ export class RecipeCookOverlay implements OnInit {
     if (!this.slot) return;
     const element = event.target as HTMLElement;
     if (element?.matches('input,textarea,select')) return;
+    if (this.minimized) return;
     if (event.key === 'Escape') {
       event.preventDefault();
+      if (this.confirmingEnd) { this.confirmingEnd = false; return; }
       this.activeTab === 'steps' ? this.setTab('full') : this.close();
       return;
     }

@@ -3,7 +3,23 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
-export type ProposalType = 'recipe' | 'event' | 'todo' | 'shopping' | 'menu';
+export type ProposalType =
+  | 'recipe' | 'event' | 'todo' | 'shopping' | 'menu'
+  | 'recipe_update' | 'event_update' | 'todo_update' | 'shopping_update';
+
+/** One before → after line of a proposed change. */
+export interface ProposalChange { label: string; before: string; after: string; }
+
+export interface ProposalIngredientLine {
+  text: string;
+  status?: 'added' | 'changed' | 'removed';
+  before?: string;
+}
+
+export interface ProposalStepLine { text: string; ingredients: string[]; status?: 'new'; }
+
+/** Full recipe content of a proposal, prepared by the server for display. */
+export interface ProposalDetails { ingredients?: ProposalIngredientLine[]; steps?: ProposalStepLine[]; }
 
 export interface AssistantProposal {
   id: string;
@@ -11,6 +27,8 @@ export interface AssistantProposal {
   title: string;
   summary: string[];
   payload: Record<string, unknown>;
+  changes?: ProposalChange[];
+  details?: ProposalDetails;
   /** Client-side state of the card. */
   state?: 'open' | 'saving' | 'saved' | 'dismissed' | 'error';
   link?: string;
@@ -96,8 +114,18 @@ export class AssistantService {
   clear(): void { this.update([]); }
 
   private historyText(message: AssistantMessage): string {
-    const cards = (message.proposals ?? []).map(p => `[Vorschlag ${p.type} „${p.title}“: ${
-      p.state === 'saved' ? 'übernommen' : p.state === 'dismissed' ? 'verworfen' : 'offen'}]`);
+    const cards = (message.proposals ?? []).map(p => {
+      const state = p.state === 'saved' ? 'übernommen' : p.state === 'dismissed' ? 'verworfen' : 'offen';
+      const lines = [`[Vorschlag ${p.type} „${p.title}“: ${state}]`];
+      // Open recipe cards stay visible to the model, so "mach 6 Portionen daraus" can refer to them.
+      if (state === 'offen' && p.details) {
+        const ingredients = (p.details.ingredients ?? []).filter(i => i.status !== 'removed').map(i => i.text);
+        if (ingredients.length) lines.push(`Zutaten: ${ingredients.join('; ')}`);
+        (p.details.steps ?? []).forEach((step, i) => lines.push(
+          `${i + 1}. ${step.text}${step.ingredients.length ? ` (${step.ingredients.join(', ')})` : ''}`));
+      }
+      return lines.join('\n');
+    });
     return [message.content, ...cards].filter(Boolean).join('\n');
   }
 

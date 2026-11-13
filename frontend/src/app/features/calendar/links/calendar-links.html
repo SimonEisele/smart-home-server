@@ -1,0 +1,159 @@
+<div class="modal-backdrop" (click)="close()">
+    <div class="modal-panel links-panel" (click)="$event.stopPropagation()" aria-labelledby="links-title" appDialog
+        (dialogDismiss)="close()">
+        <div class="modal-head">
+            <div>
+                <h3 id="links-title">Kalender verbinden</h3>
+                <p class="links-subtitle">Outlook, Google oder iCloud hier einblenden – und den WG-Kalender dort.</p>
+            </div>
+            <button class="modal-close" (click)="close()" aria-label="Schliessen">✕</button>
+        </div>
+
+        <div class="modal-body">
+            <!-- ── Own linked calendars ─────────────────────────────────────────── -->
+            <section class="links-section" aria-labelledby="mine-title">
+                <h4 id="mine-title">Deine Kalender hier anzeigen</h4>
+                @if (loading) {
+                <p class="muted">Lädt …</p>
+                }
+                @for (calendar of mine; track calendar.id) {
+                <article class="linked-row" [class.has-error]="!!calendar.lastError">
+                    <span class="dot" [style.background]="calendar.color" aria-hidden="true"></span>
+                    <div class="linked-main">
+                        <strong>{{ calendar.name }}</strong>
+                        @if (calendar.lastError) {
+                        <small class="error-text" role="alert">{{ calendar.lastError }}</small>
+                        } @else if (calendar.lastSyncedAt) {
+                        <small>Aktualisiert {{ calendar.lastSyncedAt | date:'d.M. HH:mm' }} · {{ calendar.eventCount }}
+                            Termine</small>
+                        }
+                        @if (rowError[calendar.id]) { <small class="error-text" role="alert">{{ rowError[calendar.id] }}</small> }
+                        <label class="sr-only" [attr.for]="'vis-' + calendar.id">Wer sieht {{ calendar.name }}?</label>
+                        <select [id]="'vis-' + calendar.id" class="visibility-select" [ngModel]="calendar.visibility"
+                            (ngModelChange)="update(calendar, { visibility: $event })" [disabled]="busy.has(calendar.id)">
+                            @for (option of VISIBILITIES; track option.value) {
+                            <option [value]="option.value">{{ VISIBILITY_LABELS[option.value] }}</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row-actions">
+                        <button class="btn-ghost btn-sm" (click)="refresh(calendar)" [disabled]="busy.has(calendar.id)"
+                            [attr.aria-label]="calendar.name + ' jetzt aktualisieren'">{{ busy.has(calendar.id) ? '…' : '↻'
+                            }}</button>
+                        <button class="btn-ghost btn-sm" [class.danger]="confirmRemove === calendar.id"
+                            (click)="remove(calendar)" [disabled]="busy.has(calendar.id)"
+                            [attr.aria-label]="(confirmRemove === calendar.id ? 'Wirklich entfernen: ' : 'Entfernen: ') + calendar.name">{{
+                            confirmRemove === calendar.id ? 'Wirklich entfernen?' : 'Entfernen' }}</button>
+                    </div>
+                </article>
+                }
+
+                @if (!showForm) {
+                <button class="btn-secondary add-btn" (click)="openForm()">+ Kalender hinzufügen</button>
+                } @else {
+                <form class="link-form" (ngSubmit)="add()">
+                    @if (formError) { <div class="form-feedback" role="alert">{{ formError }}</div> }
+                    <div class="form-row">
+                        <label for="link-name">Name</label>
+                        <input id="link-name" name="name" class="glass-input" [(ngModel)]="form.name" maxlength="80"
+                            placeholder="z. B. Arbeit, Uni, Familie" />
+                    </div>
+                    <div class="form-row">
+                        <label for="link-url">iCal-Link</label>
+                        <input id="link-url" name="url" class="glass-input" [(ngModel)]="form.url" inputmode="url"
+                            autocomplete="off" placeholder="https://… .ics oder webcal://…" />
+                    </div>
+                    <details class="help">
+                        <summary>Wo finde ich den Link?</summary>
+                        <dl>
+                            <dt>Outlook (Microsoft 365, Outlook.com)</dt>
+                            <dd>Outlook im Browser öffnen → Einstellungen ⚙ → Kalender → Freigegebene Kalender →
+                                «Kalender veröffentlichen»: Kalender und «Kann alle Details anzeigen» wählen →
+                                Veröffentlichen → den <strong>ICS</strong>-Link kopieren.</dd>
+                            <dt>Google Kalender</dt>
+                            <dd>calendar.google.com → Einstellungen → links den Kalender wählen → «Kalender integrieren» →
+                                <strong>«Privatadresse im iCal-Format»</strong> kopieren.</dd>
+                            <dt>iCloud (iPhone, Mac)</dt>
+                            <dd>Kalender-App → Kalender teilen → «Öffentlicher Kalender» einschalten → Link kopieren
+                                (beginnt mit webcal://).</dd>
+                        </dl>
+                        <p>Der Link ist wie ein Passwort: Wer ihn hat, sieht die Termine. Die WG sieht ihn nie.</p>
+                    </details>
+                    <fieldset class="color-field">
+                        <legend>Farbe</legend>
+                        @for (color of COLORS; track color) {
+                        <label class="swatch" [style.--swatch]="color">
+                            <input type="radio" name="color" [value]="color" [(ngModel)]="form.color"
+                                [attr.aria-label]="'Farbe ' + color" />
+                        </label>
+                        }
+                    </fieldset>
+                    <fieldset class="visibility-field">
+                        <legend>Wer sieht die Termine?</legend>
+                        @for (option of VISIBILITIES; track option.value) {
+                        <label class="visibility-option" [class.selected]="form.visibility === option.value">
+                            <input type="radio" name="visibility" [value]="option.value" [(ngModel)]="form.visibility" />
+                            <span><strong>{{ VISIBILITY_LABELS[option.value] }}</strong><small>{{ option.hint }}</small></span>
+                        </label>
+                        }
+                    </fieldset>
+                    <div class="form-actions">
+                        @if (mine.length) {
+                        <button type="button" class="btn-ghost" (click)="showForm = false" [disabled]="saving">Abbrechen</button>
+                        }
+                        <button type="submit" class="btn-primary" [disabled]="saving">{{ saving ? 'Wird geprüft …' :
+                            'Verbinden' }}</button>
+                    </div>
+                </form>
+                }
+            </section>
+
+            @if (others.length) {
+            <section class="links-section" aria-labelledby="others-title">
+                <h4 id="others-title">Von Mitbewohnern geteilt</h4>
+                @for (calendar of others; track calendar.id) {
+                <div class="linked-row compact">
+                    <span class="dot" [style.background]="calendar.color" aria-hidden="true"></span>
+                    <div class="linked-main"><strong>{{ calendar.ownerName }} · {{ calendar.name }}</strong>
+                        <small>{{ calendar.visibility === 'busy' ? 'Nur belegte Zeiten' : 'Alle Details' }}</small></div>
+                </div>
+                }
+            </section>
+            }
+
+            <!-- ── WG calendar as subscription ──────────────────────────────────── -->
+            <section class="links-section" aria-labelledby="feed-title">
+                <h4 id="feed-title">WG-Kalender in Outlook &amp; Co. anzeigen</h4>
+                <p class="muted">Dein persönlicher Abo-Link mit allen WG-Terminen und deinen privaten Terminen. Der
+                    Kalender aktualisiert sich dort von selbst (je nach App alle 30 Minuten bis einige Stunden).</p>
+                @if (feedError) { <div class="form-feedback" role="alert">{{ feedError }}</div> }
+                <div class="feed-row">
+                    <input #feedInput class="glass-input" [value]="feedUrl" readonly aria-label="Abo-Link"
+                        (focus)="feedInput.select()" />
+                    <button class="btn-primary" (click)="copyFeed(feedInput)" [disabled]="!feedUrl">{{ copied ? '✓ Kopiert'
+                        : 'Kopieren' }}</button>
+                </div>
+                <div class="feed-actions">
+                    @if (feedUrl) { <a class="btn-ghost btn-sm" [href]="webcalUrl">Auf iPhone/Mac abonnieren</a> }
+                    <button class="btn-ghost btn-sm" [class.danger]="confirmRenew" (click)="renewFeed()">{{ confirmRenew ?
+                        'Alter Link hört auf zu funktionieren – neu erzeugen?' : 'Neuen Link erzeugen' }}</button>
+                </div>
+                <details class="help">
+                    <summary>So abonnierst du ihn</summary>
+                    <dl>
+                        <dt>Outlook</dt>
+                        <dd>Kalender → «Kalender hinzufügen» → «Aus dem Internet abonnieren» → Link einfügen.</dd>
+                        <dt>Google Kalender</dt>
+                        <dd>Links bei «Weitere Kalender» auf + → «Per URL» → Link einfügen.</dd>
+                        <dt>iPhone</dt>
+                        <dd>Oben «Auf iPhone/Mac abonnieren» antippen, oder Einstellungen → Kalender → Accounts →
+                            Account hinzufügen → Andere → «Kalenderabo hinzufügen».</dd>
+                    </dl>
+                    <p>Outlook im Browser und Google holen den Kalender über das Internet ab. Das klappt nur, wenn die
+                        App von aussen erreichbar ist. Ist sie nur im WLAN zu Hause erreichbar, funktioniert das Abo nur
+                        auf Geräten im selben Netz (z. B. Outlook am PC, iPhone).</p>
+                </details>
+            </section>
+        </div>
+    </div>
+</div>

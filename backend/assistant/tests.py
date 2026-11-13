@@ -14,6 +14,7 @@ from users.models import Household, HouseholdMembership, User
 
 from . import providers, web
 from .providers import Reply, ToolCall
+from .tools import Toolbox
 
 RECIPE_PAGE = """<html><head><title>Rüeblikuchen</title>
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage"},
@@ -160,20 +161,31 @@ class ChatTests(TestCase):
                     'name': 'Rüeblikuchen', 'baseServings': 12, 'servingType': 'Stücke', 'category': 'backen',
                     'durationMinutes': 75, 'sourceUrl': 'https://rezepte.example/rueblikuchen',
                     'ingredients': [{'name': 'Rüebli', 'quantity': 300, 'unit': 'g'}, {'name': 'Eier', 'quantity': 4}],
-                    'steps': ['Rüebli reiben.', 'Eier schaumig rühren.']})]),
+                    'steps': [{'description': 'Rüebli reiben.', 'ingredients': [{'name': 'rüebli'}]},
+                              {'description': 'Eier schaumig rühren.',
+                               'ingredients': [{'name': 'Eier', 'quantity': 2}, {'name': 'Zucker'}]},
+                              'Alles mischen.']})]),
                 Reply('Vorschlag ist bereit.'),
             ], 'https://rezepte.example/rueblikuchen')
         self.assertIn('"totalMinutes": 75', calls[1][-1]['content'])
         proposal = response.data['data']['proposals'][0]
-        self.assertEqual(proposal['payload']['ingredients'][0],
+        carrots = proposal['payload']['ingredients'][0]
+        self.assertEqual({k: carrots[k] for k in ('name', 'quantityPerPerson', 'unit')},
                          {'name': 'Rüebli', 'quantityPerPerson': 300, 'unit': 'g'})
+        self.assertEqual(proposal['details']['ingredients'], [{'text': '300 g Rüebli'}, {'text': '4 Eier'}])
+        self.assertEqual(proposal['details']['steps'][1], {'text': 'Eier schaumig rühren.', 'ingredients': ['2 Eier']})
+        self.assertEqual(proposal['summary'][0], '12 Stücke · 75 Min. · Backen')
+        self.assertIn('Zucker', calls[2][-1]['content'])  # unknown step ingredient is reported back
         self.assertIn('Quelle: https://rezepte.example/rueblikuchen', proposal['payload']['instructions'])
         saved = self.client.post('/api/assistant/apply/', {'type': 'recipe', 'payload': proposal['payload']},
                                  format='json')
         self.assertEqual(saved.status_code, 201, saved.data)
         self.assertEqual(saved.data['link'], '/recipes')
         recipe = Recipe.objects.get(name='Rüeblikuchen')
-        self.assertEqual((recipe.base_servings, recipe.serving_type, len(recipe.steps)), (12, 'Stücke', 2))
+        self.assertEqual((recipe.base_servings, recipe.serving_type, len(recipe.steps)), (12, 'Stücke', 3))
+        self.assertEqual([[link['name'] for link in step['ingredients']] for step in recipe.steps],
+                         [['Rüebli'], ['Eier'], []])
+        self.assertEqual(recipe.steps[1]['ingredients'][0]['quantityPerPerson'], 2)
 
     def test_unavailable_model_gives_503(self):
         with mock.patch.object(providers, 'complete', side_effect=providers.AssistantUnavailable('weg')):
@@ -220,3 +232,118 @@ class ChatTests(TestCase):
         with mock.patch.dict(os.environ, env):
             data = self.client.get('/api/assistant/status/').data['data']
         self.assertEqual(data, {'enabled': True, 'provider': 'openai', 'model': 'gpt-5.6-luna'})
+
+
+class EditProposalTests(TestCase):
+    """Changes to existing entries are proposed with a before/after view and applied only on confirmation."""
+
+    def setUp(self):
+        self.household = Household.objects.create(name='WG')
+        self.user = User.objects.create_user('edit@example.com', 'pw', active_household=self.household)
+        HouseholdMembership.objects.create(user=self.user, household=self.household, role='owner')
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+        self.box = Toolbox(mock.Mock(user=self.user))
+
+    def apply(self, proposal):
+        return self.client.post('/api/assistant/apply/', {'type': proposal['type'], 'payload': proposal['payload']},
+                                format='json')
+
+    def recipe(self):
+        response = self.client.post('/api/recipes/', {
+            'name': 'Pasta', 'baseServings': 2,
+            'ingredients': [{'name': 'Testnudeln', 'quantityPerPerson': 200, 'unit': 'g'},
+                            {'name': 'Testrahm', 'quantityPerPerson': 1, 'unit': 'dl'}],
+            'steps': [{'order': 1, 'description': 'Kochen.', 'ingredients': [{'name': 'Testnudeln'}]},
+                      {'order': 2, 'description': 'Rahm dazu.', 'ingredients': [{'name': 'Testrahm'}]}]},
+            format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        return Recipe.objects.get(name='Pasta')
+
+    def test_recipe_update_keeps_ids_shows_diff_and_relinks_steps(self):
+        recipe = self.recipe()
+        noodles = next(row for row in recipe.ingredients if row['name'] == 'Testnudeln')
+        result = self.box.run('propose_recipe_update', {
+            'recipeId': str(recipe.id), 'durationMinutes': 20, 'reason': 'Mit Knoblauch',
+            'ingredients': [{'id': str(noodles['id']), 'name': 'Testnudeln', 'quantity': 250, 'unit': 'g'},
+                            {'name': 'Testknoblauch', 'quantity': 1, 'unit': 'Zehe'}],
+            'steps': [{'description': 'Kochen.', 'ingredients': [{'name': 'Testnudeln'}]},
+                      {'description': 'Knoblauch anbraten.', 'ingredients': [{'name': 'Testknoblauch'}]}]})
+        self.assertNotIn('error', result)
+        proposal = self.box.proposals[0]
+        self.assertEqual(proposal['type'], 'recipe_update')
+        self.assertEqual(proposal['summary'], ['Mit Knoblauch'])
+        self.assertEqual(proposal['changes'][0], {'label': 'Dauer', 'before': '—', 'after': '20 Min.'})
+        self.assertEqual([(i['text'], i.get('status')) for i in proposal['details']['ingredients']], [
+            ('250 g Testnudeln', 'changed'), ('1 Zehe Testknoblauch', 'added'), ('1 dl Testrahm', 'removed')])
+        self.assertEqual([s.get('status') for s in proposal['details']['steps']], [None, 'new'])
+        self.assertEqual(Recipe.objects.get(pk=recipe.pk).duration_minutes, None)  # nothing saved yet
+        response = self.apply(proposal)
+        self.assertEqual(response.status_code, 201, response.data)
+        recipe = Recipe.objects.get(pk=recipe.pk)
+        self.assertEqual(recipe.duration_minutes, 20)
+        rows = {row['name']: row for row in recipe.ingredients}
+        self.assertEqual(str(rows['Testnudeln']['id']), str(noodles['id']))
+        self.assertEqual(recipe.steps[1]['ingredients'][0]['name'], 'Testknoblauch')
+
+    def test_removing_an_ingredient_drops_its_step_links(self):
+        recipe = self.recipe()
+        self.box.run('propose_recipe_update', {'recipeId': str(recipe.id), 'ingredients': [
+            {'name': 'Testnudeln', 'quantity': 200, 'unit': 'g'}]})
+        response = self.apply(self.box.proposals[0])
+        self.assertEqual(response.status_code, 201, response.data)
+        recipe = Recipe.objects.get(pk=recipe.pk)
+        self.assertEqual([len(step['ingredients']) for step in recipe.steps], [1, 0])
+
+    def test_stale_proposals_are_refused(self):
+        recipe = self.recipe()
+        self.box.run('propose_recipe_update', {'recipeId': str(recipe.id), 'name': 'Pasta Alfredo'})
+        recipe.description = 'inzwischen geändert'
+        recipe.save()
+        response = self.apply(self.box.proposals[0])
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('inzwischen', str(response.data))
+
+    def test_event_update_keeps_the_duration(self):
+        start = timezone.make_aware(timezone.datetime(2026, 11, 12, 8, 30))
+        event = CalendarEvent.objects.create(household=self.household, title='Zahnarzt', start=start,
+                                             end=start + timezone.timedelta(minutes=45))
+        result = self.box.run('propose_event_update', {'eventId': str(event.id), 'start': '2026-11-13T10:00'})
+        self.assertNotIn('error', result)
+        proposal = self.box.proposals[0]
+        self.assertEqual([c['label'] for c in proposal['changes']], ['Beginn', 'Ende'])
+        self.assertEqual(proposal['changes'][1]['after'], '13.11.2026 10:45')
+        self.assertEqual(self.apply(proposal).data['link'], '/calendar?date=2026-11-13')
+        event.refresh_from_db()
+        self.assertEqual(timezone.localtime(event.end).hour, 10)
+
+    def test_private_events_of_others_are_not_editable(self):
+        other = User.objects.create_user('x@example.com', 'pw', active_household=self.household)
+        event = CalendarEvent.objects.create(household=self.household, title='Geheim', created_by=other,
+                                             calendar_type='private', start=timezone.now())
+        self.assertIn('error', self.box.run('propose_event_update', {'eventId': str(event.id), 'title': 'X'}))
+        response = self.apply({'type': 'event_update', 'payload': {'id': str(event.id), 'changes': {'title': 'X'}}})
+        self.assertEqual(response.status_code, 400)
+
+    def test_todo_update_and_completion(self):
+        todo = Todo.objects.create(household=self.household, title='Velo', global_todo=True, created_by=self.user)
+        self.box.run('propose_todo_update', {'todoId': str(todo.id), 'priority': 'high', 'done': True})
+        proposal = self.box.proposals[0]
+        self.assertEqual([c['label'] for c in proposal['changes']], ['Priorität', 'Status'])
+        self.assertEqual(self.apply(proposal).status_code, 201)
+        todo.refresh_from_db()
+        self.assertEqual((todo.priority, todo.done, todo.done_by), ('high', True, self.user))
+        self.assertIn('error', self.box.run('propose_todo_update', {'todoId': str(todo.id), 'priority': 'high'}))
+
+    def test_shopping_update(self):
+        item = ShoppingItem.objects.create(household=self.household, name='Milch', quantity=1, unit='l')
+        self.box.run('propose_shopping_update', {'itemId': str(item.id), 'quantity': 2})
+        proposal = self.box.proposals[0]
+        self.assertEqual(proposal['changes'], [{'label': 'Artikel', 'before': '1 l Milch', 'after': '2 l Milch'}])
+        self.assertEqual(self.apply(proposal).status_code, 201)
+        item.refresh_from_db()
+        self.assertEqual(item.quantity, 2)
+
+    def test_read_tools_return_ids_for_editing(self):
+        todo = Todo.objects.create(household=self.household, title='Velo', global_todo=True)
+        self.assertEqual(self.box.run('get_todos', {})['todos'][0]['id'], str(todo.id))

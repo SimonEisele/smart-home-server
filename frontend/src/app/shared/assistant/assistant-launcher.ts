@@ -53,9 +53,14 @@ import { AssistantService } from './assistant.service';
     .assistant-panel header strong { margin-right: auto; }
     .assistant-panel header a { color: var(--color-accent); font-size: .8rem; text-decoration: none; }
     .close { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--color-muted); cursor: pointer; }
+    /* Above the bottom navigation shown on phones and tablets. */
+    @media (max-width: 899px) {
+      .assistant-fab { bottom: calc(84px + env(safe-area-inset-bottom)); right: 16px; }
+      .assistant-panel { bottom: calc(84px + env(safe-area-inset-bottom)); max-height: calc(100dvh - 160px); }
+    }
     @media (max-width: 699px) {
-      .assistant-fab { bottom: 84px; right: 16px; width: 52px; height: 52px; }
-      .assistant-panel { inset: 0; width: 100%; height: 100dvh; border-radius: 0; border: 0;
+      .assistant-fab { width: 52px; height: 52px; }
+      .assistant-panel { inset: 0; width: 100%; height: 100dvh; max-height: none; border-radius: 0; border: 0;
         padding: calc(12px + env(safe-area-inset-top)) 14px calc(10px + env(safe-area-inset-bottom)); z-index: 2000; }
     }
   `],

@@ -848,3 +848,199 @@ h3 {
     min-width: 40px;
   }
 }
+
+/* ── Minimize / end ─────────────────────────────────────────────────────── */
+.window-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.minimize-btn span {
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  margin-top: 10px;
+}
+
+.end-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 18px;
+  background: var(--color-danger-soft);
+  border-bottom: 1px solid var(--color-danger-border);
+  flex-shrink: 0;
+}
+
+.end-confirm p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.end-confirm div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.end-confirm button {
+  min-height: 40px;
+  padding: 6px 14px;
+}
+
+.replaced-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 18px;
+  font-size: 13px;
+  color: var(--color-muted);
+  background: var(--color-surface-soft);
+  border-bottom: 1px solid var(--color-card-border);
+  flex-shrink: 0;
+}
+
+.replaced-note button {
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.cook-mini {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 950;
+  width: min(440px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent-border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+}
+
+.cook-mini-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cook-mini-main:hover {
+  background: var(--color-surface-soft);
+}
+
+.cook-mini-icon {
+  font-size: 22px;
+}
+
+.cook-mini-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cook-mini-text strong,
+.cook-mini-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cook-mini-text small {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.cook-mini-timer {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.cook-mini-timer small {
+  font-weight: 600;
+  opacity: .8;
+}
+
+.cook-mini-timer.done {
+  background: var(--color-warn-soft);
+  color: var(--color-warn);
+  animation: cook-mini-pulse 1s ease-in-out infinite;
+}
+
+@keyframes cook-mini-pulse {
+  50% { opacity: .55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cook-mini-timer.done { animation: none; }
+}
+
+.cook-mini-close {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  font-size: 16px;
+}
+
+/* Leave room for the assistant button and the bottom navigation. */
+@media (max-width: 899px) {
+  .cook-mini {
+    left: 12px;
+    right: 80px;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    transform: none;
+    width: auto;
+    max-width: 480px;
+  }
+}
+
+@media (min-width: 900px) {
+  .cook-mini {
+    left: calc(50% + var(--sidebar-width, 224px) / 2);
+    width: min(440px, calc(100vw - var(--sidebar-width, 224px) - 140px));
+  }
+}
+
+/* Phones: while cooking step by step the title needs the room; the amount stays in the overview. */
+@media (max-width: 599px) {
+  .cooking-dialog.mode-steps .amount-stepper {
+    display: none;
+  }
+
+  .window-actions {
+    gap: 4px;
+  }
+
+  .window-actions .icon-btn {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+  }
+}

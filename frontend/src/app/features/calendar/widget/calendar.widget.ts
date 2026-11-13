@@ -27,6 +27,8 @@ interface CalendarWidgetDayGroup {
 })
 export class CalendarWidget implements OnInit {
   events: CalendarEvent[] = [];
+  private ownEvents: CalendarEvent[] = [];
+  private linkedEvents: CalendarEvent[] = [];
   cleaningTasks: CleaningWidgetEntry[] = [];
   today = new Date();
 
@@ -41,16 +43,25 @@ export class CalendarWidget implements OnInit {
     const end = this.iso(endDate);
 
     this.calendarService.getEvents(start, end).subscribe(evs => {
-      this.events = evs
-        .filter(ev => !ev.allDay)
-        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-      this.cdr.detectChanges();
+      this.ownEvents = evs.filter(ev => !ev.allDay);
+      this.mergeEvents();
+    });
+    // Timed appointments from linked calendars (Outlook, Google …) belong in the overview too.
+    this.calendarService.getExternalEvents(start, end).subscribe({
+      next: ({ events }) => { this.linkedEvents = events.filter(ev => !ev.allDay && ev.busy !== false); this.mergeEvents(); },
+      error: () => { /* the overview works without them */ },
     });
 
     this.calendarService.getCleaningTasks().subscribe(tasks => {
       this.cleaningTasks = this.getCleaningEntries(tasks, startDate, endDate);
       this.cdr.detectChanges();
     });
+  }
+
+  private mergeEvents(): void {
+    this.events = [...this.ownEvents, ...this.linkedEvents]
+      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    this.cdr.detectChanges();
   }
 
   get groupedEvents(): CalendarWidgetDayGroup[] {
@@ -87,6 +98,7 @@ export class CalendarWidget implements OnInit {
   }
 
   evClass(ev: CalendarEvent): string {
+    if (ev.source === 'external') return 'ev-item ev-external';
     const base = 'ev-item ev-' + (ev.calendarType ?? 'household');
     return ev.todoRefId ? base + ' ev-todo' : base;
   }

@@ -126,14 +126,7 @@ class TodoDetailView(generics.RetrieveUpdateDestroyAPIView):
         # Validate the entire update before recording who completed it.
         with transaction.atomic():
             todo = serializer.save(done_by=done_by)
-            for event in CalendarEvent.objects.filter(household=todo.household, todo_ref_id=todo.id):
-                suffix = re.search(r' \(\d+/\d+\)$', event.title)
-                event.title = todo.title + (suffix.group() if suffix else '')
-                event.description = todo.description
-                event.calendar_type = 'household' if todo.global_todo else 'private'
-                if not todo.global_todo:
-                    event.created_by = todo.created_by
-                event.save(update_fields=['title', 'description', 'calendar_type', 'created_by', 'updated_at'])
+            sync_todo_events(todo)
         return Response({"data": serializer.data})
 
     def destroy(self, request, *args, **kwargs):
@@ -144,6 +137,32 @@ class TodoDetailView(generics.RetrieveUpdateDestroyAPIView):
         ).delete()
         instance.delete()
         return Response({"success": True})
+
+
+def sync_todo_events(todo):
+    """Keeps the calendar slots of a task in line with its title, text and visibility."""
+    for event in CalendarEvent.objects.filter(household=todo.household, todo_ref_id=todo.id):
+        suffix = re.search(r' \(\d+/\d+\)$', event.title)
+        event.title = todo.title + (suffix.group() if suffix else '')
+        event.description = todo.description
+        event.calendar_type = 'household' if todo.global_todo else 'private'
+        if not todo.global_todo:
+            event.created_by = todo.created_by
+        event.save(update_fields=['title', 'description', 'calendar_type', 'created_by', 'updated_at'])
+
+
+def complete_todo(todo, user, day):
+    """Marks a one-off task done; a recurring one moves to its next date. Returns that date or None."""
+    if todo.recurrence and (todo.start_date or todo.due_date):
+        anchor = timezone.localtime(todo.start_date or todo.due_date).date()
+        advanced_to = next_occurrence(todo, max(day, anchor))
+        delta = (advanced_to - anchor).days
+        todo.start_date, todo.due_date = _shift(todo.start_date, delta), _shift(todo.due_date, delta)
+        todo.save(update_fields=['start_date', 'due_date', 'updated_at'])
+        return advanced_to
+    todo.done, todo.done_by = True, user
+    todo.save(update_fields=['done', 'done_by', 'updated_at'])
+    return None
 
 
 class CompleteTodoView(APIView):
@@ -163,17 +182,7 @@ class CompleteTodoView(APIView):
         day = parse_date(raw) if isinstance(raw, str) else None
         if raw is not None and day is None:
             return api_error('Ungültiges Datum (erwartet JJJJ-MM-TT).', status.HTTP_400_BAD_REQUEST)
-        day = day or timezone.localdate()
         previous = {'startDate': todo.start_date, 'dueDate': todo.due_date, 'done': todo.done}
-        advanced_to = None
-        if todo.recurrence and (todo.start_date or todo.due_date):
-            anchor = timezone.localtime(todo.start_date or todo.due_date).date()
-            advanced_to = next_occurrence(todo, max(day, anchor))
-            delta = (advanced_to - anchor).days
-            todo.start_date, todo.due_date = _shift(todo.start_date, delta), _shift(todo.due_date, delta)
-            todo.save(update_fields=['start_date', 'due_date', 'updated_at'])
-        else:
-            todo.done, todo.done_by = True, request.user
-            todo.save(update_fields=['done', 'done_by', 'updated_at'])
+        advanced_to = complete_todo(todo, request.user, day or timezone.localdate())
         data = TodoSerializer(todo, context={'request': request}).data
         return Response({'data': data, 'advancedTo': advanced_to, 'previous': previous})

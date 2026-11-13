@@ -60,4 +60,15 @@ describe('AssistantService', () => {
     expect(service.messages()[0].proposals!.map(p => [p.state, p.error ?? ''])).toEqual([
       ['error', 'Bitte einen Titel angeben.'], ['dismissed', '']]);
   });
+
+  it('keeps open recipe cards readable for the model', () => {
+    service.messages.set([{ role: 'user', content: 'Rezept bitte' }, { role: 'assistant', content: 'Hier.', proposals: [
+      { id: 'r', type: 'recipe', title: 'Pasta', summary: [], payload: {}, state: 'open', details: {
+        ingredients: [{ text: '200 g Nudeln' }, { text: 'Salz', status: 'removed' }],
+        steps: [{ text: 'Kochen.', ingredients: ['200 g Nudeln'] }] } }] }]);
+    service.send('Mach 4 Portionen', '/');
+    const body = http.expectOne(r => r.url.endsWith('/assistant/chat/')).request.body;
+    expect(body.messages[1].content).toBe(
+      'Hier.\n[Vorschlag recipe „Pasta“: offen]\nZutaten: 200 g Nudeln\n1. Kochen. (200 g Nudeln)');
+  });
 });

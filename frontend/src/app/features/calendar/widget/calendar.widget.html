@@ -11,7 +11,7 @@
       <div class="day-label" [class.today-label]="group.label === 'Heute'">{{ group.label }}</div>
 
       @for (ev of group.events; track ev.id) {
-        <div [class]="evClass(ev)" [class.ev-now]="isNow(ev)" [style.--ev-color]="ev.color || null">
+        <div [class]="evClass(ev)" [class.ev-now]="isNow(ev)" [style.--ev-color]="ev.calendarColor || ev.color || null">
           <div class="ev-time-col">
             <span class="ev-start">{{ timeStr(ev.start) }}</span>
             @if (ev.end) {
@@ -20,8 +20,8 @@
           </div>
           <div class="ev-body">
             <span class="ev-title">{{ ev.title }}</span>
-            @if (ev.location) {
-              <span class="ev-loc"> {{ ev.location }}</span>
+            @if (ev.location || ev.calendarName) {
+              <span class="ev-loc"> {{ ev.location }}@if (ev.location && ev.calendarName) { · }{{ ev.calendarName }}</span>
             }
           </div>
           @if (isNow(ev)) {

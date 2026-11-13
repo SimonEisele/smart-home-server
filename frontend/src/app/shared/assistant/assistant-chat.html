@@ -26,11 +26,59 @@
         @for (proposal of message.proposals ?? []; track proposal.id) {
         <article class="proposal" [class.saved]="proposal.state === 'saved'"
             [class.dismissed]="proposal.state === 'dismissed'">
-            <header><span class="type">{{ TYPE_LABELS[proposal.type] }}</span><strong>{{ proposal.title }}</strong>
+            <header><span class="type" [class.update]="isUpdate(proposal)">{{ TYPE_LABELS[proposal.type] }}</span><strong>{{ proposal.title }}</strong>
             </header>
-            <ul>
+            @if (proposal.summary.length) {
+            <ul class="summary">
                 @for (line of proposal.summary; track $index) { <li>{{ line }}</li> }
             </ul>
+            }
+            @if (proposal.changes?.length) {
+            <dl class="changes">
+                @for (change of proposal.changes; track $index) {
+                <div>
+                    <dt>{{ change.label }}</dt>
+                    <dd><s class="before">{{ change.before }}</s><span class="arrow" aria-label="wird zu">→</span>
+                        <span class="after">{{ change.after }}</span></dd>
+                </div>
+                }
+            </dl>
+            }
+            @if (proposal.details?.ingredients?.length) {
+            <section class="detail">
+                <h4>Zutaten <small>{{ proposal.details!.ingredients!.length }}</small></h4>
+                <ul class="ingredients">
+                    @for (item of proposal.details!.ingredients!; track $index) {
+                    <li [attr.data-status]="item.status ?? null">
+                        @if (item.status === 'removed') { <s>{{ item.text }}</s> } @else { <span>{{ item.text }}</span> }
+                        @if (item.before) { <small class="was">vorher {{ item.before }}</small> }
+                        @if (item.status) { <em class="badge">{{ STATUS_LABELS[item.status] }}</em> }
+                    </li>
+                    }
+                </ul>
+            </section>
+            }
+            @if (proposal.details?.steps?.length) {
+            <section class="detail">
+                <h4>Schritte <small>{{ proposal.details!.steps!.length }}</small></h4>
+                <ol class="steps">
+                    @for (step of proposal.details!.steps!; track $index) {
+                    <li [attr.data-status]="step.status ?? null">
+                        <span class="num" aria-hidden="true">{{ $index + 1 }}</span>
+                        <div>
+                            <p>{{ step.text }} @if (step.status) { <em class="badge">{{ STATUS_LABELS[step.status]
+                                    }}</em> }</p>
+                            @if (step.ingredients.length) {
+                            <ul class="step-ingredients" aria-label="Zutaten für diesen Schritt">
+                                @for (name of step.ingredients; track $index) { <li>{{ name }}</li> }
+                            </ul>
+                            }
+                        </div>
+                    </li>
+                    }
+                </ol>
+            </section>
+            }
             @if (proposal.error) { <p class="proposal-error" role="alert">{{ proposal.error }}</p> }
             <footer>
                 @switch (proposal.state) {

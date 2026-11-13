@@ -37,6 +37,14 @@ from .calendar import (  # noqa: F401
     CalendarEventListCreateView,
     CalendarEventDetailView,
 )
+from .calendar_links import (  # noqa: F401
+    CalendarFeedLinkView,
+    CalendarFeedView,
+    ExternalCalendarDetailView,
+    ExternalCalendarListCreateView,
+    ExternalCalendarSyncView,
+    ExternalEventListView,
+)
 from .attendance import (  # noqa: F401
     HouseholdMemberListCreateView,
     HouseholdMemberDetailView,

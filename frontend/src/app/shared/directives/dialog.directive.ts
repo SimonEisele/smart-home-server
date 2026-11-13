@@ -9,11 +9,13 @@ export class DialogDirective implements AfterViewInit, OnDestroy {
   private readonly factory = inject(FocusTrapFactory);
   private trap?: FocusTrap;
   private previousFocus = document.activeElement as HTMLElement | null;
+  private counted = false;
   private static count = 0;
   private static nextId = 0;
   private static previousOverflow = '';
 
   ngAfterViewInit(): void {
+    this.counted = true;
     if (DialogDirective.count++ === 0) {
       DialogDirective.previousOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -42,7 +44,8 @@ export class DialogDirective implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.trap?.destroy();
-    if (--DialogDirective.count === 0) document.body.style.overflow = DialogDirective.previousOverflow;
+    // A dialog removed before it was ever shown never locked the page.
+    if (this.counted && --DialogDirective.count === 0) document.body.style.overflow = DialogDirective.previousOverflow;
     if (this.previousFocus?.isConnected) this.previousFocus.focus();
   }
 }
