@@ -3,19 +3,94 @@
         (dialogDismiss)="close()">
         <div class="modal-head">
             <div>
-                <h3 id="links-title">Kalender verbinden</h3>
-                <p class="links-subtitle">Outlook, Google oder iCloud hier einblenden – und den WG-Kalender dort.</p>
+                <h3 id="links-title">Kalender</h3>
+                <p class="links-subtitle">Gemeinsame Kalender, Outlook &amp; Co., Stundenpläne und der WG-Kalender
+                    unterwegs.</p>
             </div>
             <button class="modal-close" (click)="close()" aria-label="Schliessen">✕</button>
         </div>
+        <div class="segmented links-tabs" role="tablist" aria-label="Bereich">
+            <button type="button" role="tab" [class.active]="tab === 'shared'" [attr.aria-selected]="tab === 'shared'"
+                (click)="tab = 'shared'">Gemeinsam</button>
+            <button type="button" role="tab" [class.active]="tab === 'linked'" [attr.aria-selected]="tab === 'linked'"
+                (click)="tab = 'linked'">Einblenden</button>
+            <button type="button" role="tab" [class.active]="tab === 'feed'" [attr.aria-selected]="tab === 'feed'"
+                (click)="tab = 'feed'">Abonnieren</button>
+        </div>
 
         <div class="modal-body">
-            <!-- ── Own linked calendars ─────────────────────────────────────────── -->
+            @if (loadError) { <div class="form-feedback" role="alert">{{ loadError }}</div> }
+
+            @switch (tab) {
+            <!-- ── Shared calendars inside the app ──────────────────────────────── -->
+            @case ('shared') {
+            <section class="links-section" aria-labelledby="shared-title">
+                <h4 id="shared-title">Gemeinsame Kalender</h4>
+                <p class="muted">Für einen Teil der WG, z. B. «Paar», «Band» oder «Velotour». Alle Mitglieder sehen die
+                    Termine und können sie eintragen und ändern. Die anderen sehen nichts davon.</p>
+                @if (sharedError) { <div class="form-feedback" role="alert">{{ sharedError }}</div> }
+                @for (calendar of shared; track calendar.id) {
+                @if (sharedForm?.id !== calendar.id) {
+                <article class="linked-row">
+                    <span class="dot" [style.background]="calendar.color" aria-hidden="true"></span>
+                    <div class="linked-main">
+                        <strong>{{ calendar.name }}</strong>
+                        <small>{{ calendar.memberNames.join(', ') }}</small>
+                    </div>
+                    <div class="row-actions">
+                        <button class="btn-ghost btn-sm" (click)="editShared(calendar)">Bearbeiten</button>
+                        <button class="btn-ghost btn-sm" (click)="leaveShared(calendar)">Austreten</button>
+                        <button class="btn-ghost btn-sm" [class.danger]="confirmDeleteShared === calendar.id"
+                            (click)="deleteShared(calendar)">{{ confirmDeleteShared === calendar.id ?
+                            'Mit allen Terminen löschen?' : 'Löschen' }}</button>
+                    </div>
+                </article>
+                }
+                }
+                @if (sharedForm; as f) {
+                <form class="link-form" (ngSubmit)="saveShared()">
+                    <div class="form-row">
+                        <label for="shared-name">Name</label>
+                        <input id="shared-name" name="sharedName" class="glass-input" [(ngModel)]="f.name" maxlength="80"
+                            placeholder="z. B. Paar, Band, Velotour" />
+                    </div>
+                    <fieldset class="people-field">
+                        <legend>Mit wem? <small>(du bist immer dabei)</small></legend>
+                        @for (person of otherPeople; track person.id) {
+                        <button type="button" class="person-chip" [class.selected]="f.memberIds.includes(person.id)"
+                            [attr.aria-pressed]="f.memberIds.includes(person.id)"
+                            (click)="f.memberIds = togglePerson(f.memberIds, person.id)">{{ person.name }}</button>
+                        } @empty { <p class="muted">Noch niemand sonst in der WG.</p> }
+                    </fieldset>
+                    <fieldset class="color-field">
+                        <legend>Farbe</legend>
+                        @for (color of COLORS; track color) {
+                        <label class="swatch" [style.--swatch]="color">
+                            <input type="radio" name="sharedColor" [value]="color" [(ngModel)]="f.color"
+                                [attr.aria-label]="'Farbe ' + color" />
+                        </label>
+                        }
+                    </fieldset>
+                    <div class="form-actions">
+                        <button type="button" class="btn-ghost" (click)="sharedForm = null"
+                            [disabled]="sharedSaving">Abbrechen</button>
+                        <button type="submit" class="btn-primary" [disabled]="sharedSaving">{{ f.id ? 'Speichern' :
+                            'Erstellen' }}</button>
+                    </div>
+                </form>
+                } @else {
+                <button class="btn-secondary add-btn" (click)="newShared()">+ Gemeinsamer Kalender</button>
+                }
+            </section>
+            }
+
+            <!-- ── Outlook, Google, iCloud and timetables shown here ────────────── -->
+            @case ('linked') {
             <section class="links-section" aria-labelledby="mine-title">
                 <h4 id="mine-title">Deine Kalender hier anzeigen</h4>
-                @if (loading) {
-                <p class="muted">Lädt …</p>
-                }
+                <p class="muted">Per Link (Outlook, Google, iCloud – auch Kalender, die dir jemand freigegeben hat) oder
+                    als .ics-Datei, z. B. ein Stundenplan. Nur lesbar; ändern im Original.</p>
+                @if (loading) { <p class="muted">Lädt …</p> }
                 @for (calendar of mine; track calendar.id) {
                 <article class="linked-row" [class.has-error]="!!calendar.lastError">
                     <span class="dot" [style.background]="calendar.color" aria-hidden="true"></span>
@@ -23,23 +98,52 @@
                         <strong>{{ calendar.name }}</strong>
                         @if (calendar.lastError) {
                         <small class="error-text" role="alert">{{ calendar.lastError }}</small>
+                        } @else if (calendar.source === 'file') {
+                        <small>Datei {{ calendar.fileName || '' }} · {{ calendar.eventCount }} Termine</small>
                         } @else if (calendar.lastSyncedAt) {
                         <small>Aktualisiert {{ calendar.lastSyncedAt | date:'d.M. HH:mm' }} · {{ calendar.eventCount }}
                             Termine</small>
                         }
                         @if (rowError[calendar.id]) { <small class="error-text" role="alert">{{ rowError[calendar.id] }}</small> }
-                        <label class="sr-only" [attr.for]="'vis-' + calendar.id">Wer sieht {{ calendar.name }}?</label>
-                        <select [id]="'vis-' + calendar.id" class="visibility-select" [ngModel]="calendar.visibility"
-                            (ngModelChange)="update(calendar, { visibility: $event })" [disabled]="busy.has(calendar.id)">
-                            @for (option of VISIBILITIES; track option.value) {
-                            <option [value]="option.value">{{ VISIBILITY_LABELS[option.value] }}</option>
+                        <div class="share-controls">
+                            <label class="sr-only" [attr.for]="'vis-' + calendar.id">Was sehen andere von {{ calendar.name
+                                }}?</label>
+                            <select [id]="'vis-' + calendar.id" class="visibility-select" [ngModel]="calendar.visibility"
+                                (ngModelChange)="update(calendar, { visibility: $event })" [disabled]="busy.has(calendar.id)">
+                                @for (option of VISIBILITIES; track option.value) {
+                                <option [value]="option.value">{{ VISIBILITY_LABELS[option.value] }}</option>
+                                }
+                            </select>
+                            @if (calendar.visibility !== 'private' && otherPeople.length) {
+                            <label class="sr-only" [attr.for]="'aud-' + calendar.id">Für wen?</label>
+                            <select [id]="'aud-' + calendar.id" class="visibility-select" [ngModel]="audienceOf(calendar)"
+                                (ngModelChange)="setAudience(calendar, $event)" [disabled]="busy.has(calendar.id)">
+                                <option value="wg">Ganze WG</option>
+                                <option value="people">Bestimmte Personen</option>
+                            </select>
                             }
-                        </select>
+                        </div>
+                        @if (calendar.visibility !== 'private' && audienceOf(calendar) === 'people') {
+                        <div class="people-field inline" role="group" [attr.aria-label]="'Geteilt mit'">
+                            @for (person of otherPeople; track person.id) {
+                            <button type="button" class="person-chip" [disabled]="busy.has(calendar.id)"
+                                [class.selected]="calendar.sharedWith?.includes(person.id)"
+                                [attr.aria-pressed]="!!calendar.sharedWith?.includes(person.id)"
+                                (click)="toggleShare(calendar, person.id)">{{ person.name }}</button>
+                            }
+                            @if (!calendar.sharedWith?.length) { <small class="muted">Wähle, wer ihn sehen soll.</small> }
+                        </div>
+                        }
                     </div>
                     <div class="row-actions">
+                        @if (calendar.source === 'file') {
+                        <label class="btn-ghost btn-sm file-btn">Neue Datei<input type="file" accept=".ics,text/calendar"
+                                (change)="replaceFile(calendar, $event)" [disabled]="busy.has(calendar.id)" /></label>
+                        } @else {
                         <button class="btn-ghost btn-sm" (click)="refresh(calendar)" [disabled]="busy.has(calendar.id)"
                             [attr.aria-label]="calendar.name + ' jetzt aktualisieren'">{{ busy.has(calendar.id) ? '…' : '↻'
                             }}</button>
+                        }
                         <button class="btn-ghost btn-sm" [class.danger]="confirmRemove === calendar.id"
                             (click)="remove(calendar)" [disabled]="busy.has(calendar.id)"
                             [attr.aria-label]="(confirmRemove === calendar.id ? 'Wirklich entfernen: ' : 'Entfernen: ') + calendar.name">{{
@@ -49,15 +153,20 @@
                 }
 
                 @if (!showForm) {
-                <button class="btn-secondary add-btn" (click)="openForm()">+ Kalender hinzufügen</button>
+                <div class="add-row">
+                    <button class="btn-secondary" (click)="openForm('url')">+ Kalender per Link</button>
+                    <button class="btn-secondary" (click)="openForm('file')">+ Stundenplan / .ics-Datei</button>
+                </div>
                 } @else {
                 <form class="link-form" (ngSubmit)="add()">
                     @if (formError) { <div class="form-feedback" role="alert">{{ formError }}</div> }
-                    <div class="form-row">
-                        <label for="link-name">Name</label>
-                        <input id="link-name" name="name" class="glass-input" [(ngModel)]="form.name" maxlength="80"
-                            placeholder="z. B. Arbeit, Uni, Familie" />
+                    <div class="segmented source-switch" role="group" aria-label="Quelle">
+                        <button type="button" [class.active]="form.mode === 'url'" [attr.aria-pressed]="form.mode === 'url'"
+                            (click)="form.mode = 'url'">Link</button>
+                        <button type="button" [class.active]="form.mode === 'file'" [attr.aria-pressed]="form.mode === 'file'"
+                            (click)="form.mode = 'file'">Datei (.ics)</button>
                     </div>
+                    @if (form.mode === 'url') {
                     <div class="form-row">
                         <label for="link-url">iCal-Link</label>
                         <input id="link-url" name="url" class="glass-input" [(ngModel)]="form.url" inputmode="url"
@@ -67,18 +176,41 @@
                         <summary>Wo finde ich den Link?</summary>
                         <dl>
                             <dt>Outlook (Microsoft 365, Outlook.com)</dt>
-                            <dd>Outlook im Browser öffnen → Einstellungen ⚙ → Kalender → Freigegebene Kalender →
-                                «Kalender veröffentlichen»: Kalender und «Kann alle Details anzeigen» wählen →
-                                Veröffentlichen → den <strong>ICS</strong>-Link kopieren.</dd>
+                            <dd>Outlook im Browser → Einstellungen ⚙ → Kalender → Freigegebene Kalender → «Kalender
+                                veröffentlichen»: Kalender und «Kann alle Details anzeigen» wählen → Veröffentlichen →
+                                den <strong>ICS</strong>-Link kopieren.</dd>
                             <dt>Google Kalender</dt>
                             <dd>calendar.google.com → Einstellungen → links den Kalender wählen → «Kalender integrieren» →
                                 <strong>«Privatadresse im iCal-Format»</strong> kopieren.</dd>
                             <dt>iCloud (iPhone, Mac)</dt>
-                            <dd>Kalender-App → Kalender teilen → «Öffentlicher Kalender» einschalten → Link kopieren
-                                (beginnt mit webcal://).</dd>
+                            <dd>Kalender-App → Kalender teilen → «Öffentlicher Kalender» einschalten → Link kopieren.</dd>
+                            <dt>Kalender, den dir jemand freigegeben hat</dt>
+                            <dd>Freigaben in Outlook oder Google haben keinen eigenen Link für dich. Bitte die Person, den
+                                Kalender zu veröffentlichen (Outlook) bzw. dir die iCal-Adresse zu geben (Google), und füge
+                                diesen Link hier ein. Vereins-, Schul- oder Feiertagskalender bieten oft direkt einen
+                                «Abonnieren»-/iCal-Link an.</dd>
                         </dl>
-                        <p>Der Link ist wie ein Passwort: Wer ihn hat, sieht die Termine. Die WG sieht ihn nie.</p>
+                        <p>Der Link ist wie ein Passwort: Wer ihn hat, sieht die Termine. Die anderen in der WG sehen ihn
+                            nie.</p>
                     </details>
+                    } @else {
+                    <div class="form-row">
+                        <span class="field-label">Datei</span>
+                        <label class="file-drop">
+                            <input type="file" accept=".ics,text/calendar" (change)="pickFile($event)" />
+                            @if (form.fileName) { <strong>📅 {{ form.fileName }}</strong><small>Andere Datei wählen</small> }
+                            @else { <strong>.ics-Datei wählen</strong><small>z. B. Stundenplan aus dem Schulportal,
+                                Moodle oder Untis</small> }
+                        </label>
+                    </div>
+                    <p class="muted small">Ändert sich der Stundenplan, lädst du die neue Datei mit «Neue Datei» hoch –
+                        der alte Stand wird ersetzt.</p>
+                    }
+                    <div class="form-row">
+                        <label for="link-name">Name</label>
+                        <input id="link-name" name="name" class="glass-input" [(ngModel)]="form.name" maxlength="80"
+                            [placeholder]="form.mode === 'file' ? 'z. B. Stundenplan HS26' : 'z. B. Arbeit, Uni, Familie'" />
+                    </div>
                     <fieldset class="color-field">
                         <legend>Farbe</legend>
                         @for (color of COLORS; track color) {
@@ -89,7 +221,7 @@
                         }
                     </fieldset>
                     <fieldset class="visibility-field">
-                        <legend>Wer sieht die Termine?</legend>
+                        <legend>Was sehen die anderen?</legend>
                         @for (option of VISIBILITIES; track option.value) {
                         <label class="visibility-option" [class.selected]="form.visibility === option.value">
                             <input type="radio" name="visibility" [value]="option.value" [(ngModel)]="form.visibility" />
@@ -97,12 +229,33 @@
                         </label>
                         }
                     </fieldset>
+                    @if (form.visibility !== 'private' && otherPeople.length) {
+                    <fieldset class="people-field">
+                        <legend>Für wen?</legend>
+                        <div class="segmented audience-switch" role="group" aria-label="Für wen">
+                            <button type="button" [class.active]="form.audience === 'wg'" [attr.aria-pressed]="form.audience === 'wg'"
+                                (click)="form.audience = 'wg'">Ganze WG</button>
+                            <button type="button" [class.active]="form.audience === 'people'"
+                                [attr.aria-pressed]="form.audience === 'people'" (click)="form.audience = 'people'">Bestimmte
+                                Personen</button>
+                        </div>
+                        @if (form.audience === 'people') {
+                        <div class="people-chips">
+                            @for (person of otherPeople; track person.id) {
+                            <button type="button" class="person-chip" [class.selected]="form.sharedWith.includes(person.id)"
+                                [attr.aria-pressed]="form.sharedWith.includes(person.id)"
+                                (click)="form.sharedWith = togglePerson(form.sharedWith, person.id)">{{ person.name }}</button>
+                            }
+                        </div>
+                        }
+                    </fieldset>
+                    }
                     <div class="form-actions">
                         @if (mine.length) {
                         <button type="button" class="btn-ghost" (click)="showForm = false" [disabled]="saving">Abbrechen</button>
                         }
                         <button type="submit" class="btn-primary" [disabled]="saving">{{ saving ? 'Wird geprüft …' :
-                            'Verbinden' }}</button>
+                            form.mode === 'file' ? 'Importieren' : 'Verbinden' }}</button>
                     </div>
                 </form>
                 }
@@ -110,7 +263,7 @@
 
             @if (others.length) {
             <section class="links-section" aria-labelledby="others-title">
-                <h4 id="others-title">Von Mitbewohnern geteilt</h4>
+                <h4 id="others-title">Mit dir geteilt</h4>
                 @for (calendar of others; track calendar.id) {
                 <div class="linked-row compact">
                     <span class="dot" [style.background]="calendar.color" aria-hidden="true"></span>
@@ -120,12 +273,15 @@
                 }
             </section>
             }
+            }
 
             <!-- ── WG calendar as subscription ──────────────────────────────────── -->
+            @case ('feed') {
             <section class="links-section" aria-labelledby="feed-title">
                 <h4 id="feed-title">WG-Kalender in Outlook &amp; Co. anzeigen</h4>
-                <p class="muted">Dein persönlicher Abo-Link mit allen WG-Terminen und deinen privaten Terminen. Der
-                    Kalender aktualisiert sich dort von selbst (je nach App alle 30 Minuten bis einige Stunden).</p>
+                <p class="muted">Dein persönlicher Abo-Link mit allen WG-Terminen, deinen privaten Terminen und deinen
+                    gemeinsamen Kalendern. Der Kalender aktualisiert sich dort von selbst (je nach App alle 30 Minuten
+                    bis einige Stunden).</p>
                 @if (feedError) { <div class="form-feedback" role="alert">{{ feedError }}</div> }
                 <div class="feed-row">
                     <input #feedInput class="glass-input" [value]="feedUrl" readonly aria-label="Abo-Link"
@@ -138,7 +294,7 @@
                     <button class="btn-ghost btn-sm" [class.danger]="confirmRenew" (click)="renewFeed()">{{ confirmRenew ?
                         'Alter Link hört auf zu funktionieren – neu erzeugen?' : 'Neuen Link erzeugen' }}</button>
                 </div>
-                <details class="help">
+                <details class="help" open>
                     <summary>So abonnierst du ihn</summary>
                     <dl>
                         <dt>Outlook</dt>
@@ -154,6 +310,8 @@
                         auf Geräten im selben Netz (z. B. Outlook am PC, iPhone).</p>
                 </details>
             </section>
+            }
+            }
         </div>
     </div>
 </div>

@@ -7,9 +7,19 @@ from django.utils.dateparse import parse_date
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 
-from ..models import CalendarEvent
+from ..models import CalendarEvent, SharedCalendar
 from ..serializers import CalendarEventSerializer
 from .common import HasActiveHousehold
+
+
+def visible_events(user):
+    """WG events, own private events and events of shared calendars the person belongs to."""
+    hh = user.active_household
+    return CalendarEvent.objects.filter(household=hh).filter(
+        Q(calendar_type='household') |
+        Q(calendar_type='private', created_by=user) |
+        Q(calendar_type='group', shared_calendar__in=SharedCalendar.objects.filter(household=hh, members=user))
+    )
 
 
 class CalendarEventListCreateView(generics.ListCreateAPIView):
@@ -17,15 +27,10 @@ class CalendarEventListCreateView(generics.ListCreateAPIView):
     serializer_class = CalendarEventSerializer
 
     def get_queryset(self):
-        hh = self.request.user.active_household
-        user = self.request.user
         start_raw = self.request.query_params.get('start')
         end_raw = self.request.query_params.get('end')
 
-        queryset = CalendarEvent.objects.filter(
-            Q(household=hh, calendar_type='household') |
-            Q(household=hh, created_by=user, calendar_type='private')
-        )
+        queryset = visible_events(self.request.user)
         if start_raw:
             queryset = queryset.filter(
                 Q(end__date__gte=parse_date(start_raw) or date.min) |
@@ -56,12 +61,7 @@ class CalendarEventDetailView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = 'id'
 
     def get_queryset(self):
-        hh = self.request.user.active_household
-        user = self.request.user
-        return CalendarEvent.objects.filter(
-            Q(household=hh, calendar_type='household') |
-            Q(household=hh, created_by=user, calendar_type='private')
-        )
+        return visible_events(self.request.user)
 
     def retrieve(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_object())

@@ -64,7 +64,9 @@ def ics_for(day):
                           wednesday=(day + timedelta(days=2)).strftime(fmt))
 
 
-class LinkedCalendarTests(TestCase):
+class CalendarTestCase(TestCase):
+    """A WG with Simon and Lisa; every iCal link returns the sample Outlook calendar."""
+
     def setUp(self):
         self.household = Household.objects.create(name='Sonnenhof')
         self.simon = self.member('simon@example.com', 'Simon')
@@ -99,6 +101,8 @@ class LinkedCalendarTests(TestCase):
         end = self.monday + timezone.timedelta(days=13)
         return client.get(f'/api/calendar/external-events/?start={self.monday}&end={end}').data['data']
 
+
+class LinkedCalendarTests(CalendarTestCase):
     def test_linking_checks_the_link_and_expands_recurring_events(self):
         response = self.link(self.client, color='#0ea5e9')
         self.assertEqual(response.status_code, 201, response.data)
@@ -184,3 +188,90 @@ class LinkedCalendarTests(TestCase):
         HouseholdMembership.objects.filter(user=self.simon).delete()
         self.assertEqual(APIClient().get(new).status_code, 404)
         self.assertEqual(CalendarFeedToken.objects.count(), 1)
+
+
+class TimetableAndSharingTests(CalendarTestCase):
+    """Timetables as .ics files, calendars shared with chosen people, and shared calendars in the app."""
+
+    def setUp(self):
+        super().setUp()
+        self.mia = self.member('mia@example.com', 'Mia')
+
+    def test_timetable_file_becomes_a_calendar_and_can_be_replaced(self):
+        response = self.client.post('/api/calendar/external/', {
+            'name': 'Stundenplan', 'icsContent': self.ics, 'fileName': 'stundenplan.ics'}, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        data = response.data['data']
+        self.assertEqual((data['source'], data['fileName'], data['eventCount'], data['url']),
+                         ('file', 'stundenplan.ics', 3, ''))
+        self.fetch.assert_not_called()
+        calendar = ExternalCalendar.objects.get()
+        self.assertTrue(calendar_sync.sync(calendar))  # files are expanded again on refresh
+        broken = self.client.patch(f'/api/calendar/external/{calendar.id}/', {'icsContent': 'kaputt'}, format='json')
+        self.assertEqual(broken.status_code, 400)
+        newer = self.ics.replace('Team-Meeting', 'Mathematik')
+        self.client.patch(f'/api/calendar/external/{calendar.id}/', {'icsContent': newer}, format='json')
+        self.assertIn('Mathematik', [e['title'] for e in self.week(self.client)])
+
+    def test_files_and_links_are_required_and_limited(self):
+        response = self.client.post('/api/calendar/external/', {'name': 'Leer'}, format='json')
+        self.assertEqual(response.status_code, 400)
+        huge = 'X' * (calendar_sync.MAX_FILE_BYTES + 1)
+        response = self.client.post('/api/calendar/external/', {'name': 'Gross', 'icsContent': huge}, format='json')
+        self.assertIn('zu gross', response.data['error']['message'])
+
+    def test_sharing_with_chosen_people_only(self):
+        self.link(self.client, visibility='shared', sharedWith=[str(self.lisa.id), str(self.simon.id)])
+        calendar = ExternalCalendar.objects.get()
+        self.assertEqual(list(calendar.shared_with.all()), [self.lisa])  # the owner is never in the list
+        lisa, mia = self.login(self.lisa), self.login(self.mia)
+        self.assertIn('Team-Meeting', [e['title'] for e in self.week(lisa)])
+        self.assertEqual(self.week(mia), [])
+        self.assertEqual(self.client.get('/api/calendar/external/').data['data'][0]['sharedWith'], [str(self.lisa.id)])
+        self.assertNotIn('sharedWith', lisa.get('/api/calendar/external/').data['data'][0])
+        outsider = User.objects.create_user('x@example.com', 'pw', active_household=Household.objects.create(name='X'))
+        response = self.client.patch(f'/api/calendar/external/{calendar.id}/', {'sharedWith': [str(outsider.id)]},
+                                     format='json')
+        self.assertEqual(response.status_code, 400)
+        self.client.patch(f'/api/calendar/external/{calendar.id}/', {'sharedWith': []}, format='json')
+        self.assertIn('Team-Meeting', [e['title'] for e in self.week(mia)])  # empty list: whole WG
+
+    def test_shared_calendar_in_the_app(self):
+        created = self.client.post('/api/calendar/shared/', {
+            'name': 'Paar', 'color': '#ec4899', 'memberIds': [str(self.lisa.id)]}, format='json')
+        self.assertEqual(created.status_code, 201, created.data)
+        shared = created.data['data']
+        self.assertEqual(sorted(shared['memberNames']), ['Lisa', 'Simon'])
+        start = timezone.now().replace(microsecond=0)
+        event = self.client.post('/api/calendar-events/', {
+            'title': 'Jahrestag', 'start': start.isoformat(), 'calendarType': 'group',
+            'sharedCalendarId': shared['id']}, format='json')
+        self.assertEqual(event.status_code, 201, event.data)
+        day = timezone.localdate()
+        lisa, mia = self.login(self.lisa), self.login(self.mia)
+        titles = lambda client: [e['title'] for e in client.get(  # noqa: E731
+            f'/api/calendar-events/?start={day}&end={day}').data['data']]
+        self.assertEqual((titles(lisa), titles(mia)), (['Jahrestag'], []))
+        # Members may change the events; others cannot even see them.
+        event_id = event.data['data']['id']
+        self.assertEqual(lisa.patch(f'/api/calendar-events/{event_id}/', {'title': 'Jahrestag 🎉'},
+                                    format='json').status_code, 200)
+        self.assertEqual(mia.patch(f'/api/calendar-events/{event_id}/', {'title': 'x'}, format='json').status_code, 404)
+        refused = mia.post('/api/calendar-events/', {'title': 'Rein', 'start': start.isoformat(),
+                                                     'calendarType': 'group', 'sharedCalendarId': shared['id']},
+                           format='json')
+        self.assertEqual(refused.status_code, 400)
+        self.assertEqual(mia.get('/api/calendar/shared/').data['data'], [])
+        # The feed of a member contains it, labelled with the calendar.
+        path = lisa.get('/api/calendar/feed/').data['data']['path']
+        feed = icalendar.Calendar.from_ical(APIClient().get(path).content)
+        self.assertEqual([str(e['CATEGORIES'].cats[0]) for e in feed.walk('VEVENT')], ['Paar'])
+        # Leaving it hides it; deleting removes its events.
+        lisa.patch(f"/api/calendar/shared/{shared['id']}/", {'memberIds': [str(self.simon.id)]}, format='json')
+        self.assertEqual(titles(lisa), [])
+        self.assertEqual(self.client.delete(f"/api/calendar/shared/{shared['id']}/").status_code, 200)
+        self.assertFalse(CalendarEvent.objects.exists())
+
+    def test_people_lists_the_wg(self):
+        people = self.client.get('/api/calendar/people/').data['data']
+        self.assertEqual([(p['name'], p['isMe']) for p in people], [('Lisa', False), ('Mia', False), ('Simon', True)])

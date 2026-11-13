@@ -6,8 +6,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
-import { CalendarEvent, ExternalCalendar } from '../model/calendar.model';
-import { CalendarLinks } from '../links/calendar-links';
+import { CalendarEvent, ExternalCalendar, SharedCalendar } from '../model/calendar.model';
+import { CalendarLinks, CalendarLinksTab } from '../links/calendar-links';
 import { CalendarService } from '../service/calendar.service';
 import { TodosService } from '../../todos/service/todos.service';
 import { Todo } from '../../todos/model/todos.model';
@@ -64,7 +64,9 @@ export class CalendarPage implements OnInit, OnDestroy {
   externalCalendars: ExternalCalendar[] = [];
   externalEvents: CalendarEvent[] = [];
   hiddenCalendars = new Set<string>(this.readHiddenCalendars());
+  sharedCalendars: SharedCalendar[] = [];
   showLinks = false;
+  linksTab: CalendarLinksTab = 'linked';
   externalDetail: CalendarEvent | null = null;
   private externalRetry: ReturnType<typeof setTimeout> | null = null;
 
@@ -210,7 +212,27 @@ export class CalendarPage implements OnInit, OnDestroy {
       next: calendars => { this.externalCalendars = calendars; this.cdr.markForCheck(); },
       error: () => { /* the app's own calendar keeps working */ },
     });
+    this.calendarService.getSharedCalendars().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: calendars => { this.sharedCalendars = calendars; this.cdr.markForCheck(); },
+      error: () => { /* the app's own calendar keeps working */ },
+    });
   }
+
+  openLinks(tab: CalendarLinksTab = 'linked'): void { this.linksTab = tab; this.showLinks = true; }
+
+  onSharedChanged(calendars: SharedCalendar[]): void {
+    const before = new Set(this.sharedCalendars.map(c => c.id));
+    this.sharedCalendars = calendars;
+    // Left or deleted calendars take their events with them.
+    if (calendars.length < before.size) this.loadEvents();
+  }
+
+  sharedOf(ev: CalendarEvent | null): SharedCalendar | undefined {
+    return ev?.calendarType === 'group' ? this.sharedCalendars.find(c => c.id === ev.sharedCalendarId) : undefined;
+  }
+
+  /** Value of the calendar choice in the event dialog: 'household', 'private' or 'group:<id>'. */
+  groupChoice(calendar: SharedCalendar): string { return `group:${calendar.id}`; }
 
   /** Linked calendars refresh in the background; when they do, ask once more a little later. */
   private loadExternalEvents(retry: boolean): void {
@@ -245,6 +267,7 @@ export class CalendarPage implements OnInit, OnDestroy {
       if (!calendar) return ev.calendarName || 'Verknüpfter Kalender';
       return calendar.isOwner ? calendar.name : `${calendar.ownerName} · ${calendar.name}`;
     }
+    if (ev.calendarType === 'group') return this.sharedOf(ev)?.name ?? 'Gemeinsamer Kalender';
     return ev.calendarType === 'private' ? 'Privat' : 'WG';
   }
 
@@ -274,6 +297,7 @@ export class CalendarPage implements OnInit, OnDestroy {
   isExternal(ev: CalendarEvent | null): boolean { return ev?.source === 'external'; }
 
   calendarColor(ev: CalendarEvent): string | null {
+    if (ev.calendarType === 'group') return this.sharedOf(ev)?.color ?? '#f59e0b';
     return ev.source === 'external' ? this.calendarOf(ev)?.color ?? ev.calendarColor ?? '#64748b' : null;
   }
 
@@ -388,6 +412,7 @@ export class CalendarPage implements OnInit, OnDestroy {
       if (!ev.start || localIsoDate(new Date(ev.start)) !== dateStr) return false;
       if (ev.calendarType === 'private'   && !this.showPrivate)   return false;
       if ((ev.calendarType ?? 'household') === 'household' && !this.showHousehold) return false;
+      if (ev.calendarType === 'group' && this.hiddenCalendars.has(ev.sharedCalendarId ?? '')) return false;
       return true;
     });
     const linked = this.shownExternal().filter(ev => !ev.allDay && localIsoDate(new Date(ev.start)) === dateStr);
@@ -395,7 +420,7 @@ export class CalendarPage implements OnInit, OnDestroy {
   }
 
   allDayEventsForDay(dateStr: string): CalendarEvent[] {
-    const own = this.events.filter(ev => ev.allDay && ev.start && localIsoDate(new Date(ev.start)) === dateStr && (ev.calendarType === 'private' ? this.showPrivate : this.showHousehold));
+    const own = this.events.filter(ev => ev.allDay && ev.start && localIsoDate(new Date(ev.start)) === dateStr && this.ownShown(ev));
     // Linked all-day events may span several days (holidays); their end is exclusive.
     const linked = this.shownExternal().filter(ev => {
       if (!ev.allDay) return false;
@@ -404,6 +429,11 @@ export class CalendarPage implements OnInit, OnDestroy {
       return first <= dateStr && dateStr <= last;
     });
     return [...own, ...linked];
+  }
+
+  private ownShown(ev: CalendarEvent): boolean {
+    if (ev.calendarType === 'group') return !this.hiddenCalendars.has(ev.sharedCalendarId ?? '');
+    return ev.calendarType === 'private' ? this.showPrivate : this.showHousehold;
   }
 
   evTop(ev: CalendarEvent): number { return gridTop(new Date(ev.start)); }
@@ -423,6 +453,7 @@ export class CalendarPage implements OnInit, OnDestroy {
 
   evClass(ev: CalendarEvent): string {
     if (ev.source === 'external') return `cal-ev ev-external${ev.busyOnly ? ' ev-busy' : ''}${ev.busy === false ? ' ev-free' : ''}`;
+    if (ev.calendarType === 'group') return `cal-ev ev-group${ev.todoRefId ? ' ev-todo' : ''}`;
     const type = ev.calendarType ?? 'household';
     const todo = ev.todoRefId ? ' ev-todo' + (this.linkedTodo(ev)?.done ? ' ev-task-done' : '') : '';
     return `cal-ev ev-${type}${todo}`;
@@ -908,7 +939,7 @@ export class CalendarPage implements OnInit, OnDestroy {
       title: ev.title, date: localIsoDate(s),
       startTime: `${pad(s.getHours())}:${pad(s.getMinutes())}`,
       endTime:   `${pad(en.getHours())}:${pad(en.getMinutes())}`,
-      calendarType: ev.calendarType ?? 'household',
+      calendarType: ev.calendarType === 'group' ? `group:${ev.sharedCalendarId}` : ev.calendarType ?? 'household',
       description: ev.description ?? '', location: ev.location ?? '',
       color: ev.color ?? '', allDay: ev.allDay ?? false,
     };
@@ -939,7 +970,7 @@ export class CalendarPage implements OnInit, OnDestroy {
     if (this.modalForm.allDay) {
       payload = {
         title: this.modalForm.title.trim(), description: this.modalForm.description,
-        location: this.modalForm.location, calendarType: this.modalForm.calendarType as any,
+        location: this.modalForm.location, ...this.calendarChoice(),
         color: this.modalForm.color, allDay: true,
         start: new Date(this.modalForm.date + 'T00:00:00').toISOString(),
       };
@@ -949,7 +980,7 @@ export class CalendarPage implements OnInit, OnDestroy {
       if (en <= s) en.setTime(s.getTime() + 3600000);
       payload = {
         title: this.modalForm.title.trim(), description: this.modalForm.description,
-        location: this.modalForm.location, calendarType: this.modalForm.calendarType as any,
+        location: this.modalForm.location, ...this.calendarChoice(),
         color: this.modalForm.color, allDay: false,
         start: s.toISOString(), end: en.toISOString(),
       };
@@ -983,6 +1014,14 @@ export class CalendarPage implements OnInit, OnDestroy {
 
   // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   private iso(d: Date): string { return localIsoDate(d); }
+
+  /** Turns the dialog's calendar choice into the API fields. */
+  private calendarChoice(): Pick<CalendarEvent, 'calendarType' | 'sharedCalendarId'> {
+    const choice = this.modalForm.calendarType;
+    return choice.startsWith('group:')
+      ? { calendarType: 'group', sharedCalendarId: choice.slice(6) }
+      : { calendarType: choice === 'private' ? 'private' : 'household', sharedCalendarId: null };
+  }
 
   private emptyForm(): EvModalForm {
     const now = new Date();

@@ -5,7 +5,7 @@ import { CalendarPage } from './calendar.page';
 import { CalendarService } from '../service/calendar.service';
 import { TodosService } from '../../todos/service/todos.service';
 import { AuthService } from '../../../core/auth/service/auth.service';
-import { CalendarEvent, ExternalCalendar } from '../model/calendar.model';
+import { CalendarEvent, ExternalCalendar, SharedCalendar } from '../model/calendar.model';
 
 describe('Calendar with linked calendars', () => {
   const work: ExternalCalendar = { id: 'work', name: 'Arbeit', color: '#0ea5e9', visibility: 'private', enabled: true,
@@ -19,11 +19,16 @@ describe('Calendar with linked calendars', () => {
     start: '2026-11-10T13:00:00', end: '2026-11-10T15:00:00' };
   const holiday: CalendarEvent = { id: 'ext-3', calendarId: 'work', source: 'external', title: 'Ferien', allDay: true,
     start: '2026-11-11T00:00:00', end: '2026-11-14T00:00:00' };
+  const paar: SharedCalendar = { id: 'paar', name: 'Paar', color: '#ec4899', memberIds: ['me', 'lisa'],
+    memberNames: ['Simon', 'Lisa'] };
+  const anniversary: CalendarEvent = { id: 'g', title: 'Jahrestag', calendarType: 'group', sharedCalendarId: 'paar',
+    start: '2026-11-10T20:00:00', end: '2026-11-10T22:00:00' };
   const calendar = {
-    getEvents: vi.fn(() => of([own])),
+    getEvents: vi.fn(() => of([own, anniversary])),
     getExternalEvents: vi.fn(() => of({ events: [meeting, busy, holiday], refreshing: false })),
     getExternalCalendars: vi.fn(() => of([work, lisa])),
     getCleaningTasks: vi.fn(() => of([])),
+    getSharedCalendars: vi.fn(() => of([paar])),
   };
   let page: CalendarPage;
 
@@ -45,7 +50,7 @@ describe('Calendar with linked calendars', () => {
   afterEach(() => { page.ngOnDestroy(); localStorage.clear(); });
 
   it('shows linked appointments next to the WG ones, sorted by time, with where they come from', () => {
-    expect(page.eventsForDay('2026-11-10').map(e => e.title)).toEqual(['Team-Meeting', 'Belegt', 'WG-Sitzung']);
+    expect(page.eventsForDay('2026-11-10').map(e => e.title)).toEqual(['Team-Meeting', 'Belegt', 'WG-Sitzung', 'Jahrestag']);
     expect(page.sourceLabel(meeting)).toBe('Arbeit');
     expect(page.sourceLabel(busy)).toBe('Lisa · Uni');
     expect(page.sourceLabel(own)).toBe('WG');
@@ -59,7 +64,7 @@ describe('Calendar with linked calendars', () => {
 
   it('hides a linked calendar from its chip and remembers it', () => {
     page.toggleCalendar('lisa');
-    expect(page.eventsForDay('2026-11-10').map(e => e.title)).toEqual(['Team-Meeting', 'WG-Sitzung']);
+    expect(page.eventsForDay('2026-11-10').map(e => e.title)).toEqual(['Team-Meeting', 'WG-Sitzung', 'Jahrestag']);
     expect(JSON.parse(localStorage.getItem('calendar:hidden-linked')!)).toEqual(['lisa']);
   });
 
@@ -82,5 +87,20 @@ describe('Calendar with linked calendars', () => {
     vi.advanceTimersByTime(8000);
     expect(calendar.getExternalEvents.mock.calls.length).toBe(calls + 1);
     vi.useRealTimers();
+  });
+
+  it('shows shared calendars in their colour and saves new events into them', () => {
+    expect(page.sourceLabel(anniversary)).toBe('Paar');
+    expect(page.calendarColor(anniversary)).toBe('#ec4899');
+    expect(page.evClass(anniversary)).toContain('ev-group');
+    page.toggleCalendar('paar');
+    expect(page.eventsForDay('2026-11-10').map(e => e.title)).not.toContain('Jahrestag');
+
+    const create = vi.fn(() => of({ ...anniversary, id: 'new' }));
+    (calendar as Record<string, unknown>)['createEvent'] = create;
+    page.openNewEvent('2026-11-12');
+    page.modalForm = { ...page.modalForm, title: 'Kino', calendarType: page.groupChoice(paar) };
+    page.saveEvent();
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ calendarType: 'group', sharedCalendarId: 'paar' }));
   });
 });

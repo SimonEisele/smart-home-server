@@ -361,8 +361,24 @@ class CleaningLog(models.Model):
 
 
 # Calendar
+class SharedCalendar(models.Model):
+    """A calendar of some WG members only (e.g. a couple, a band): every member may add and change events."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    household = models.ForeignKey(Household, on_delete=models.CASCADE, related_name='shared_calendars')
+    name = models.CharField(max_length=80)
+    color = models.CharField(max_length=20, default='#f59e0b')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_shared_calendars')
+    members = models.ManyToManyField(User, related_name='shared_calendars')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+
 class CalendarEvent(models.Model):
-    CALENDAR_TYPE_CHOICES = [('household', 'WG'), ('private', 'Privat')]
+    CALENDAR_TYPE_CHOICES = [('household', 'WG'), ('private', 'Privat'), ('group', 'Gemeinsamer Kalender')]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     household = models.ForeignKey(Household, on_delete=models.CASCADE, related_name='calendar_events')
@@ -375,6 +391,8 @@ class CalendarEvent(models.Model):
     location = models.CharField(max_length=200, blank=True)
     calendar_type = models.CharField(max_length=20, choices=CALENDAR_TYPE_CHOICES, default='household')
     todo_ref_id = models.UUIDField(null=True, blank=True)
+    shared_calendar = models.ForeignKey(SharedCalendar, on_delete=models.CASCADE, null=True, blank=True,
+                                        related_name='events')
     color = models.CharField(max_length=30, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -456,9 +474,17 @@ class ExternalCalendar(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     household = models.ForeignKey(Household, on_delete=models.CASCADE, related_name='external_calendars')
+    SOURCE_CHOICES = [('url', 'Link'), ('file', 'Datei')]
+
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='external_calendars')
     name = models.CharField(max_length=80)
-    url = models.URLField(max_length=2000)
+    source = models.CharField(max_length=4, choices=SOURCE_CHOICES, default='url')
+    url = models.URLField(max_length=2000, blank=True)
+    # An imported .ics file (e.g. a timetable); replaced by uploading a new one.
+    ics_data = models.TextField(blank=True)
+    file_name = models.CharField(max_length=200, blank=True)
+    # Empty: the visibility applies to the whole WG; otherwise only to these people.
+    shared_with = models.ManyToManyField(User, blank=True, related_name='shared_external_calendars')
     color = models.CharField(max_length=20, default='#6366f1')
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='private')
     enabled = models.BooleanField(default=True)

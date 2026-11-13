@@ -347,3 +347,15 @@ class EditProposalTests(TestCase):
     def test_read_tools_return_ids_for_editing(self):
         todo = Todo.objects.create(household=self.household, title='Velo', global_todo=True)
         self.assertEqual(self.box.run('get_todos', {})['todos'][0]['id'], str(todo.id))
+
+    def test_events_can_go_into_a_shared_calendar(self):
+        from features.models import SharedCalendar
+        paar = SharedCalendar.objects.create(household=self.household, name='Paar', created_by=self.user)
+        paar.members.add(self.user)
+        self.box.run('propose_event', {'title': 'Kino', 'start': '2026-11-20T20:00', 'sharedCalendar': 'paar'})
+        proposal = self.box.proposals[0]
+        self.assertEqual(proposal['summary'][1], 'Paar')
+        self.assertEqual(self.apply(proposal).status_code, 201)
+        self.assertEqual(CalendarEvent.objects.get().shared_calendar, paar)
+        result = self.box.run('propose_event', {'title': 'X', 'start': '2026-11-20T20:00', 'sharedCalendar': 'Band'})
+        self.assertIn('Paar', result['error'])

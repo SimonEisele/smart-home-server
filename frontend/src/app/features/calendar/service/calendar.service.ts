@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { CalendarEvent, ExternalCalendar, ExternalMealGuest, HouseholdMember, MemberAvailability, UserMealAttendance } from '../model/calendar.model';
+import { CalendarEvent, CalendarPerson, ExternalCalendar, ExternalMealGuest, SharedCalendar, HouseholdMember, MemberAvailability, UserMealAttendance } from '../model/calendar.model';
 import { CleaningTask } from '../../cleaning/model/cleaning.model';
 
 @Injectable({ providedIn: 'root' })
@@ -63,6 +63,30 @@ export class CalendarService {
       .get<{ data: CalendarEvent[]; refreshing?: boolean }>(
         `${environment.apiUrl}/calendar/external-events/?start=${start}&end=${end}`)
       .pipe(map(r => ({ events: r.data.map(e => ({ ...e, source: 'external' as const })), refreshing: !!r.refreshing })));
+  }
+
+  // ── Shared calendars inside the app ─────────────────────────────────────
+  getSharedCalendars(): Observable<SharedCalendar[]> {
+    return this.http.get<{ data: SharedCalendar[] }>(`${environment.apiUrl}/calendar/shared/`).pipe(map(r => r.data));
+  }
+
+  createSharedCalendar(calendar: { name: string; color: string; memberIds: string[] }): Observable<SharedCalendar> {
+    return this.http.post<{ data: SharedCalendar }>(`${environment.apiUrl}/calendar/shared/`, calendar)
+      .pipe(map(r => r.data));
+  }
+
+  updateSharedCalendar(id: string, patch: Partial<Pick<SharedCalendar, 'name' | 'color' | 'memberIds'>>): Observable<SharedCalendar> {
+    return this.http.patch<{ data: SharedCalendar }>(`${environment.apiUrl}/calendar/shared/${id}/`, patch)
+      .pipe(map(r => r.data));
+  }
+
+  deleteSharedCalendar(id: string): Observable<void> {
+    return this.http.delete(`${environment.apiUrl}/calendar/shared/${id}/`).pipe(map(() => void 0));
+  }
+
+  /** WG members to share a calendar with. */
+  getCalendarPeople(): Observable<CalendarPerson[]> {
+    return this.http.get<{ data: CalendarPerson[] }>(`${environment.apiUrl}/calendar/people/`).pipe(map(r => r.data));
   }
 
   /** Personal subscription link of the WG calendar (absolute URL). */

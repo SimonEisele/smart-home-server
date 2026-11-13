@@ -43,10 +43,34 @@ abonnieren. Beides läuft über iCal-Links (Abo), ohne Anmeldung bei Microsoft o
   `POST /api/calendar/external/<id>/sync/`
 - `GET /api/calendar/external-events/?start=&end=` (höchstens 62 Tage)
 - `GET/POST /api/calendar/feed/` (Link holen / neu erzeugen), `GET /api/calendar/feed/<token>.ics` (ohne Login)
-- Neue Abhängigkeiten in `requirements.txt`: icalendar, recurring-ical-events (+ python-dateutil, x-wr-timezone,
+- Migrationen `0027_external_calendars` und `0028_shared_calendars_and_files`. Neue Abhängigkeiten in `requirements.txt`: icalendar, recurring-ical-events (+ python-dateutil, x-wr-timezone,
   click, six). `deploy.sh` installiert sie automatisch.
 
 ## Nebenbei
 
 - `DialogDirective`: Ein Dialog, der entfernt wurde, bevor er angezeigt war, hat den Zähler für die
   Seiten-Scrollsperre ins Minus gezogen. Danach blieb die Seite bei offenem Dialog scrollbar. Behoben.
+
+## Nachtrag: Stundenpläne, Teilen mit einzelnen Personen, gemeinsame Kalender
+
+Der Dialog heisst jetzt **Kalender** und hat drei Bereiche: *Gemeinsam*, *Einblenden*, *Abonnieren*.
+
+- **Stundenplan / .ics-Datei:** Unter *Einblenden* statt eines Links eine Datei wählen (z. B. Export aus Untis,
+  Moodle, dem Schulportal). Sie wird wie ein verknüpfter Kalender angezeigt (Farbe, Sichtbarkeit, Legende), nur
+  lesbar. Ändert sich der Stundenplan, ersetzt «Neue Datei» den alten Stand. Max. 5 MB; Wiederholungen werden bei
+  jeder Aktualisierung neu berechnet, damit sie bis ins nächste Jahr reichen (`source='file'`, `ics_data`).
+- **Mit bestimmten Personen teilen:** Bei «belegt» oder «alles» zusätzlich *Ganze WG* oder *Bestimmte Personen*
+  (`shared_with`; leer = ganze WG). Wer etwas nicht sehen darf, bekommt den Kalender gar nicht erst geliefert.
+  Das letzte Häkchen lässt sich nicht entfernen, ohne «Ganze WG» bewusst zu wählen.
+- **Von anderen freigegebene Kalender (Outlook/Google):** Solche Freigaben haben keinen eigenen Link für die
+  empfangende Person. Die Anleitung im Dialog erklärt, wie die Besitzerin den iCal-Link veröffentlicht; den fügt man
+  dann ganz normal ein. In der App geteilte Kalender anderer erscheinen unter «Mit dir geteilt».
+- **Gemeinsame Kalender in der App** (`SharedCalendar`): z. B. «Paar», «Band», «Velotour» mit ausgewählten
+  Mitgliedern. Alle Mitglieder sehen, erstellen, verschieben und ändern die Termine; alle anderen sehen nichts.
+  Im Termin-Dialog steht der Kalender neben «WG» und «Nur für mich» zur Wahl. Eigene Farbe, eigener Schalter in der
+  Legende, im Abo-Link enthalten (Kategorie = Kalendername). Austreten oder Löschen (löscht die Termine mit).
+- Sichtbarkeit von App-Terminen zentral in `features/views/calendar.visible_events` (WG, eigene private, gemeinsame
+  Kalender mit Mitgliedschaft); auch der Assistent nutzt sie und kann Termine in einen gemeinsamen Kalender
+  vorschlagen (`propose_event` mit `sharedCalendar`).
+- API: `GET/POST /api/calendar/shared/`, `PATCH/DELETE /api/calendar/shared/<id>/`, `GET /api/calendar/people/`;
+  `POST/PATCH /api/calendar/external/` nehmen zusätzlich `icsContent`, `fileName`, `sharedWith`.

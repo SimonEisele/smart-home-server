@@ -8,7 +8,7 @@
             <h1 class="page-title">Kalender</h1>
         </div>
         <div class="page-actions">
-            <button class="btn-secondary" (click)="showLinks = true">Kalender verbinden</button>
+            <button class="btn-secondary" (click)="openLinks()">Kalender</button>
             <button class="btn-primary" (click)="openNewEvent()">+ Termin</button>
         </div>
     </header>
@@ -29,6 +29,11 @@
                 (click)="showTodos = !showTodos"><i aria-hidden="true"></i>Aufgaben</button>
             <button class="legend-item legend-cleaning" [class.off]="!showCleaning" [attr.aria-pressed]="showCleaning"
                 (click)="showCleaning = !showCleaning"><i aria-hidden="true"></i>Putzen</button>
+            @for (calendar of sharedCalendars; track calendar.id) {
+            <button class="legend-item legend-linked" [class.off]="hiddenCalendars.has(calendar.id)"
+                [attr.aria-pressed]="!hiddenCalendars.has(calendar.id)" [style.--cal-color]="calendar.color"
+                (click)="toggleCalendar(calendar.id)"><i aria-hidden="true"></i>{{ calendar.name }}</button>
+            }
             @for (calendar of visibleCalendars; track calendar.id) {
             <button class="legend-item legend-linked" [class.off]="hiddenCalendars.has(calendar.id)"
                 [attr.aria-pressed]="!hiddenCalendars.has(calendar.id)" [style.--cal-color]="calendar.color"
@@ -69,13 +74,13 @@
             </div>
             }
             @for (event of allDayEventsForDay(day.dateStr); track event.id) {
-            <button class="agenda-event" [class.agenda-linked-cal]="isExternal(event)" [class.agenda-busy]="event.busyOnly"
+            <button class="agenda-event" [class.agenda-linked-cal]="!!calendarColor(event)" [class.agenda-busy]="event.busyOnly"
                 [style.--cal-color]="calendarColor(event)" (click)="onEvClick(event, $event)"><span>Ganztägig</span><strong>{{
                     event.title }}<small class="agenda-source">{{ sourceLabel(event) }}</small></strong></button>
             }
             @for (event of eventsForDay(day.dateStr); track event.id) {
             <button class="agenda-event" [class.agenda-private]="event.calendarType === 'private' && !isExternal(event)"
-                [class.agenda-linked]="!!event.todoRefId" [class.agenda-linked-cal]="isExternal(event)"
+                [class.agenda-linked]="!!event.todoRefId" [class.agenda-linked-cal]="!!calendarColor(event)"
                 [class.agenda-busy]="event.busyOnly" [style.--cal-color]="calendarColor(event)"
                 (click)="onEvClick(event, $event)"><span>{{ event.start | date:'HH:mm' }}<small>{{
                         event.end | date:'HH:mm' }}</small></span><strong>{{ event.title }}@if (event.location) { <small>{{
@@ -129,7 +134,7 @@
                         [attr.aria-label]="'Termin am ' + day.dateStr + ' hinzufügen'"><span class="day-name">{{ day.dayName
                             }}</span><span class="day-num" [class.today-num]="day.isToday">{{ day.dayNum }}</span></button>
                     @for (ev of allDayEventsForDay(day.dateStr); track ev.id) {
-                    <div class="allday-ev" [class]="isExternal(ev) ? 'allday-ev ev-external' + (ev.busyOnly ? ' ev-busy' : '')
+                    <div class="allday-ev" [class]="calendarColor(ev) ? 'allday-ev ev-external' + (ev.busyOnly ? ' ev-busy' : '')
                         : 'allday-ev ev-' + (ev.calendarType ?? 'household')" [style.--cal-color]="calendarColor(ev)"
                         [title]="ev.title + ' · ' + sourceLabel(ev)" (click)="onEvClick(ev, $event)">{{ ev.title }}</div>
                     }
@@ -232,7 +237,15 @@
                     (click)="modalForm.calendarType = 'household'">WG</button><button type="button"
                     [class.active]="modalForm.calendarType === 'private'"
                     [attr.aria-pressed]="modalForm.calendarType === 'private'"
-                    (click)="modalForm.calendarType = 'private'">Nur für mich</button></div>
+                    (click)="modalForm.calendarType = 'private'">Nur für mich</button>@for (calendar of sharedCalendars;
+                track calendar.id) {<button type="button" class="calendar-choice" [style.--cal-color]="calendar.color"
+                    [class.active]="modalForm.calendarType === groupChoice(calendar)"
+                    [attr.aria-pressed]="modalForm.calendarType === groupChoice(calendar)"
+                    (click)="modalForm.calendarType = groupChoice(calendar)">{{ calendar.name }}</button>}</div>
+            @if (!sharedCalendars.length && !editingEvent) {
+            <button type="button" class="more-toggle" (click)="closeModal(); openLinks('shared')">+ Gemeinsamer Kalender,
+                z. B. nur mit einer Person</button>
+            }
             }
 
             <div class="form-row time-row">
@@ -364,7 +377,7 @@
         </div>
         <div class="modal-foot">
             @if (calendarOf(ev)?.isOwner) {
-            <button class="btn-ghost" (click)="closeExternal(); showLinks = true">Kalender verwalten</button>
+            <button class="btn-ghost" (click)="closeExternal(); openLinks('linked')">Kalender verwalten</button>
             }
             <button class="btn-primary" (click)="closeExternal()">Schliessen</button>
         </div>
@@ -373,5 +386,6 @@
 }
 
 @if (showLinks) {
-<app-calendar-links (closed)="showLinks = false; loadCalendars()" (changed)="onCalendarsChanged($event)" />
+<app-calendar-links [tab]="linksTab" (closed)="showLinks = false; loadCalendars()" (changed)="onCalendarsChanged($event)"
+    (sharedChanged)="onSharedChanged($event)" />
 }

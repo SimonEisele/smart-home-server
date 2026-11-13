@@ -24,6 +24,7 @@ WINDOW_PAST = timedelta(days=62)
 WINDOW_FUTURE = timedelta(days=400)
 STALE_AFTER = timedelta(minutes=15)
 MAX_BYTES = 15_000_000
+MAX_FILE_BYTES = 5_000_000
 MAX_EVENTS = 5000
 
 
@@ -102,11 +103,22 @@ def load(url):
     return parse_ics(text, now - WINDOW_PAST, now + WINDOW_FUTURE)
 
 
+def read_file(text):
+    """Checks an uploaded .ics file (e.g. a timetable) and returns its occurrences."""
+    if len(text.encode('utf-8')) > MAX_FILE_BYTES:
+        raise CalendarError('Die Datei ist zu gross (höchstens 5 MB).')
+    now = timezone.now()
+    return parse_ics(text, now - WINDOW_PAST, now + WINDOW_FUTURE)
+
+
 def sync(calendar):
-    """Refreshes one calendar. Errors are stored on it instead of being raised."""
+    """Refreshes one calendar. Errors are stored on it instead of being raised.
+
+    Uploaded files are read again too, so recurring lessons keep reaching into the future.
+    """
     now = timezone.now()
     try:
-        events = load(calendar.url)
+        events = read_file(calendar.ics_data) if calendar.source == 'file' else load(calendar.url)
     except CalendarError as error:
         ExternalCalendar.objects.filter(pk=calendar.pk).update(last_attempt_at=now, last_error=str(error)[:300])
         calendar.last_attempt_at, calendar.last_error = now, str(error)[:300]

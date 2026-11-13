@@ -39,6 +39,9 @@ from .calendar import (  # noqa: F401
 )
 from .calendar_links import (  # noqa: F401
     CalendarFeedLinkView,
+    CalendarPeopleView,
+    SharedCalendarDetailView,
+    SharedCalendarListCreateView,
     CalendarFeedView,
     ExternalCalendarDetailView,
     ExternalCalendarListCreateView,

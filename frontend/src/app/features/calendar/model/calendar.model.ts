@@ -6,7 +6,9 @@ export interface CalendarEvent {
   end?: string;  // ISO-8601
   allDay?: boolean;
   location?: string;
-  calendarType?: 'household' | 'private';
+  calendarType?: 'household' | 'private' | 'group';
+  /** Set for events of a shared calendar (calendarType 'group'). */
+  sharedCalendarId?: string | null;
   todoRefId?: string | null;
   color?: string;
   source?: 'event' | 'cleaning' | 'external'; // virtual source flag
@@ -66,6 +68,13 @@ export interface ExternalCalendar {
   name: string;
   /** Only sent to the owner. */
   url?: string;
+  /** 'file': an uploaded .ics file such as a timetable; 'url': a subscribed link. */
+  source?: 'url' | 'file';
+  fileName?: string;
+  /** Write only: the content of a new .ics file. */
+  icsContent?: string;
+  /** Owner only: people the calendar is shared with; empty means the whole WG. */
+  sharedWith?: string[];
   color: string;
   visibility: ExternalCalendarVisibility;
   enabled: boolean;
@@ -81,3 +90,15 @@ export const VISIBILITY_LABELS: Record<ExternalCalendarVisibility, string> = {
   busy: 'WG sieht «belegt»',
   shared: 'WG sieht alles',
 };
+
+/** A calendar of some WG members inside the app; all members may add and change its events. */
+export interface SharedCalendar {
+  id: string;
+  name: string;
+  color: string;
+  memberIds: string[];
+  memberNames: string[];
+  createdByName?: string;
+}
+
+export interface CalendarPerson { id: string; name: string; isMe: boolean; }

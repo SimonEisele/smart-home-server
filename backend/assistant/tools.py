@@ -10,16 +10,16 @@ import uuid
 from datetime import datetime, timedelta
 
 from django.db import transaction
-from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from rest_framework import serializers
 
 from features.ingredient_units import normalize_name
-from features.models import CalendarEvent, CleaningTask, Ingredient, Menu, Recipe, ShoppingItem
+from features.models import CleaningTask, Ingredient, Menu, Recipe, SharedCalendar, ShoppingItem
 from features.serializers import (
     CalendarEventSerializer, MenuSerializer, RecipeSerializer, ShoppingItemSerializer, TodoSerializer,
 )
+from features.views.calendar import visible_events
 from features.views.common import RECIPE_PREFETCH, recalculate_menu_persons_for_range
 from features.views.todos import complete_todo, sync_todo_events, visible_todos
 
@@ -97,9 +97,10 @@ TOOLS = [
      }, ['recipeId'])},
     {'name': 'propose_event',
      'description': 'Schlägt einen Kalendertermin vor. Zeiten lokal als JJJJ-MM-TTTHH:MM. Ganztägig: allDay '
-                    'true und nur das Datum in start. private=true nur für eigene Termine.',
+                    'true und nur das Datum in start. private=true nur für eigene Termine. sharedCalendar: Name '
+                    'eines gemeinsamen Kalenders (siehe get_calendar), wenn der Termin dorthin gehört.',
      'parameters': _schema({'title': _STR, 'start': _STR, 'end': _STR, 'allDay': _BOOL, 'location': _STR,
-                            'description': _STR, 'private': _BOOL}, ['title', 'start'])},
+                            'description': _STR, 'private': _BOOL, 'sharedCalendar': _STR}, ['title', 'start'])},
     {'name': 'propose_todo',
      'description': 'Schlägt eine Aufgabe vor. shared=true für die ganze WG, sonst privat.',
      'parameters': _schema({'title': _STR, 'description': _STR, 'dueDate': {**_STR, 'description': 'JJJJ-MM-TT'},
@@ -200,14 +201,15 @@ class Toolbox:
         first, last = self._date(start), self._date(end)
         if last < first or (last - first).days > 31:
             raise ToolError('Zeitraum ungültig (höchstens 31 Tage).')
-        events = CalendarEvent.objects.filter(household=self.household, start__date__gte=first,
-                                              start__date__lte=last).filter(
-            Q(calendar_type='household') | Q(created_by=self.user)).order_by('start')
+        events = visible_events(self.user).filter(start__date__gte=first, start__date__lte=last) \
+            .select_related('shared_calendar').order_by('start')
         return {'events': [{
             'id': str(e.id), 'title': e.title, 'fromTask': bool(e.todo_ref_id),
             'description': e.description[:200], 'start': timezone.localtime(e.start).isoformat(timespec='minutes'),
             'end': timezone.localtime(e.end).isoformat(timespec='minutes') if e.end else None,
             'allDay': e.all_day, 'private': e.calendar_type == 'private', 'location': e.location,
+            'calendar': e.shared_calendar.name if e.shared_calendar else
+            ('Privat' if e.calendar_type == 'private' else 'WG'),
         } for e in events[:100]]}
 
     def tool_get_todos(self):
@@ -457,7 +459,15 @@ class Toolbox:
             result['warnings'] = warnings
         return result
 
-    def tool_propose_event(self, title, start, end=None, allDay=False, location='', description='', private=False):
+    def tool_propose_event(self, title, start, end=None, allDay=False, location='', description='', private=False,
+                           sharedCalendar=''):
+        group = None
+        if str(sharedCalendar or '').strip():
+            mine = SharedCalendar.objects.filter(household=self.household, members=self.user)
+            group = next((c for c in mine if c.name.casefold() == str(sharedCalendar).strip().casefold()), None)
+            if not group:
+                names = ', '.join(c.name for c in mine) or 'keine'
+                raise ToolError(f'Gemeinsamen Kalender nicht gefunden. Deine gemeinsamen Kalender: {names}.')
         if allDay:
             day = self._date(str(start)[:10])
             start_at = self._aware(datetime.combine(day, datetime.min.time()))
@@ -468,13 +478,15 @@ class Toolbox:
         payload = {'title': str(title).strip()[:200], 'start': start_at.isoformat(),
                    'end': end_at.isoformat() if end_at else None, 'allDay': bool(allDay),
                    'location': str(location or '')[:200], 'description': str(description or ''),
-                   'calendarType': 'private' if private else 'household'}
+                   'calendarType': 'group' if group else 'private' if private else 'household',
+                   'sharedCalendarId': str(group.id) if group else None}
         self._check(CalendarEventSerializer, payload)
         local = timezone.localtime(start_at)
         when = local.strftime('%d.%m.%Y')
         if not allDay:
             when += f", {local:%H:%M}–{timezone.localtime(end_at):%H:%M}"
-        summary = [when + (' · ganztägig' if allDay else ''), 'Privat' if private else 'WG-Kalender']
+        summary = [when + (' · ganztägig' if allDay else ''),
+                   group.name if group else 'Privat' if private else 'WG-Kalender']
         if location:
             summary.append(str(location))
         return self._propose('event', payload['title'], summary, payload)
@@ -556,8 +568,7 @@ class Toolbox:
 
     def tool_propose_event_update(self, eventId, title=None, start=None, end=None, allDay=None, location=None,
                                   description=None):
-        event = CalendarEvent.objects.filter(household=self.household, id=self._uuid(eventId)).filter(
-            Q(calendar_type='household') | Q(created_by=self.user)).first()
+        event = visible_events(self.user).filter(id=self._uuid(eventId)).first()
         if not event:
             raise ToolError('Termin nicht gefunden – zuerst mit get_calendar suchen.')
         if event.todo_ref_id and (title is not None or description is not None):
@@ -601,7 +612,8 @@ class Toolbox:
             raise ToolError('Keine Änderungen gegenüber dem aktuellen Termin.')
         self._check(CalendarEventSerializer, changes, instance=event, partial=True)
         summary = [f'{self._local(event.start, event.all_day)} · '
-                   + ('Privat' if event.calendar_type == 'private' else 'WG-Kalender')]
+                   + (event.shared_calendar.name if event.shared_calendar else
+                      'Privat' if event.calendar_type == 'private' else 'WG-Kalender')]
         payload = {'id': str(event.id), 'updatedAt': event.updated_at.isoformat(), 'changes': changes}
         return self._propose('event_update', changes.get('title', event.title), summary, payload, changes=diff)
 
@@ -760,14 +772,9 @@ def apply_proposal(request, kind, payload):
     raise serializers.ValidationError({'type': 'Unbekannter Vorschlagstyp.'})
 
 
-def _visible_events(user):
-    return CalendarEvent.objects.filter(household=user.active_household).filter(
-        Q(calendar_type='household') | Q(created_by=user))
-
-
 UPDATES = {
     'recipe_update': (lambda user: Recipe.objects.filter(household=user.active_household), RecipeSerializer),
-    'event_update': (_visible_events, CalendarEventSerializer),
+    'event_update': (visible_events, CalendarEventSerializer),
     'todo_update': (visible_todos, TodoSerializer),
     'shopping_update': (lambda user: ShoppingItem.objects.filter(household=user.active_household),
                         ShoppingItemSerializer),

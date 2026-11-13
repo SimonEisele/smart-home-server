@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from .models import (
     CalendarEvent,
+    SharedCalendar,
     CleaningLog,
     CleaningTask,
     ExternalMealGuest,
@@ -442,6 +443,7 @@ class CalendarEventSerializer(serializers.ModelSerializer):
     allDay = serializers.BooleanField(source='all_day', required=False)
     calendarType = serializers.ChoiceField(choices=CalendarEvent.CALENDAR_TYPE_CHOICES, source='calendar_type', required=False)
     todoRefId = serializers.UUIDField(source='todo_ref_id', required=False, allow_null=True)
+    sharedCalendarId = serializers.UUIDField(source='shared_calendar_id', required=False, allow_null=True)
     color = serializers.CharField(required=False, allow_blank=True)
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
@@ -450,7 +452,7 @@ class CalendarEventSerializer(serializers.ModelSerializer):
         model = CalendarEvent
         fields = [
             'id', 'title', 'description', 'start', 'end', 'allDay', 'location',
-            'calendarType', 'todoRefId', 'color', 'createdAt', 'updatedAt'
+            'calendarType', 'sharedCalendarId', 'todoRefId', 'color', 'createdAt', 'updatedAt'
         ]
         read_only_fields = ['id', 'createdAt', 'updatedAt']
 
@@ -475,6 +477,17 @@ class CalendarEventSerializer(serializers.ModelSerializer):
             # Private blocks belong to the same person as the private task.
             if not todo.global_todo:
                 attrs['created_by'] = todo.created_by
+        # Events of a shared calendar need a calendar the person is a member of.
+        kind = attrs.get('calendar_type', getattr(self.instance, 'calendar_type', 'household'))
+        if kind == 'group':
+            calendar_id = attrs.get('shared_calendar_id', getattr(self.instance, 'shared_calendar_id', None))
+            user = self.context['request'].user
+            if not calendar_id or not SharedCalendar.objects.filter(
+                    id=calendar_id, household=user.active_household, members=user).exists():
+                raise serializers.ValidationError({'sharedCalendarId': 'Bitte einen gemeinsamen Kalender wählen, '
+                                                                       'in dem du Mitglied bist.'})
+        elif 'calendar_type' in attrs or 'shared_calendar_id' in attrs:
+            attrs['shared_calendar_id'] = None
         return attrs
 
 
