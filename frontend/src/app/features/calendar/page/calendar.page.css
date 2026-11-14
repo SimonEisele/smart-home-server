@@ -131,7 +131,7 @@
 /* ─── Day headers row ─────────────────────────────────────────────────────── */
 .day-headers-row {
   display: grid;
-  grid-template-columns: 44px repeat(7, 1fr);
+  grid-template-columns: 44px repeat(var(--cols, 7), minmax(0, 1fr));
   border-bottom: 1px solid var(--color-card-border);
   background: var(--color-surface-soft);
   flex-shrink: 0;
@@ -246,7 +246,7 @@
 /* ─── Day columns ─────────────────────────────────────────────────────────── */
 .day-cols {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(var(--cols, 7), minmax(0, 1fr));
   flex: 1;
 }
 
@@ -468,9 +468,7 @@
   background: var(--color-surface-soft);
 }
 
-.agenda-view { display:none; }
 @media(max-width:699px) {
- .cal-main { display:none; }
  .agenda-view { display:grid; gap:14px; }
  .agenda-day,.agenda-tasks { padding:16px; border:1px solid var(--color-card-border); border-radius:12px; background:var(--color-surface); }
  .agenda-day.agenda-today { border-color:#8bbda1; }

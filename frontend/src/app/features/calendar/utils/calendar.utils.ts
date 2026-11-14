@@ -47,6 +47,65 @@ export function weekLabel(days: DayEntry[]): string {
   return `${fmt(s)} – ${fmt(e)}${e.getFullYear()}`;
 }
 
+export type CalendarView = 'day' | 'week' | 'month';
+
+export const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September',
+  'Oktober', 'November', 'Dezember'];
+const LONG_DAY_NAMES = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+
+/** Whole weeks (Monday to Sunday) covering the month of `d`: 4 to 6 rows. */
+export function buildMonth(d: Date, today = new Date()): DayEntry[] {
+  const first = new Date(d.getFullYear(), d.getMonth(), 1);
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const days: DayEntry[] = [];
+  let week = buildWeek(first, today);
+  while (week.weekStart <= last) {
+    days.push(...week.days);
+    week = buildWeek(new Date(week.weekStart.getFullYear(), week.weekStart.getMonth(), week.weekStart.getDate() + 7), today);
+  }
+  return days;
+}
+
+/** ISO 8601 calendar week (KW) as used in Switzerland. */
+export function isoWeek(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+}
+
+/**
+ * Heading for the shown period: "Samstag, 14. November 2026", "9.–15. Nov. 2026", "November 2026".
+ * `short` (phones) drops the weekday name and the current year: "Sa, 14. Nov.", "9.–15. Nov.".
+ */
+export function periodLabel(view: CalendarView, anchor: Date, days: DayEntry[], short = false, today = new Date()): string {
+  if (view === 'month') return `${MONTH_NAMES[anchor.getMonth()]} ${anchor.getFullYear()}`;
+  const year = short && anchor.getFullYear() === today.getFullYear() ? '' : ` ${anchor.getFullYear()}`;
+  if (view === 'day') {
+    if (short) return `${DAY_NAMES[anchor.getDay()]}, ${anchor.getDate()}. ${shortMonth(anchor.getMonth())}${year}`;
+    return `${LONG_DAY_NAMES[anchor.getDay()]}, ${anchor.getDate()}. ${MONTH_NAMES[anchor.getMonth()]} ${anchor.getFullYear()}`;
+  }
+  if (!days.length) return '';
+  const [s, e] = [days[0].date, days[days.length - 1].date];
+  const start = s.getMonth() === e.getMonth() ? `${s.getDate()}.` : `${s.getDate()}. ${shortMonth(s.getMonth())}`;
+  const endYear = short && e.getFullYear() === today.getFullYear() ? '' : ` ${e.getFullYear()}`;
+  return `${start}–${e.getDate()}. ${shortMonth(e.getMonth())}${endYear}`;
+}
+
+function shortMonth(m: number): string {
+  return MONTH_NAMES[m].length > 4 ? MONTH_NAMES[m].slice(0, 3) + '.' : MONTH_NAMES[m];
+}
+
+/** The same day one step earlier or later: a day, a week or a month (clamped to shorter months). */
+export function shiftDate(d: Date, view: CalendarView, step: number): Date {
+  if (view === 'day') return new Date(d.getFullYear(), d.getMonth(), d.getDate() + step);
+  if (view === 'week') return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7 * step);
+  const target = new Date(d.getFullYear(), d.getMonth() + step, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  return new Date(target.getFullYear(), target.getMonth(), Math.min(d.getDate(), lastDay));
+}
+
 /** Does a todo anchored at `base` recur on `day`? */
 function recursOn(todo: Todo, base: Date, day: Date): boolean {
   const diff = daysBetween(base, day);

@@ -1,0 +1,241 @@
+/* ─── Toolbar: period, view switch, planning list ─────────────────────────── */
+.toolbar[class] {
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 0;
+}
+
+.period-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.period-label {
+  margin: 0 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.period-label small {
+  margin-left: 8px;
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.today-btn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-toggle {
+  display: none;
+}
+
+.plan-toggle .count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cal-todo) 22%, transparent);
+  color: var(--cal-todo);
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.plan-toggle.active {
+  border-color: var(--color-accent-border);
+}
+
+/* ─── Body ────────────────────────────────────────────────────────────────── */
+.cal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.cal-main,
+.month-layout {
+  position: relative;
+}
+
+.month-layout {
+  display: flex;
+  gap: 10px;
+  min-height: 0;
+}
+
+/* Grid and month fill the screen below the toolbar; on tablets the bottom navigation is subtracted. */
+.cal-main[class],
+.month-layout {
+  height: max(520px, calc(100dvh - var(--header-height) - 260px));
+}
+
+@media (max-width: 899px) {
+  .cal-main[class],
+  .month-layout {
+    height: max(520px, calc(100dvh - var(--header-height) - 340px));
+  }
+}
+
+.month-grid {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Day view: one wide column; the heading offers "+ Termin". */
+.view-day .day-header {
+  text-align: left;
+}
+
+.view-day .day-head-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+}
+
+.view-day .day-head-btn :is(.day-name, .day-num) {
+  display: inline-grid;
+  place-items: center;
+}
+
+.day-add-hint {
+  margin-left: auto;
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  opacity: 0;
+  transition: opacity .15s;
+}
+
+.day-head-add:hover .day-add-hint,
+.day-head-add:focus-visible .day-add-hint {
+  opacity: 1;
+}
+
+.view-day .cal-ev .ev-title {
+  font-size: .82rem;
+}
+
+/* ─── Medium screens: "Noch einplanen" as a panel ─────────────────────────── */
+@media (max-width: 1180px) {
+  .plan-toggle {
+    display: inline-flex;
+  }
+
+  .todo-sidebar[class] {
+    display: none;
+  }
+
+  .todo-sidebar.open[class] {
+    display: flex;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 20;
+    width: min(280px, 85%);
+    background: var(--color-surface);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .45);
+  }
+
+  /* While dragging out of the panel, the grid below must stay reachable. */
+  .is-dragging .todo-sidebar.open[class],
+  .is-touch-dragging .todo-sidebar.open[class] {
+    opacity: .3;
+    pointer-events: none;
+  }
+}
+
+/* ─── Phones ──────────────────────────────────────────────────────────────── */
+@media (max-width: 699px) {
+  .toolbar[class] {
+    position: sticky;
+    top: var(--header-height);
+    z-index: 15;
+    margin: 0 -16px;
+    padding: 8px 16px;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-card-border);
+  }
+
+  .period-nav {
+    flex: 1 1 100%;
+  }
+
+  .period-label {
+    order: -1;
+    flex: 1;
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .toolbar-right {
+    flex: 1 1 100%;
+  }
+
+  .view-switch {
+    flex: 1;
+    display: flex;
+  }
+
+  .view-switch > button {
+    flex: 1;
+  }
+
+  /* One scrollable row instead of several lines of filters. */
+  .cal-legend[class] {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+
+  .cal-legend::-webkit-scrollbar {
+    display: none;
+  }
+
+  .legend-item {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* Once the page title has scrolled away, the day fills the space between toolbar and navigation. */
+  .cal-main[class] {
+    height: calc(100dvh - var(--header-height) - 84px - 120px);
+    min-height: 360px;
+  }
+
+  .month-layout[class] {
+    height: auto;
+  }
+
+  /* The strip above already names the day; keep only all-day entries and tasks in the heading. */
+  .view-day .day-head-btn {
+    display: none;
+  }
+
+  .view-day .day-header:not(:has(.allday-ev, .day-task)) {
+    display: none;
+  }
+
+  .month-day {
+    margin-top: 2px;
+  }
+}

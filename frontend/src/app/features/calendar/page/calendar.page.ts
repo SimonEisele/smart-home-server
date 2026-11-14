@@ -8,14 +8,16 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 import { CalendarEvent, ExternalCalendar, SharedCalendar } from '../model/calendar.model';
 import { CalendarLinks, CalendarLinksTab } from '../links/calendar-links';
+import { CalendarMonth, MonthEntry } from '../month/calendar-month';
+import { CalendarDayStrip } from '../month/calendar-day-strip';
 import { CalendarService } from '../service/calendar.service';
 import { TodosService } from '../../todos/service/todos.service';
 import { Todo } from '../../todos/model/todos.model';
 import { CleaningTask } from '../../cleaning/model/cleaning.model';
 import { CleaningService } from '../../cleaning/service/cleaning.service';
 import {
-  DayEntry, DayTask, END_HOUR, HOUR_PX, START_HOUR, buildWeek, dayTasks, formatDuration, gridHeight, gridTop,
-  overlapColumns, pad, parseLocalDate, todoOverdue, weekLabel,
+  CalendarView, DayEntry, DayTask, END_HOUR, HOUR_PX, START_HOUR, buildMonth, buildWeek, dayTasks, daysBetween,
+  formatDuration, gridHeight, gridTop, isoWeek, overlapColumns, pad, parseLocalDate, periodLabel, shiftDate, todoOverdue,
 } from '../utils/calendar.utils';
 
 interface DropPreview { dateStr: string; top: number; h: number; label: string; hour: number; minute: number; }
@@ -25,14 +27,17 @@ interface EvModalForm { title: string; date: string; startTime: string; endTime:
 interface ResizePreview { evId: string; newH: number; newEnd: string; }
 
 const HIDDEN_CALENDARS_KEY = 'calendar:hidden-linked';
+const VIEW_KEY = 'calendar:view';
+const VIEWS: CalendarView[] = ['day', 'week', 'month'];
+const PHONE_QUERY = '(max-width: 699px)';
 
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [DialogDirective, CommonModule, FormsModule, RouterLink, CalendarLinks],
+  imports: [DialogDirective, CommonModule, FormsModule, RouterLink, CalendarLinks, CalendarMonth, CalendarDayStrip],
   templateUrl: './calendar.page.html',
-  styleUrl: './calendar.page.css',
+  styleUrls: ['./calendar.page.css', './calendar.views.css'],
 })
 export class CalendarPage implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
@@ -41,6 +46,23 @@ export class CalendarPage implements OnInit, OnDestroy {
   private planAfterLoad: string | null = null;
   weekStart!: Date;
   weekDays: DayEntry[] = [];
+  /** Day, week or month; remembered separately for phones and larger screens. */
+  view: CalendarView = 'week';
+  /** The day everything is centred on: the shown day, a day of the shown week or month. */
+  anchor = new Date();
+  monthDays: DayEntry[] = [];
+  /** Phone layout (matches the CSS breakpoint). */
+  compact = false;
+  /** Smaller screens: the "Noch einplanen" list opens as a panel instead of a fixed column. */
+  planListOpen = false;
+  private phoneQuery: MediaQueryList | null = null;
+  private readonly onPhoneChange = (e: MediaQueryListEvent) => {
+    this.compact = e.matches;
+    this.view = this.storedView() ?? (this.compact ? 'day' : 'week');
+    this.initWeek(this.anchor);
+    this.loadEvents();
+  };
+  private swipeFrom: { x: number; y: number } | null = null;
 
   events:        CalendarEvent[]    = [];
   todos:         Todo[]             = [];
@@ -133,6 +155,11 @@ export class CalendarPage implements OnInit, OnDestroy {
     const params = this.route?.snapshot?.queryParamMap;
     const date = params?.get('date');
     this.planAfterLoad = params?.get('plan') ?? null;
+    this.phoneQuery = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(PHONE_QUERY) : null;
+    this.compact = this.phoneQuery?.matches ?? false;
+    this.phoneQuery?.addEventListener?.('change', this.onPhoneChange);
+    const asked = params?.get('view') as CalendarView | null;
+    this.view = asked && VIEWS.includes(asked) ? asked : this.storedView() ?? (this.compact ? 'day' : 'week');
     this.initWeek(date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? parseLocalDate(date) : new Date());
     this.load();
     this.updateNow();
@@ -140,6 +167,7 @@ export class CalendarPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.phoneQuery?.removeEventListener?.('change', this.onPhoneChange);
     clearInterval(this.nowTimer);
     if (this.undoTimer) clearTimeout(this.undoTimer);
     if (this.externalRetry) clearTimeout(this.externalRetry);
@@ -154,32 +182,195 @@ export class CalendarPage implements OnInit, OnDestroy {
       if (today && agenda && getComputedStyle(agenda).display !== 'none') today.scrollIntoView({ block: 'start' });
       const el = document.getElementById('grid-scroll');
       if (!el) return;
-      const timed = this.events.filter(e => !e.allDay && e.start).map(e => this.evTop(e));
-      const target = this.weekDays.some(d => d.isToday) && this.nowVisible ? this.nowTop : Math.min(...timed, 2 * HOUR_PX);
+      const shown = new Set(this.gridDays.map(d => d.dateStr));
+      const timed = this.events.filter(e => !e.allDay && e.start && shown.has(localIsoDate(new Date(e.start))))
+        .map(e => this.evTop(e));
+      const target = this.gridDays.some(d => d.isToday) && this.nowVisible ? this.nowTop : Math.min(...timed, 2 * HOUR_PX);
       el.scrollTop = Math.max(0, target - 120);
     }, 50);
   }
 
   // â”€â”€ Week nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  prevWeek(): void { const d = new Date(this.weekStart); d.setDate(d.getDate() - 7); this.initWeek(d); this.loadEvents(); }
-  nextWeek(): void { const d = new Date(this.weekStart); d.setDate(d.getDate() + 7); this.initWeek(d); this.loadEvents(); }
+  prevWeek(): void { this.go(shiftDate(this.anchor, 'week', -1)); }
+  nextWeek(): void { this.go(shiftDate(this.anchor, 'week', 1)); }
 
-  goToday(): void {
-    this.initWeek(new Date());
-    this.loadEvents();
+  /** One day, week or month back or forward, depending on the view. */
+  prev(): void { this.go(shiftDate(this.anchor, this.view, -1)); }
+  next(): void { this.go(shiftDate(this.anchor, this.view, 1)); }
+
+  goToday(): void { this.go(new Date()); }
+
+  /** Shows the given day; loads only when it lies outside what is loaded already. */
+  go(date: Date): void {
+    const before = this.rangeKey;
+    this.initWeek(date);
+    if (this.rangeKey !== before) this.loadEvents();
+    else this.scrollGrid();
+    this.cdr.markForCheck();
   }
 
-  get isCurrentWeek(): boolean { return this.weekDays.some(d => d.isToday); }
+  setView(view: CalendarView, date?: Date): void {
+    if (view === this.view && !date) return;
+    this.view = view;
+    try { localStorage.setItem(this.viewKey, view); } catch { /* not remembered */ }
+    const before = this.rangeKey;
+    this.initWeek(date ?? this.anchor);
+    if (this.rangeKey !== before) this.loadEvents();
+    else this.scrollGrid();
+    this.cdr.markForCheck();
+  }
+
+  private get viewKey(): string { return `${VIEW_KEY}:${this.compact ? 'phone' : 'wide'}`; }
+
+  private storedView(): CalendarView | null {
+    try {
+      const stored = localStorage.getItem(this.viewKey) as CalendarView | null;
+      return stored && VIEWS.includes(stored) ? stored : null;
+    } catch { return null; }
+  }
+
+  get anchorStr(): string { return localIsoDate(this.anchor); }
+
+  /** Is today in what is shown? Then "Heute" is not needed. */
+  get isCurrentWeek(): boolean {
+    if (this.view === 'day') return this.anchorStr === localIsoDate(new Date());
+    if (this.view === 'month') {
+      const today = new Date();
+      return this.anchor.getMonth() === today.getMonth() && this.anchor.getFullYear() === today.getFullYear();
+    }
+    return this.weekDays.some(d => d.isToday);
+  }
 
   private initWeek(d: Date): void {
-    const week = buildWeek(d);
+    this.anchor = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const week = buildWeek(this.anchor);
     this.weekStart = week.weekStart;
     this.weekDays = week.days;
+    this.monthDays = this.view === 'month' ? buildMonth(this.anchor) : [];
   }
 
-  get weekLabel(): string { return weekLabel(this.weekDays); }
+  /** Columns of the time grid: the whole week, or only the chosen day. */
+  get gridDays(): DayEntry[] {
+    return this.view === 'day' ? this.weekDays.filter(d => d.dateStr === this.anchorStr) : this.weekDays;
+  }
 
-  // â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  /** Days whose appointments are loaded: the week, or the whole weeks of the month. */
+  get rangeDays(): DayEntry[] { return this.view === 'month' ? this.monthDays : this.weekDays; }
+
+  private get rangeKey(): string {
+    const days = this.rangeDays;
+    return days.length ? `${days[0].dateStr}/${days[days.length - 1].dateStr}` : '';
+  }
+
+  get periodLabel(): string { return periodLabel(this.view, this.anchor, this.weekDays, this.compact); }
+
+  get weekNumber(): number { return isoWeek(this.view === 'month' ? this.anchor : this.weekDays[0]?.date ?? this.anchor); }
+
+  pickDate(dateStr: string): void { this.go(parseLocalDate(dateStr)); }
+
+  /** The chosen day as an entry (phone month view lists it below the grid). */
+  get anchorDay(): DayEntry | undefined {
+    return [...this.monthDays, ...this.weekDays].find(d => d.dateStr === this.anchorStr);
+  }
+
+  get stepLabels(): { prev: string; next: string } {
+    return this.view === 'day' ? { prev: 'Vorheriger Tag', next: 'Nächster Tag' }
+      : this.view === 'week' ? { prev: 'Vorherige Woche', next: 'Nächste Woche' }
+        : { prev: 'Vorheriger Monat', next: 'Nächster Monat' };
+  }
+
+  /** Week grid: a day heading opens that day. Day view: back to the week. */
+  openDay(dateStr: string): void {
+    if (this.view === 'month' && this.compact) { this.go(parseLocalDate(dateStr)); return; }
+    this.setView('day', parseLocalDate(dateStr));
+  }
+
+  // ── Month view ────────────────────────────────────────────────────────────
+  /** Colour of an appointment outside the time grid (month, strip). */
+  entryColor(ev: CalendarEvent): string {
+    const calendar = this.calendarColor(ev);
+    if (calendar) return calendar;
+    if (ev.color) return ev.color;
+    if (ev.todoRefId) return 'var(--cal-todo)';
+    return ev.calendarType === 'private' ? 'var(--cal-private)' : 'var(--cal-wg)';
+  }
+
+  readonly monthEntries = (dateStr: string): MonthEntry[] => [
+    ...this.allDayEventsForDay(dateStr).map(ev => this.monthEntry(ev, '')),
+    ...this.eventsForDay(dateStr).map(ev => {
+      const start = new Date(ev.start);
+      return this.monthEntry(ev, `${pad(start.getHours())}:${pad(start.getMinutes())}`);
+    }),
+  ];
+
+  readonly dayTaskCount = (dateStr: string): number => this.tasksForDay(dateStr).length;
+
+  readonly dayItemCount = (dateStr: string): number =>
+    this.eventsForDay(dateStr).length + this.allDayEventsForDay(dateStr).length + this.tasksForDay(dateStr).length;
+
+  private monthEntry(ev: CalendarEvent, time: string): MonthEntry {
+    return { id: ev.id, title: ev.title, time, color: this.entryColor(ev), movable: !this.isExternal(ev),
+      busyOnly: ev.busyOnly, event: ev };
+  }
+
+  onMonthEntry(ev: CalendarEvent): void { this.onEvClick(ev, new MouseEvent('click')); }
+
+  onMonthDragEntry(ev: CalendarEvent): void { this.dragEvent = ev; this.dragTodo = null; }
+
+  /** Dropping in the month keeps the time and only changes the day; a task opens the plan dialog for that day. */
+  onMonthDrop(dateStr: string): void {
+    const ev = this.dragEvent, todo = this.dragTodo;
+    this.dragEvent = null; this.dragTodo = null; this.sidebarDragOver = false;
+    if (todo) { this.openPlan(todo, dateStr); return; }
+    if (!ev || ev.source === 'external') return;
+    const start = new Date(ev.start);
+    if (localIsoDate(start) === dateStr) return;
+    if (ev.allDay) {
+      const shift = daysBetween(start, parseLocalDate(dateStr));
+      const move = (iso: string) => { const d = new Date(iso); d.setDate(d.getDate() + shift); return d.toISOString(); };
+      this.calendarService.updateEvent(ev.id, { start: move(ev.start), end: ev.end ? move(ev.end) : undefined })
+        .subscribe(u => { this.events = this.events.map(e => e.id === u.id ? u : e); this.cdr.detectChanges(); });
+      return;
+    }
+    this.doMoveEvent(ev, dateStr, start.getHours(), start.getMinutes());
+  }
+
+  // ── Phone: swipe to the previous / next day, week or month ───────────────
+  onSwipeStart(e: TouchEvent): void {
+    const target = e.target as Element | null;
+    const ignore = target?.closest('.cal-ev, .todo-drag-item, .cal-legend, .resize-handle, input, textarea');
+    this.swipeFrom = this.compact && e.touches.length === 1 && !ignore
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+  }
+
+  onSwipeEnd(e: TouchEvent): void {
+    const from = this.swipeFrom;
+    this.swipeFrom = null;
+    if (!from || this.touchActive || this.resizingEvent) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - from.x, dy = touch.clientY - from.y;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.8) return;
+    if (dx < 0) this.next(); else this.prev();
+  }
+
+  // ── Keyboard: ← → to step, T for today, D / W / M for the view ───────────
+  @HostListener('document:keydown', ['$event'])
+  onKey(e: KeyboardEvent): void {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (this.showModal || this.planTodo || this.externalDetail || this.showLinks) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
+    const actions: Record<string, () => void> = {
+      ArrowLeft: () => this.prev(), ArrowRight: () => this.next(), t: () => this.goToday(),
+      d: () => this.setView('day'), w: () => this.setView('week'), m: () => this.setView('month'),
+    };
+    const action = actions[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+    if (!action) return;
+    e.preventDefault();
+    action();
+  }
+
+  // ── Loading ──────────────────────────────────────────────────────────────
   private load(): void {
     this.loadEvents();
     this.loadCalendars();
@@ -194,11 +385,12 @@ export class CalendarPage implements OnInit, OnDestroy {
   }
 
   private loadEvents(): void {
-    if (!this.weekDays.length) return;
-    const start = this.weekDays[0].dateStr;
-    const end   = this.weekDays[6].dateStr;
+    const days = this.rangeDays;
+    if (!days.length) return;
+    const start = days[0].dateStr;
+    const end   = days[days.length - 1].dateStr;
     this.calendarService.getEvents(start, end).subscribe(evs => {
-      if (this.weekDays[0]?.dateStr !== start) return;
+      if (this.rangeDays[0]?.dateStr !== start) return;
       this.events = evs;
       this.cdr.detectChanges();
       this.scrollGrid();
@@ -237,10 +429,12 @@ export class CalendarPage implements OnInit, OnDestroy {
   /** Linked calendars refresh in the background; when they do, ask once more a little later. */
   private loadExternalEvents(retry: boolean): void {
     if (this.externalRetry) { clearTimeout(this.externalRetry); this.externalRetry = null; }
-    const start = this.weekDays[0].dateStr, end = this.weekDays[6].dateStr;
+    const days = this.rangeDays;
+    if (!days.length) return;
+    const start = days[0].dateStr, end = days[days.length - 1].dateStr;
     this.calendarService.getExternalEvents(start, end).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ events, refreshing }) => {
-        if (this.weekDays[0]?.dateStr !== start) return;
+        if (this.rangeDays[0]?.dateStr !== start) return;
         this.externalEvents = events;
         this.cdr.markForCheck();
         if (refreshing && retry) {
@@ -420,7 +614,15 @@ export class CalendarPage implements OnInit, OnDestroy {
   }
 
   allDayEventsForDay(dateStr: string): CalendarEvent[] {
-    const own = this.events.filter(ev => ev.allDay && ev.start && localIsoDate(new Date(ev.start)) === dateStr && this.ownShown(ev));
+    // App all-day events may span several days too (holidays); a midnight end belongs to the day before.
+    const own = this.events.filter(ev => {
+      if (!ev.allDay || !ev.start || !this.ownShown(ev)) return false;
+      const first = localIsoDate(new Date(ev.start));
+      const end = ev.end ? new Date(ev.end) : null;
+      const last = end && end > new Date(ev.start)
+        ? localIsoDate(end.getHours() || end.getMinutes() ? end : new Date(end.getTime() - 1)) : first;
+      return first <= dateStr && dateStr <= last;
+    });
     // Linked all-day events may span several days (holidays); their end is exclusive.
     const linked = this.shownExternal().filter(ev => {
       if (!ev.allDay) return false;
@@ -474,7 +676,8 @@ export class CalendarPage implements OnInit, OnDestroy {
   openPlan(todo: Todo, dateStr?: string, hour?: number, minute = 0, e?: Event): void {
     e?.stopPropagation();
     const now = new Date();
-    const weekDay = this.weekDays.find(d => d.isToday)?.dateStr ?? this.weekDays[0]?.dateStr;
+    const weekDay = this.view !== 'week' ? this.anchorStr
+      : this.weekDays.find(d => d.isToday)?.dateStr ?? this.weekDays[0]?.dateStr;
     const start = hour ?? Math.min(Math.max(now.getHours() + 1, START_HOUR + 2), END_HOUR - 2);
     const duration = todo.durationMinutes || 60;
     this.planTodo = todo;
@@ -523,13 +726,12 @@ export class CalendarPage implements OnInit, OnDestroy {
         next: evs => {
           this.addEvents(evs);
           this.planTodo = null;
-          if (!this.weekDays.some(d => d.dateStr === this.planForm.date)) this.initWeekAndLoad(parseLocalDate(this.planForm.date));
+          if (!this.rangeDays.some(d => d.dateStr === this.planForm.date)) this.go(parseLocalDate(this.planForm.date));
         },
         error: () => { this.planError = 'Die Aufgabe konnte nicht eingeplant werden. Bitte erneut versuchen.'; },
       });
   }
 
-  private initWeekAndLoad(date: Date): void { this.initWeek(date); this.loadEvents(); }
 
   /** Adds new blocks to the week and to their task, so it leaves the "Noch einplanen" list. */
   private addEvents(evs: CalendarEvent[]): void {
@@ -903,7 +1105,8 @@ export class CalendarPage implements OnInit, OnDestroy {
 
   // â”€â”€ Event modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   openNewEvent(dateStr?: string): void {
-    const d = dateStr ?? this.iso(new Date());
+    const d = dateStr ?? (this.view === 'week' && !this.isCurrentWeek ? this.weekDays[0].dateStr
+      : this.view === 'week' ? this.iso(new Date()) : this.anchorStr);
     this.editingEvent = null;
     this.modalForm = { ...this.emptyForm(), date: d };
     this.showMoreOptions = false;
@@ -990,7 +1193,7 @@ export class CalendarPage implements OnInit, OnDestroy {
     request.pipe(finalize(() => { this.savingEvent = false; this.cdr.markForCheck(); })).subscribe({
       next: ev => {
         this.events = this.editingEvent ? this.events.map(e => e.id === ev.id ? ev : e) : [...this.events, ev];
-        if (!this.weekDays.some(d => d.dateStr === this.modalForm.date)) this.initWeekAndLoad(parseLocalDate(this.modalForm.date));
+        if (!this.rangeDays.some(d => d.dateStr === this.modalForm.date)) this.go(parseLocalDate(this.modalForm.date));
         this.savingEvent = false; this.closeModal(); this.cdr.markForCheck();
       },
       error: () => { this.eventError = 'Speichern fehlgeschlagen. Deine Eingaben bleiben erhalten.'; this.cdr.markForCheck(); },

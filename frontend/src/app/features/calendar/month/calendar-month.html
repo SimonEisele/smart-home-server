@@ -1,0 +1,53 @@
+<div class="month" [class.compact]="compact" role="grid" aria-label="Monatsansicht">
+    <div class="month-head" role="row">
+        @if (!compact) { <span class="kw-head" aria-hidden="true">KW</span> }
+        @for (name of WEEKDAYS; track name) { <span role="columnheader">{{ name }}</span> }
+    </div>
+    <div class="month-body" #body [style.--rows]="weeks.length">
+        @for (row of weeks; track row[0].dateStr) {
+        <div class="month-row" role="row">
+            @if (!compact) { <span class="kw" aria-hidden="true">{{ week(row) }}</span> }
+            @for (day of row; track day.dateStr) {
+            @let entries = entriesFor(day.dateStr);
+            @let tasks = taskCountFor(day.dateStr);
+            <div class="cell" role="gridcell" [class.other-month]="day.date.getMonth() !== month"
+                [class.today]="day.isToday" [class.selected]="day.dateStr === selected"
+                [class.drag-over]="dragOver === day.dateStr" (dragover)="onDragOver($event, day)"
+                (dragleave)="dragOver = ''" (drop)="onDrop($event, day)">
+                <button type="button" class="cell-hit" (click)="pickDay.emit(day.dateStr)"
+                    [attr.aria-label]="dayLabel(day, entries.length, tasks)" [attr.aria-current]="day.isToday ? 'date' : null">
+                    <span class="day-num">{{ day.dayNum }}</span>
+                    @if (compact) {
+                    <span class="dots" aria-hidden="true">
+                        @for (entry of entries.slice(0, 4); track entry.id) { <i [style.background]="entry.color"></i> }
+                        @if (tasks) { <i class="task-dot"></i> }
+                    </span>
+                    }
+                </button>
+                @if (!compact) {
+                @if (tasks) { <span class="task-badge" [title]="tasks + ' offene Aufgaben'">✓ {{ tasks }}</span> }
+                <button type="button" class="add" (click)="addEvent.emit(day.dateStr)"
+                    [attr.aria-label]="'Termin am ' + day.dayNum + '.' + day.month + '. hinzufügen'">+</button>
+                <ul class="entries">
+                    @for (entry of entries.slice(0, entries.length > maxEntries ? maxEntries - 1 : maxEntries); track entry.id) {
+                    <li>
+                        <button type="button" class="entry" [class.all-day]="!entry.time" [class.busy]="entry.busyOnly"
+                            [style.--entry-color]="entry.color" [attr.draggable]="entry.movable ? 'true' : null"
+                            (dragstart)="onEntryDragStart($event, entry)" (click)="openEntry.emit(entry.event)"
+                            [title]="(entry.time ? entry.time + ' ' : '') + entry.title">
+                            @if (entry.time) { <time>{{ entry.time }}</time> }<span>{{ entry.title }}</span>
+                        </button>
+                    </li>
+                    }
+                    @if (entries.length > maxEntries) {
+                    <li><button type="button" class="more" (click)="pickDay.emit(day.dateStr)">+ {{ entries.length -
+                            maxEntries + 1 }} weitere</button></li>
+                    }
+                </ul>
+                }
+            </div>
+            }
+        </div>
+        }
+    </div>
+</div>

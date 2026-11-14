@@ -1,7 +1,7 @@
 import { Todo } from '../../todos/model/todos.model';
 import { CleaningTask } from '../../cleaning/model/cleaning.model';
 import {
-  HOUR_PX, buildWeek, overlapColumns, cleaningEntriesForDay, cleaningNextDue, dayTasks, daysBetween, formatDuration, gridHeight, gridTop,
+  HOUR_PX, buildMonth, buildWeek, isoWeek, periodLabel, shiftDate, overlapColumns, cleaningEntriesForDay, cleaningNextDue, dayTasks, daysBetween, formatDuration, gridHeight, gridTop,
   parseLocalDate, todoOccurrences, weekLabel,
 } from './calendar.utils';
 
@@ -101,5 +101,28 @@ describe('calendar utils', () => {
     expect(formatDuration(90)).toBe('1h30');
     expect(formatDuration(120)).toBe('2h');
     expect(formatDuration(null)).toBe('');
+  });
+
+  it('builds whole weeks for a month and labels every view', () => {
+    const nov = buildMonth(new Date(2026, 10, 14), new Date(2026, 10, 14));
+    expect(nov.length).toBe(42); // 26.10. – 6.12.
+    expect([nov[0].dateStr, nov[41].dateStr]).toEqual(['2026-10-26', '2026-12-06']);
+    expect(buildMonth(new Date(2027, 1, 10)).length).toBe(28); // Feb 2027 starts on a Monday
+    const week = buildWeek(new Date(2026, 10, 14)).days;
+    expect(periodLabel('week', new Date(2026, 10, 14), week)).toBe('9.–15. Nov. 2026');
+    expect(periodLabel('week', new Date(2026, 10, 30), buildWeek(new Date(2026, 10, 30)).days)).toBe('30. Nov.–6. Dez. 2026');
+    expect(periodLabel('day', new Date(2026, 10, 14), week)).toBe('Samstag, 14. November 2026');
+    expect(periodLabel('month', new Date(2026, 4, 3), week)).toBe('Mai 2026');
+    const today = new Date(2026, 10, 14);
+    expect(periodLabel('day', new Date(2026, 10, 14), week, true, today)).toBe('Sa, 14. Nov.');
+    expect(periodLabel('week', new Date(2026, 10, 14), week, true, today)).toBe('9.–15. Nov.');
+    expect(periodLabel('day', new Date(2027, 4, 3), week, true, today)).toBe('Mo, 3. Mai 2027');
+  });
+
+  it('steps by day, week and month and knows the calendar week', () => {
+    expect(shiftDate(new Date(2026, 0, 31), 'month', 1).getDate()).toBe(28);
+    expect(shiftDate(new Date(2026, 10, 30), 'day', 1).getMonth()).toBe(11);
+    expect(shiftDate(new Date(2026, 10, 14), 'week', -1).getDate()).toBe(7);
+    expect([isoWeek(new Date(2026, 10, 14)), isoWeek(new Date(2027, 0, 1)), isoWeek(new Date(2026, 0, 1))]).toEqual([46, 53, 1]);
   });
 });
