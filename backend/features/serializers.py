@@ -1,10 +1,12 @@
 import re
+import uuid
 import math
 from .ingredient_units import normalize_name, normalize_unit, UNITS
 from django.db.models import Q
 from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
+from users.models import HouseholdMembership
 from .models import (
     CalendarEvent,
     SharedCalendar,
@@ -74,17 +76,24 @@ class TodoSerializer(serializers.ModelSerializer):
     globalTodo = serializers.BooleanField(source='global_todo', required=False)
     progress = serializers.IntegerField(required=False, allow_null=True)
     createdBy = serializers.PrimaryKeyRelatedField(source='created_by', read_only=True)
+    createdByName = serializers.SerializerMethodField()
     doneByName = serializers.SerializerMethodField()
+    assignedTo = serializers.UUIDField(source='assigned_to_id', required=False, allow_null=True)
+    assignedToName = serializers.SerializerMethodField()
+    category = serializers.CharField(required=False, allow_blank=True, max_length=40)
+    checklist = serializers.ListField(child=serializers.DictField(), required=False, max_length=50)
     plannedSlots = serializers.SerializerMethodField()
 
     class Meta:
         model = Todo
         fields = [
             'id', 'title', 'description', 'priority', 'done', 'startDate', 'dueDate', 'progress',
-            'durationMinutes', 'recurrence', 'recurrenceInterval', 'globalTodo', 'createdBy',
-            'doneByName', 'plannedSlots', 'created_at', 'updated_at'
+            'durationMinutes', 'recurrence', 'recurrenceInterval', 'globalTodo', 'assignedTo', 'assignedToName',
+            'category', 'checklist', 'createdBy', 'createdByName', 'doneByName', 'plannedSlots',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'createdBy', 'doneByName', 'plannedSlots', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'createdBy', 'createdByName', 'doneByName', 'assignedToName', 'plannedSlots',
+                            'created_at', 'updated_at']
 
     def get_plannedSlots(self, obj):
         """Calendar blocks of this task; lists pass them in bulk via the context."""
@@ -113,12 +122,45 @@ class TodoSerializer(serializers.ModelSerializer):
         recurrence = attrs.get('recurrence', getattr(self.instance, 'recurrence', ''))
         if recurrence not in ('', 'daily', 'weekly', 'monthly'):
             raise serializers.ValidationError({'recurrence': 'Unbekannte Wiederholung.'})
+        if 'category' in attrs:
+            attrs['category'] = ' '.join(attrs['category'].split())
+        if 'checklist' in attrs:
+            attrs['checklist'] = self._clean_checklist(attrs['checklist'])
+        # Only WG tasks are assigned, and only to people of the same WG.
+        shared = attrs.get('global_todo', getattr(self.instance, 'global_todo', False))
+        if not shared:
+            if 'global_todo' in attrs or 'assigned_to_id' in attrs:
+                attrs['assigned_to_id'] = None
+        elif attrs.get('assigned_to_id'):
+            request = self.context.get('request')
+            household = getattr(self.instance, 'household', None) or getattr(request.user, 'active_household', None)
+            if not HouseholdMembership.objects.filter(user_id=attrs['assigned_to_id'], household=household).exists():
+                raise serializers.ValidationError({'assignedTo': 'Nur Mitglieder dieser WG können zuständig sein.'})
         return attrs
 
+    @staticmethod
+    def _clean_checklist(items):
+        cleaned = []
+        for item in items:
+            text = ' '.join(str(item.get('text') or '').split())[:200]
+            if not text:
+                continue
+            identity = str(item.get('id') or '')[:40] or uuid.uuid4().hex[:12]
+            cleaned.append({'id': identity, 'text': text, 'done': bool(item.get('done'))})
+        return cleaned
+
+    @staticmethod
+    def _name(user):
+        return (user.first_name or user.email.split('@')[0]) if user else None
+
     def get_doneByName(self, obj):
-        if obj.done_by:
-            return obj.done_by.first_name or obj.done_by.email
-        return None
+        return self._name(obj.done_by)
+
+    def get_createdByName(self, obj):
+        return self._name(obj.created_by)
+
+    def get_assignedToName(self, obj):
+        return self._name(obj.assigned_to)
 
 
 class RecipeIngredientSerializer(serializers.Serializer):

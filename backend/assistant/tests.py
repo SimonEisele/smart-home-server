@@ -359,3 +359,23 @@ class EditProposalTests(TestCase):
         self.assertEqual(CalendarEvent.objects.get().shared_calendar, paar)
         result = self.box.run('propose_event', {'title': 'X', 'start': '2026-11-20T20:00', 'sharedCalendar': 'Band'})
         self.assertIn('Paar', result['error'])
+
+    def test_task_with_responsible_person_and_checklist(self):
+        lisa = User.objects.create_user('lisa@example.com', 'pw', active_household=self.household, first_name='Lisa')
+        HouseholdMembership.objects.create(user=lisa, household=self.household, role='member')
+        self.box.run('propose_todo', {'title': 'Keller räumen', 'assignee': 'lisa', 'category': 'Haushalt',
+                                      'checklist': ['Kisten sortieren', 'Velo raus']})
+        proposal = self.box.proposals[0]
+        self.assertIn('Zuständig: Lisa', proposal['summary'])
+        self.assertIn('☐ Velo raus', proposal['summary'])
+        self.assertEqual(self.apply(proposal).status_code, 201)
+        todo = Todo.objects.get(title='Keller räumen')
+        self.assertEqual((todo.assigned_to, len(todo.checklist)), (lisa, 2))
+        self.assertIn('Lisa', self.box.run('propose_todo', {'title': 'X', 'assignee': 'Max'})['error'])
+        self.box.run('propose_todo_update', {'todoId': str(todo.id), 'assignee': '',
+                                             'checklist': ['Kisten sortieren', 'Velo raus', 'Wischen']})
+        update = self.box.proposals[-1]
+        self.assertEqual([c['label'] for c in update['changes']], ['Zuständig', 'Checkliste'])
+        self.assertEqual(self.apply(update).status_code, 201)
+        todo.refresh_from_db()
+        self.assertEqual((todo.assigned_to, len(todo.checklist)), (None, 3))

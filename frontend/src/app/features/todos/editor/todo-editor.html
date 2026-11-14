@@ -1,0 +1,231 @@
+<div class="editor-backdrop" (click)="close()">
+    <form class="editor" (click)="$event.stopPropagation()" (ngSubmit)="save()" appDialog (dialogDismiss)="close()"
+        [attr.aria-label]="isNew ? 'Neue Aufgabe' : 'Aufgabe bearbeiten'">
+        <header class="editor-head">
+            <span class="editor-kind">{{ isNew ? 'Neue Aufgabe' : 'Aufgabe' }}</span>
+            @if (!isNew && todo?.createdByName) { <span class="editor-meta">von {{ todo?.createdByName }}</span> }
+            <button type="button" class="editor-close" (click)="close()" aria-label="Schliessen"
+                [disabled]="saving">✕</button>
+        </header>
+
+        <div class="editor-body">
+            @if (formError) { <div class="form-feedback" role="alert">{{ formError }}</div> }
+
+            <!-- What -->
+            <div class="what">
+                <label class="sr-only" for="todo-title">Was ist zu tun?</label>
+                <input id="todo-title" name="title" class="title-input" [(ngModel)]="form.title" maxlength="200"
+                    placeholder="Was ist zu tun?" autocomplete="off" [class.invalid]="errors.title"
+                    [attr.aria-invalid]="!!errors.title" />
+                @if (errors.title) { <span class="field-error" role="alert">{{ errors.title }}</span> }
+                <label class="sr-only" for="todo-notes">Notizen</label>
+                <textarea id="todo-notes" name="description" class="notes-input" [(ngModel)]="form.description"
+                    rows="2" placeholder="Notizen, Links, Details …"></textarea>
+            </div>
+
+            <!-- For whom -->
+            <section class="row" aria-labelledby="who-label">
+                <h4 id="who-label">Für</h4>
+                <div class="row-body">
+                    <div class="segmented" role="group" aria-labelledby="who-label">
+                        <button type="button" [class.active]="form.globalTodo" [attr.aria-pressed]="form.globalTodo"
+                            (click)="setShared(true)">🏠 WG</button>
+                        <button type="button" [class.active]="!form.globalTodo" [attr.aria-pressed]="!form.globalTodo"
+                            (click)="setShared(false)">🔒 Nur ich</button>
+                    </div>
+                    @if (form.globalTodo && people.length) {
+                    <div class="chips" role="group" aria-label="Zuständig">
+                        <span class="chips-label">Zuständig</span>
+                        <button type="button" class="pick" [class.selected]="!form.assignedTo"
+                            [attr.aria-pressed]="!form.assignedTo" (click)="form.assignedTo = null">Offen</button>
+                        @for (person of people; track person.id) {
+                        <button type="button" class="pick person" [class.selected]="form.assignedTo === person.id"
+                            [attr.aria-pressed]="form.assignedTo === person.id" (click)="form.assignedTo = person.id">
+                            <span class="avatar" [style.background]="personColor(person.id)" aria-hidden="true">{{
+                                initials(person.name) }}</span>{{ person.name }}@if (person.isMe) { <small>(ich)</small> }
+                        </button>
+                        }
+                    </div>
+                    }
+                </div>
+            </section>
+
+            <!-- When -->
+            <section class="row" aria-labelledby="due-label">
+                <h4 id="due-label">Fällig</h4>
+                <div class="row-body">
+                    <div class="chips" role="group" aria-labelledby="due-label">
+                        @for (q of quick; track q.key) {
+                        <button type="button" class="pick" [class.selected]="form.dueDate === q.date"
+                            [attr.aria-pressed]="form.dueDate === q.date" (click)="setDue(q.date)">{{ q.label }}</button>
+                        }
+                        <label class="pick date-pick" [class.selected]="!!form.dueDate && !quickPicked()">📅
+                            <input type="date" name="dueDate" [ngModel]="form.dueDate" (ngModelChange)="setDue($event || '')"
+                                aria-label="Datum wählen" /></label>
+                        <button type="button" class="pick" [class.selected]="!form.dueDate"
+                            [attr.aria-pressed]="!form.dueDate" (click)="setDue('')">Kein Datum</button>
+                    </div>
+                    <span class="hint" [class.error]="errors.dueDate">{{ errors.dueDate || dueText }}</span>
+                </div>
+            </section>
+
+            <!-- Priority -->
+            <section class="row" aria-labelledby="prio-label">
+                <h4 id="prio-label">Priorität</h4>
+                <div class="row-body">
+                    <div class="segmented prio" role="group" aria-labelledby="prio-label">
+                        @for (p of PRIORITIES; track p.value) {
+                        <button type="button" [class]="'prio-' + p.value" [class.active]="form.priority === p.value"
+                            [attr.aria-pressed]="form.priority === p.value" (click)="form.priority = p.value">{{ p.label
+                            }}</button>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            <!-- Checklist -->
+            <section class="row" aria-labelledby="steps-label">
+                <h4 id="steps-label">Schritte @if (progress.total) { <small>{{ progress.done }}/{{ progress.total
+                        }}</small> }</h4>
+                <div class="row-body">
+                    @if (progress.total) {
+                    <ul class="steps">
+                        @for (item of form.checklist; track $index; let i = $index; let last = $last) {
+                        <li [class.done]="item.done">
+                            <input type="checkbox" [name]="'step-done-' + i" [(ngModel)]="item.done"
+                                [attr.aria-label]="item.text + ' erledigt'" />
+                            <input class="step-text" [name]="'step-' + i" [(ngModel)]="item.text" maxlength="200"
+                                [attr.aria-label]="'Schritt ' + (i + 1)" />
+                            <span class="step-actions">
+                                <button type="button" (click)="moveStep(i, -1)" [disabled]="i === 0"
+                                    [attr.aria-label]="'Schritt ' + (i + 1) + ' nach oben'">↑</button>
+                                <button type="button" (click)="moveStep(i, 1)" [disabled]="last"
+                                    [attr.aria-label]="'Schritt ' + (i + 1) + ' nach unten'">↓</button>
+                                <button type="button" (click)="removeStep(i)"
+                                    [attr.aria-label]="'Schritt ' + (i + 1) + ' entfernen'">✕</button>
+                            </span>
+                        </li>
+                        }
+                    </ul>
+                    }
+                    <div class="step-add">
+                        <input #stepInput name="newStep" [(ngModel)]="newStep" placeholder="+ Schritt hinzufügen"
+                            aria-label="Neuer Schritt" (keydown.enter)="$event.preventDefault(); addStep()" />
+                        @if (newStep.trim()) { <button type="button" class="btn-ghost btn-sm" (click)="addStep()">Hinzufügen</button> }
+                    </div>
+                </div>
+            </section>
+
+            <!-- Area -->
+            <section class="row" aria-labelledby="area-label">
+                <h4 id="area-label">Bereich</h4>
+                <div class="row-body">
+                    <div class="chips" role="group" aria-labelledby="area-label">
+                        @for (c of categoryOptions; track c) {
+                        <button type="button" class="pick" [class.selected]="form.category === c"
+                            [attr.aria-pressed]="form.category === c" (click)="pickCategory(c)">{{ c }}</button>
+                        }
+                        @if (showCategoryInput) {
+                        <input class="pick-input" name="newCategory" [(ngModel)]="newCategory" maxlength="40"
+                            placeholder="Neuer Bereich" aria-label="Neuer Bereich"
+                            (keydown.enter)="$event.preventDefault(); addCategory()" (blur)="addCategory()" />
+                        } @else {
+                        <button type="button" class="pick add" (click)="showCategoryInput = true">+ Neu</button>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            <!-- Duration -->
+            <section class="row" aria-labelledby="dur-label">
+                <h4 id="dur-label">Dauer</h4>
+                <div class="row-body">
+                    <div class="chips" role="group" aria-labelledby="dur-label">
+                        @for (m of DURATIONS; track m) {
+                        <button type="button" class="pick" [class.selected]="!customDuration && form.durationMinutes === m"
+                            [attr.aria-pressed]="!customDuration && form.durationMinutes === m" (click)="setDuration(m)">{{
+                            formatDuration(m) }}</button>
+                        }
+                        <button type="button" class="pick" [class.selected]="customDuration" [attr.aria-pressed]="customDuration"
+                            (click)="openCustomDuration()">Andere</button>
+                        <button type="button" class="pick" [class.selected]="!customDuration && !form.durationMinutes"
+                            (click)="setDuration(null)">Offen</button>
+                    </div>
+                    @if (customDuration) {
+                    <div class="duration-custom">
+                        <label><input type="number" name="durH" min="0" max="72" [(ngModel)]="durH" /> Std.</label>
+                        <label><input type="number" name="durM" min="0" max="59" step="5" [(ngModel)]="durM" /> Min.</label>
+                    </div>
+                    }
+                    <span class="hint" [class.error]="errors.duration">{{ errors.duration || 'Hilft beim Einplanen im Kalender.' }}</span>
+                </div>
+            </section>
+
+            <!-- Repeat -->
+            <section class="row" aria-labelledby="rep-label">
+                <h4 id="rep-label">Wiederholen</h4>
+                <div class="row-body repeat">
+                    <select name="recurrence" [(ngModel)]="form.recurrence" aria-labelledby="rep-label">
+                        <option value="">Nie</option>
+                        <option value="daily">Täglich</option>
+                        <option value="weekly">Wöchentlich</option>
+                        <option value="monthly">Monatlich</option>
+                    </select>
+                    @if (form.recurrence) {
+                    <label class="interval">alle <input type="number" name="interval" min="1" max="52"
+                            [(ngModel)]="form.recurrenceInterval" [class.invalid]="errors.interval" /> {{ recurrenceUnit }}</label>
+                    <span class="hint">Abhaken plant automatisch das nächste Mal.</span>
+                    }
+                </div>
+            </section>
+
+            <!-- More -->
+            @if (showMore) {
+            <section class="row" aria-labelledby="start-label">
+                <h4 id="start-label">Erst ab</h4>
+                <div class="row-body">
+                    <input type="date" name="startDate" [(ngModel)]="form.startDate" aria-labelledby="start-label" />
+                    <span class="hint">Vorher erscheint die Aufgabe nicht im Kalender.</span>
+                </div>
+            </section>
+            } @else {
+            <button type="button" class="more-toggle" (click)="showMore = true">+ Erst ab einem Datum</button>
+            }
+
+            <!-- Calendar -->
+            @if (!isNew) {
+            <section class="row" aria-labelledby="cal-label">
+                <h4 id="cal-label">Kalender</h4>
+                <div class="row-body">
+                    @if (todo?.plannedSlots?.length) {
+                    <ul class="slots">
+                        @for (slot of todo!.plannedSlots!; track slot.id) {
+                        <li><a routerLink="/calendar" [queryParams]="{ date: slotDate(slot.start) }" (click)="close()">📅
+                                {{ slotText(slot.start) }}</a></li>
+                        }
+                    </ul>
+                    } @else if (!todo?.done && !form.recurrence) {
+                    <a class="plan-link" routerLink="/calendar" [queryParams]="{ plan: todo!.id }" (click)="close()">Im
+                        Kalender einplanen →</a>
+                    } @else {
+                    <span class="hint">Nicht eingeplant.</span>
+                    }
+                </div>
+            </section>
+            }
+        </div>
+
+        <footer class="editor-foot">
+            @if (!isNew) {
+            <button type="button" class="btn-ghost delete" [class.confirm]="confirmDelete" (click)="remove()"
+                [disabled]="saving">{{ confirmDelete ? 'Wirklich löschen?' : 'Löschen' }}</button>
+            }
+            <span class="spacer"></span>
+            @if (!isNew && !todo?.done) {
+            <button type="button" class="btn-secondary" (click)="complete()" [disabled]="saving">✓ Erledigt</button>
+            }
+            <button type="submit" class="btn-primary" [disabled]="saving">{{ saving ? 'Speichert …' : isNew ? 'Erstellen'
+                : 'Speichern' }}</button>
+        </footer>
+    </form>
+</div>

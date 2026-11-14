@@ -71,7 +71,7 @@ class TodoListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         queryset = Todo.objects.filter(
             household=self.request.user.active_household
-        ).select_related('done_by').filter(
+        ).select_related('done_by', 'created_by', 'assigned_to').filter(
             Q(global_todo=True) | Q(created_by=self.request.user)
         )
         visibility = self.request.query_params.get('visibility')
@@ -158,7 +158,9 @@ def complete_todo(todo, user, day):
         advanced_to = next_occurrence(todo, max(day, anchor))
         delta = (advanced_to - anchor).days
         todo.start_date, todo.due_date = _shift(todo.start_date, delta), _shift(todo.due_date, delta)
-        todo.save(update_fields=['start_date', 'due_date', 'updated_at'])
+        # The next time starts with a fresh checklist.
+        todo.checklist = [{**item, 'done': False} for item in todo.checklist or []]
+        todo.save(update_fields=['start_date', 'due_date', 'checklist', 'updated_at'])
         return advanced_to
     todo.done, todo.done_by = True, user
     todo.save(update_fields=['done', 'done_by', 'updated_at'])

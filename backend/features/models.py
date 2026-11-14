@@ -26,6 +26,13 @@ class Todo(models.Model):
     recurrence = models.CharField(max_length=16, blank=True)  # '', daily, weekly, monthly
     recurrence_interval = models.IntegerField(default=1)
     global_todo = models.BooleanField(default=False)
+    # Who takes care of a WG task (any member); private tasks belong to their creator anyway.
+    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='assigned_todos')
+    # Free area such as "Haushalt", "Papierkram", "Reparatur" for grouping and filtering.
+    category = models.CharField(max_length=40, blank=True)
+    # Steps: [{"id": "…", "text": "…", "done": false}]
+    checklist = models.JSONField(default=list, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_todos')
     done_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='completed_todos')
     created_at = models.DateTimeField(auto_now_add=True)

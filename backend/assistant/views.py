@@ -41,6 +41,8 @@ Regeln:
 - Bei jedem Rezept verteilst du die Zutaten auf die Schritte: Jeder Schritt nennt in ingredients die Zutaten, die
   darin verwendet werden. Wird eine Zutat aufgeteilt (z. B. Butter für Teig und Guss), gib pro Schritt die Teilmenge
   an. Fasse sehr lange Rezeptschritte nicht zusammen, sondern übernimm sie sauber gegliedert.
+- Aufgaben: Bei WG-Aufgaben kannst du eine zuständige Person (assignee) vorschlagen, wenn sie genannt wird.
+  Grössere Aufgaben bekommen eine kurze Checkliste mit den Schritten.
 - Bestehendes änderst du mit propose_recipe_update, propose_event_update, propose_todo_update oder
   propose_shopping_update. Lies den Eintrag vorher (get_recipe, get_calendar, get_todos, get_shopping_list), damit du
   die id hast, und gib nur geänderte Felder an. Löschen kannst du nicht; schlag stattdessen „erledigt“ bzw.

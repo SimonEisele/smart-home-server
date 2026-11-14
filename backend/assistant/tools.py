@@ -20,6 +20,7 @@ from features.serializers import (
     CalendarEventSerializer, MenuSerializer, RecipeSerializer, ShoppingItemSerializer, TodoSerializer,
 )
 from features.views.calendar import visible_events
+from users.models import User
 from features.views.common import RECIPE_PREFETCH, recalculate_menu_persons_for_range
 from features.views.todos import complete_todo, sync_todo_events, visible_todos
 
@@ -102,10 +103,13 @@ TOOLS = [
      'parameters': _schema({'title': _STR, 'start': _STR, 'end': _STR, 'allDay': _BOOL, 'location': _STR,
                             'description': _STR, 'private': _BOOL, 'sharedCalendar': _STR}, ['title', 'start'])},
     {'name': 'propose_todo',
-     'description': 'Schlägt eine Aufgabe vor. shared=true für die ganze WG, sonst privat.',
+     'description': 'Schlägt eine Aufgabe vor. shared=true für die ganze WG, sonst privat. assignee: Vorname der '
+                    'zuständigen Person (nur bei WG-Aufgaben). checklist: einzelne Schritte, wenn sinnvoll. '
+                    'category: kurzer Bereich wie Haushalt, Papierkram, Reparatur, Einkauf, Garten.',
      'parameters': _schema({'title': _STR, 'description': _STR, 'dueDate': {**_STR, 'description': 'JJJJ-MM-TT'},
                             'durationMinutes': _INT, 'priority': {'type': 'string', 'enum': ['low', 'medium', 'high']},
-                            'shared': _BOOL}, ['title'])},
+                            'shared': _BOOL, 'assignee': _STR, 'category': _STR,
+                            'checklist': {'type': 'array', 'items': _STR}}, ['title'])},
     {'name': 'propose_shopping_items', 'description': 'Schlägt Artikel für die Einkaufsliste vor.',
      'parameters': _schema({'items': {'type': 'array', 'items': _schema(
          {'name': _STR, 'quantity': _NUM, 'unit': _STR}, ['name'])}}, ['items'])},
@@ -125,7 +129,10 @@ TOOLS = [
                     'springen zum nächsten Termin).',
      'parameters': _schema({'todoId': _STR, 'title': _STR, 'description': _STR, 'dueDate': _STR,
                             'durationMinutes': _INT, 'priority': {'type': 'string', 'enum': list(PRIORITIES)},
-                            'shared': _BOOL, 'done': _BOOL}, ['todoId'])},
+                            'shared': _BOOL, 'done': _BOOL,
+                            'assignee': {**_STR, 'description': 'Vorname; "" = niemand.'}, 'category': _STR,
+                            'checklist': {'type': 'array', 'items': _STR,
+                                          'description': 'Ersetzt die ganze Checkliste.'}}, ['todoId'])},
     {'name': 'propose_shopping_update',
      'description': 'Schlägt Änderungen an einem Artikel der Einkaufsliste vor (id aus get_shopping_list), z. B. '
                     'Menge anpassen oder abhaken (checked=true).',
@@ -219,7 +226,10 @@ class Toolbox:
             'priority': t.priority,
             'due': timezone.localtime(t.due_date).date().isoformat() if t.due_date else None,
             'durationMinutes': t.duration_minutes, 'recurrence': t.recurrence or None,
-        } for t in todos[:80]]}
+            'assignee': (t.assigned_to.first_name or t.assigned_to.email) if t.assigned_to else None,
+            'category': t.category or None,
+            'checklist': [f"{'☑' if step.get('done') else '☐'} {step.get('text')}" for step in t.checklist or []],
+        } for t in todos.select_related('assigned_to')[:80]]}
 
     def tool_get_shopping_list(self):
         items = ShoppingItem.objects.filter(household=self.household, checked=False).order_by('category', 'name')
@@ -491,22 +501,46 @@ class Toolbox:
             summary.append(str(location))
         return self._propose('event', payload['title'], summary, payload)
 
+    def _member(self, name):
+        """A WG member by first name or e-mail (case-insensitive)."""
+        key = str(name or '').strip().casefold()
+        if not key:
+            return None
+        people = User.objects.filter(memberships__household=self.household)
+        match = [p for p in people if key in ((p.first_name or '').casefold(), p.email.casefold(),
+                                              p.email.split('@')[0].casefold())]
+        if len(match) != 1:
+            names = ', '.join(p.first_name or p.email for p in people)
+            raise ToolError(f'Person „{name}“ nicht eindeutig gefunden. In der WG: {names}.')
+        return match[0]
+
+    @staticmethod
+    def _steps(items):
+        return [{'text': str(text).strip()[:200], 'done': False} for text in items or [] if str(text).strip()][:50]
+
     def tool_propose_todo(self, title, description='', dueDate=None, durationMinutes=None, priority='medium',
-                          shared=True):
+                          shared=True, assignee='', category='', checklist=None):
         due = None
         if dueDate:
             due = self._aware(datetime.combine(self._date(dueDate), datetime.min.time().replace(hour=18)))
+        person = self._member(assignee) if shared else None
         payload = {'title': str(title).strip()[:200], 'description': str(description or ''),
                    'dueDate': due.isoformat() if due else None,
                    'durationMinutes': int(durationMinutes) if durationMinutes else None,
                    'priority': priority if priority in ('low', 'medium', 'high') else 'medium',
-                   'globalTodo': bool(shared)}
+                   'globalTodo': bool(shared), 'assignedTo': str(person.id) if person else None,
+                   'category': str(category or '').strip()[:40], 'checklist': self._steps(checklist)}
         self._check(TodoSerializer, payload)
         summary = ['WG-Aufgabe' if shared else 'Private Aufgabe']
+        if person:
+            summary.append(f'Zuständig: {person.first_name or person.email}')
+        if payload['category']:
+            summary.append(f"Bereich: {payload['category']}")
         if due:
             summary.append(f'Fällig {timezone.localtime(due):%d.%m.%Y}')
         if durationMinutes:
             summary.append(f'Dauer {durationMinutes} Min.')
+        summary += [f"☐ {step['text']}" for step in payload['checklist']]
         return self._propose('todo', payload['title'], summary, payload)
 
     def tool_propose_shopping_items(self, items):
@@ -618,7 +652,7 @@ class Toolbox:
         return self._propose('event_update', changes.get('title', event.title), summary, payload, changes=diff)
 
     def tool_propose_todo_update(self, todoId, title=None, description=None, dueDate=None, durationMinutes=None,
-                                 priority=None, shared=None, done=None):
+                                 priority=None, shared=None, done=None, assignee=None, category=None, checklist=None):
         todo = visible_todos(self.user).filter(id=self._uuid(todoId)).first()
         if not todo:
             raise ToolError('Aufgabe nicht gefunden – zuerst mit get_todos suchen.')
@@ -644,6 +678,22 @@ class Toolbox:
         if shared is not None and bool(shared) != todo.global_todo:
             changes['globalTodo'] = bool(shared)
             self._diff(diff, 'Sichtbar', 'WG' if todo.global_todo else 'Privat', 'WG' if shared else 'Privat')
+        if assignee is not None:
+            person = self._member(assignee) if str(assignee).strip() else None
+            if (person.id if person else None) != todo.assigned_to_id:
+                changes['assignedTo'] = str(person.id) if person else None
+                self._diff(diff, 'Zuständig', self._show('x', todo.assigned_to and todo.assigned_to.first_name),
+                           self._show('x', person and (person.first_name or person.email)))
+        if category is not None and str(category).strip() != todo.category:
+            changes['category'] = str(category).strip()[:40]
+            self._diff(diff, 'Bereich', self._show('x', todo.category), self._show('x', changes['category']))
+        if checklist is not None:
+            old = {step.get('text'): step for step in todo.checklist or []}
+            steps = [{**step, 'done': bool(old.get(step['text'], {}).get('done'))} for step in self._steps(checklist)]
+            if [s['text'] for s in steps] != [s.get('text') for s in todo.checklist or []]:
+                changes['checklist'] = steps
+                self._diff(diff, 'Checkliste', f'{len(todo.checklist or [])} Schritte',
+                           ', '.join(s['text'] for s in steps) or '—')
         if done is not None and bool(done) != todo.done:
             changes['done'] = bool(done)
             after = 'erledigt' if done else 'offen'
