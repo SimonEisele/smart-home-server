@@ -1,0 +1,75 @@
+<div class="editor-backdrop" (click)="close()">
+    <form class="editor sheet" (click)="$event.stopPropagation()" (ngSubmit)="submit()" appDialog
+        (dialogDismiss)="close()" [attr.aria-label]="task.name + ' erledigt'">
+        <header class="editor-head">
+            <span class="editor-kind"><span aria-hidden="true">{{ icon }}</span> {{ task.name }}</span>
+            <button type="button" class="editor-close" (click)="close()" aria-label="Schliessen"
+                [disabled]="saving">✕</button>
+        </header>
+
+        <div class="editor-body">
+            @if (error) { <div class="form-feedback" role="alert">{{ error }}</div> }
+
+            @if (steps.length) {
+            <section class="row" aria-labelledby="c-steps">
+                <h4 id="c-steps">Schritte <small>{{ ticked.size }}/{{ steps.length }}</small></h4>
+                <ul class="tick-list row-body">
+                    @for (step of steps; track $index; let i = $index) {
+                    <li><label [class.done]="ticked.has(i)"><input type="checkbox" [checked]="ticked.has(i)"
+                                (change)="toggleStep(i)" />{{ step }}</label></li>
+                    }
+                </ul>
+            </section>
+            }
+
+            <section class="row" aria-labelledby="c-when">
+                <h4 id="c-when">Wann</h4>
+                <div class="row-body">
+                    <div class="chips" role="group" aria-labelledby="c-when">
+                        @for (d of days; track d.date) {
+                        <button type="button" class="pick" [class.selected]="doneAt === d.date"
+                            [attr.aria-pressed]="doneAt === d.date" (click)="doneAt = d.date">{{ d.label }}</button>
+                        }
+                        <label class="pick date-pick" [class.selected]="otherDay">📅 Anderer Tag
+                            <input type="date" data-no-autofocus name="doneAt" [max]="today" [(ngModel)]="doneAt"
+                                aria-label="Datum wählen" /></label>
+                    </div>
+                    @if (dateError) { <span class="hint error" role="alert">{{ dateError }}</span> }
+                    @else if (otherDay && doneAt) { <span class="hint">{{ doneAt }}</span> }
+                </div>
+            </section>
+
+            @if (people.length > 1) {
+            <section class="row" aria-labelledby="c-who">
+                <h4 id="c-who">Wer</h4>
+                <div class="row-body">
+                    <div class="chips" role="group" aria-labelledby="c-who">
+                        @for (person of people; track person.id) {
+                        <button type="button" class="pick person" [class.selected]="doneBy === person.id"
+                            [attr.aria-pressed]="doneBy === person.id" (click)="doneBy = person.id">
+                            <span class="avatar" [style.background]="personColor(person.id)" aria-hidden="true">{{
+                                initials(person.name) }}</span>{{ person.name }}@if (person.isMe) { <small>(ich)</small> }
+                        </button>
+                        }
+                    </div>
+                </div>
+            </section>
+            }
+
+            <section class="row" aria-labelledby="c-note">
+                <h4 id="c-note">Notiz</h4>
+                <div class="row-body">
+                    <input name="note" data-no-autofocus [(ngModel)]="note" maxlength="400" aria-labelledby="c-note"
+                        placeholder="Optional, z. B. Putzmittel ist leer" />
+                </div>
+            </section>
+        </div>
+
+        <footer class="editor-foot">
+            <span class="spacer"></span>
+            <button type="button" class="btn-secondary" (click)="close()" [disabled]="saving">Abbrechen</button>
+            <button type="submit" class="btn-primary" [disabled]="saving">{{ saving ? 'Speichert …' : '✓ Eintragen'
+                }}</button>
+        </footer>
+    </form>
+</div>

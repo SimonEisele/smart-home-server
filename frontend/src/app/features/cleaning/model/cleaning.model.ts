@@ -18,8 +18,24 @@ export interface CleaningTask {
   intervalDays: number;
   color?: string;
   isActive?: boolean;
+  /** Whose turn it is; with a rotation the server moves it on after each completion. */
+  assignedTo?: string | null;
+  assignedToName?: string | null;
+  /** WG members taking turns, in order (empty: no rotation). */
+  rotation?: string[];
+  /** Steps as plain text, e.g. "Lavabo", "Spiegel", "Boden". */
+  checklist?: string[];
+  durationMinutes?: number | null;
   logs?: CleaningLog[];
   lastDoneAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
+
+/** Result of logging or undoing a completion: the task with its new turn. */
+export interface CleaningCompletion {
+  log: CleaningLog;
+  task: CleaningTask;
+}
+
+export interface CleaningPerson { id: string; name: string; isMe: boolean; }

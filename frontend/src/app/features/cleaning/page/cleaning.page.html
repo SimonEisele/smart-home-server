@@ -1,241 +1,217 @@
-<div class="cleaning-page app-page">
+<div class="clean-page app-page">
 
-    <!-- Header -->
     <header class="page-header">
         <div class="page-heading">
             <p class="eyebrow">Alltag</p>
             <h1 class="page-title">Reinigung</h1>
-            <p class="page-subtitle">{{ activeCount }} Putzaufgaben{{ overdueCount ? ' · ' + overdueCount + ' überfällig' : '' }}</p>
+            <p class="page-subtitle">
+                {{ active.length }} Aufgaben
+                @if (overdueCount) { · <span class="sub-danger">{{ overdueCount }} überfällig</span> }
+                @if (todayCount) { · {{ todayCount }} heute }
+                @if (!overdueCount && !todayCount && active.length) { · alles im grünen Bereich ✨ }
+            </p>
         </div>
         <div class="page-actions">
-        <a class="btn-secondary" routerLink="/calendar">Im Kalender</a>
-        <button class="btn-primary" (click)="openAdd()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <path d="M12 5v14M5 12h14" />
-            </svg>
-            Neue Putzaufgabe
-        </button>
+            <a class="btn-secondary" routerLink="/calendar">Im Kalender</a>
+            <button class="btn-primary" (click)="openAdd()">+ Neue Putzaufgabe</button>
         </div>
     </header>
 
-    <!-- Filter -->
-    <div class="filter-bar" role="group" aria-label="Putzplan filtern">
-        <div class="filter-chips" role="group" aria-label="Status">
-            @for (option of [{ v: 'all', l: 'Alle' }, { v: 'overdue', l: 'Überfällig' }, { v: 'upcoming', l: 'Bald fällig' }]; track option.v) {
-            <button class="chip" [class.chip-danger]="option.v === 'overdue'" [class.chip-warn]="option.v === 'upcoming'"
-                [class.active]="filters.status === option.v" [attr.aria-pressed]="filters.status === option.v"
-                (click)="setFilter({ status: $any(option.v) })">{{ option.l }}<span class="count">{{ statusCount($any(option.v))
-                    }}</span></button>
+    @if (loadError) {
+    <div class="form-feedback" role="alert">{{ loadError }} <button (click)="load()">Erneut versuchen</button></div>
+    }
+    @if (actionError) { <div class="form-feedback" role="alert">{{ actionError }}</div> }
+
+    <div class="clean-layout">
+        <main class="clean-main">
+            <!-- Filters -->
+            @if (active.length) {
+            <div class="filter-bar" role="group" aria-label="Putzplan filtern">
+                <div class="filter-chips" role="group" aria-label="Status">
+                    <button class="chip" [class.active]="filters.status === 'all'" [attr.aria-pressed]="filters.status === 'all'"
+                        (click)="setFilter({ status: 'all' })">Alle<span class="count">{{ statusCount('all') }}</span></button>
+                    <button class="chip chip-danger" [class.active]="filters.status === 'due'"
+                        [attr.aria-pressed]="filters.status === 'due'" (click)="setFilter({ status: 'due' })">Jetzt fällig<span
+                            class="count">{{ statusCount('due') }}</span></button>
+                    @if (me && people.length > 1) {
+                    <button class="chip chip-info" [class.active]="filters.person === me.id"
+                        [attr.aria-pressed]="filters.person === me.id" (click)="toggle('person', me.id)">Ich bin dran</button>
+                    }
+                </div>
+                @if (rooms.length > 1 || filters.room) {
+                <div class="filter-chips rooms" role="group" aria-label="Raum">
+                    @for (r of rooms; track r.key) {
+                    <button class="chip" [class.active]="filters.room === r.key" [attr.aria-pressed]="filters.room === r.key"
+                        (click)="toggle('room', r.key)"><span aria-hidden="true">{{ r.icon }}</span> {{ r.label }}<span
+                            class="count">{{ roomCount(r.key) }}</span></button>
+                    }
+                </div>
+                }
+                @if (filtersActive) {
+                <div class="filter-end"><button class="filter-reset" (click)="resetFilters()">Zurücksetzen</button></div>
+                }
+            </div>
             }
-        </div>
-        @if (rooms.length > 1 || filters.room) {
-        <select class="filter-select" [class.is-set]="!!filters.room" aria-label="Raum" [ngModel]="filters.room"
-            (ngModelChange)="setFilter({ room: $event })">
-            <option value="">Alle Räume</option>
-            @for (room of rooms; track room) { <option [value]="room">{{ categoryLabels[room] }}</option> }
-        </select>
+
+            @if (loading && !tasks.length) { <p class="loading-state" role="status">Putzplan wird geladen…</p> }
+
+            <!-- Groups by urgency -->
+            @for (group of groups; track group.key) {
+            <section [class]="'group group-' + group.key" [attr.aria-labelledby]="'g-' + group.key">
+                <h2 class="group-title" [id]="'g-' + group.key">{{ group.label }} <span class="group-count">{{
+                        group.rows.length }}</span></h2>
+                <ul class="job-list">
+                    @for (row of group.rows; track row.task.id) {
+                    @let task = row.task;
+                    @let r = room(task.category);
+                    <li class="job" [class]="'job job-' + row.due.bucket" [style.--job-color]="task.color || null">
+                        <span class="job-icon" aria-hidden="true">{{ r.icon }}</span>
+                        <div class="job-main">
+                            <button class="job-title" (click)="openEdit(task)" [attr.aria-label]="task.name + ' bearbeiten'">{{
+                                task.name }}</button>
+                            <div class="job-meta">
+                                <span class="meta due">{{ dueText(row.due) }}</span>
+                                <span class="meta">↻ {{ intervalLabel(task.intervalDays) }}</span>
+                                @if (task.durationMinutes) { <span class="meta">⏱ {{ formatDuration(task.durationMinutes) }}</span> }
+                                @if (task.checklist?.length) {
+                                <button class="meta steps" (click)="openComplete(task)"
+                                    [attr.aria-label]="task.checklist!.length + ' Schritte – mit Schritten erledigen'">☰ {{
+                                    task.checklist!.length }} Schritte</button>
+                                }
+                                @if (task.lastDoneAt) {
+                                <span class="meta last">✓ {{ agoText(task.lastDoneAt) }}@if (task.logs?.[0]?.doneByName) { ·
+                                    {{ firstName(task.logs![0].doneByName) }} }</span>
+                                }
+                                <span class="meta room-name">{{ r.label }}</span>
+                            </div>
+                            <span class="due-bar" aria-hidden="true"><span [style.width.%]="row.due.elapsed * 100"></span></span>
+                        </div>
+                        <div class="job-side">
+                            @if (task.assignedTo) {
+                            <span class="who" [class.rotating]="task.rotation?.length"
+                                [title]="(task.rotation?.length ? 'Ist dran (abwechselnd): ' : 'Zuständig: ') + task.assignedToName">
+                                <span class="avatar" [style.background]="personColor(task.assignedTo)" aria-hidden="true">{{
+                                    initials(task.assignedToName) }}</span>
+                                <span class="who-name">{{ task.assignedTo === me?.id ? 'Du' : firstName(task.assignedToName)
+                                    }}</span>
+                                <span class="sr-only">{{ task.rotation?.length ? 'ist dran' : 'zuständig' }}</span>
+                            </span>
+                            }
+                            <span class="done-split">
+                                <button class="btn-done" (click)="quickDone(task)" [disabled]="pendingIds.has(task.id)"
+                                    [attr.aria-label]="task.name + ' heute erledigt'">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                                    <span class="done-label">Erledigt</span>
+                                </button>
+                                <button class="btn-done-more" (click)="openComplete(task)" [disabled]="pendingIds.has(task.id)"
+                                    [attr.aria-label]="task.name + ' mit Datum, Person oder Notiz erledigen'"
+                                    title="Anderer Tag, andere Person, Notiz">▾</button>
+                            </span>
+                        </div>
+                    </li>
+                    }
+                </ul>
+            </section>
+            }
+
+            @if (!loading && !loadError && !groups.length) {
+            <div class="empty">
+                @if (!tasks.length) {
+                <p class="empty-title">Noch kein Putzplan.</p>
+                <p>Lege fest, was wie oft geputzt wird – und wer dran ist. Die App erinnert, wenn etwas fällig ist.</p>
+                <button class="btn-primary" (click)="openAdd()">+ Erste Putzaufgabe</button>
+                } @else if (filtersActive) {
+                <p class="empty-title">Nichts für diese Filter.</p>
+                <button class="filter-reset" (click)="resetFilters()">Filter zurücksetzen</button>
+                } @else {
+                <p class="empty-title">Alles pausiert.</p>
+                }
+            </div>
+            }
+
+            @if (paused.length) {
+            <section class="paused">
+                <button class="paused-toggle" (click)="showPaused = !showPaused" [attr.aria-expanded]="showPaused">{{
+                    paused.length }} pausiert {{ showPaused ? '▴' : '▾' }}</button>
+                @if (showPaused) {
+                <ul class="paused-list">
+                    @for (task of paused; track task.id) {
+                    <li><button (click)="openEdit(task)"><span aria-hidden="true">{{ room(task.category).icon }}</span> {{
+                            task.name }}</button></li>
+                    }
+                </ul>
+                }
+            </section>
+            }
+        </main>
+
+        <!-- Overview -->
+        @if (active.length) {
+        <aside class="clean-overview" aria-label="Überblick">
+            <section class="ov-card ov-stats">
+                <button class="stat" [class.active]="filters.status === 'due'"
+                    (click)="setFilter({ status: filters.status === 'due' ? 'all' : 'due' })">
+                    <strong [class.danger]="overdueCount">{{ dueCount }}</strong><span>fällig</span></button>
+                @if (me && people.length > 1) {
+                <button class="stat" [class.active]="filters.person === me.id" (click)="toggle('person', me.id)">
+                    <strong>{{ myTurnCount }}</strong><span>bei mir</span></button>
+                }
+                <div class="stat"><strong>{{ doneThisWeek }}</strong><span>diese Woche</span></div>
+            </section>
+
+            @if (people.length > 1) {
+            <section class="ov-card" aria-labelledby="ov-share">
+                <h3 id="ov-share">Letzte 30 Tage</h3>
+                <div class="ov-list">
+                    @for (s of shares; track s.id) {
+                    <button class="ov-item share" [class.active]="filters.person === s.id"
+                        [attr.aria-pressed]="filters.person === s.id" (click)="toggle('person', s.id)"
+                        [attr.aria-label]="s.name + ': ' + s.done + '× geputzt, bei ' + s.turns + ' Aufgaben dran'">
+                        <span class="avatar sm" [style.background]="personColor(s.id)" aria-hidden="true">{{
+                            initials(s.name) }}</span>
+                        <span class="share-body">
+                            <span class="share-head"><span class="ov-name">{{ firstName(s.name) }}@if (s.isMe) { <small>
+                                        (ich)</small> }</span><span class="ov-count">{{ s.done }}×</span></span>
+                            <span class="share-bar"><span [style.width.%]="s.done / maxDone * 100"
+                                    [style.background]="personColor(s.id)"></span></span>
+                        </span>
+                    </button>
+                    }
+                </div>
+                <p class="ov-hint">Antippen zeigt, wo die Person dran ist.</p>
+            </section>
+            }
+
+            @if (recent.length) {
+            <section class="ov-card ov-recent" aria-labelledby="ov-recent">
+                <h3 id="ov-recent">Zuletzt erledigt</h3>
+                <ul>
+                    @for (item of recent; track item.log.id) {
+                    <li>
+                        <span aria-hidden="true">{{ room(item.task.category).icon }}</span>
+                        <span class="recent-text"><strong>{{ item.task.name }}</strong>
+                            <small>{{ agoText(item.log.doneAt) }}@if (item.log.doneByName) { · {{
+                                firstName(item.log.doneByName) }} }</small></span>
+                    </li>
+                    }
+                </ul>
+            </section>
+            }
+        </aside>
         }
-        @if (filtersActive) {
-        <div class="filter-end"><button class="filter-reset" (click)="resetFilters()">Zurücksetzen</button></div>
-        }
-    </div>
-
-    <!-- Task List -->
-    <div class="task-list" *ngIf="filtered.length > 0">
-        <div class="task-card" *ngFor="let task of filtered" [class.overdue]="isOverdue(task)"
-            [class.soon]="!isOverdue(task) && isDueSoon(task)">
-            <!-- Main row -->
-            <div class="task-main">
-                <div class="task-icon" [style.background]="task.color || null">
-                    {{ categoryLabels[task.category].charAt(0) }}
-                </div>
-                <div class="task-info">
-                    <div class="task-name">{{ task.name }}</div>
-                    <div class="task-meta">
-                        <span class="meta-chip cat">{{ categoryLabels[task.category] }}</span>
-                        <span class="meta-chip interval">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round">
-                                <path d="M17 1l4 4-4 4" />
-                                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                                <path d="M7 23l-4-4 4-4" />
-                                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-                            </svg>
-                            {{ intervalLabel(task.intervalDays) }}
-                        </span>
-                        <span class="meta-chip last" *ngIf="task.lastDoneAt">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round">
-                                <path d="M20 6L9 17l-5-5" />
-                            </svg>
-                            {{ formatDate(task.lastDoneAt) }}
-                        </span>
-                        <span class="meta-chip never" *ngIf="!task.lastDoneAt">Noch nie erledigt</span>
-                    </div>
-                    <div class="task-due" *ngIf="task.lastDoneAt">
-                        <span class="due-label {{ statusClass(task) }}">
-                            {{ statusLabel(task) }}
-                            <ng-container *ngIf="nextDue(task) as due">
-                                · {{ isOverdue(task) ? 'Seit ' : 'Am ' }}{{ formatDate(due) }}
-                            </ng-container>
-                        </span>
-                    </div>
-                </div>
-                <div class="task-actions">
-                    <button class="btn-done" (click)="openComplete(task, $event)" title="Als erledigt markieren">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                            stroke-linecap="round">
-                            <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                        Erledigt
-                    </button>
-                    <button class="icon-btn" (click)="openEdit(task, $event)" title="Bearbeiten">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                    </button>
-                    <button class="icon-btn danger" (click)="deleteTask(task, $event)" title="Löschen">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            <path d="M10 11v6M14 11v6" />
-                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- History toggle -->
-            <button class="history-toggle" (click)="toggleHistory(task.id)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                    [style.transform]="expandedTaskId === task.id ? 'rotate(180deg)' : 'none'">
-                    <path d="M6 9l6 6 6-6" />
-                </svg>
-                Verlauf ({{ (task.logs ?? []).length }})
-            </button>
-
-            <!-- History list -->
-            <div class="history-list" *ngIf="expandedTaskId === task.id">
-                <div *ngIf="(task.logs ?? []).length === 0" class="history-empty">Kein Verlauf vorhanden.</div>
-                <div class="history-entry" *ngFor="let log of (task.logs ?? [])">
-                    <div class="he-date">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" />
-                            <path d="M16 2v4M8 2v4M3 10h18" />
-                        </svg>
-                        {{ formatDate(log.doneAt) }}
-                    </div>
-                    <div class="he-by" *ngIf="log.doneByName">von {{ log.doneByName }}</div>
-                    <div class="he-note" *ngIf="log.note">{{ log.note }}</div>
-                    <button class="he-del" (click)="deleteLog(task.id, log.id, $event)" title="Eintrag löschen">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round">
-                            <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <p class="empty-state" *ngIf="filtered.length === 0 && tasks.length > 0">{{ filters.status === 'overdue' ? 'Nichts
-        überfällig – sauber!' : 'Keine Putzaufgaben für diese Filter.' }} <button class="filter-reset"
-            *ngIf="filtersActive" (click)="resetFilters()">Filter zurücksetzen</button></p>
-    <p class="empty-state" *ngIf="!loading && !loadError && tasks.length === 0">Noch keine Reinigungsaufgaben. Lege jetzt
-        eine an!</p>
-
-</div>
-
-<!-- Task Modal -->
-<div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
-    <div class="modal-panel" aria-label="Reinigung" appDialog (dialogDismiss)="closeModal()">
-        <div class="modal-header">
-            <h3>{{ modalMode === 'add' ? 'Neue Putzaufgabe' : 'Putzaufgabe bearbeiten' }}</h3>
-            <button class="modal-close" (click)="closeModal()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="form-feedback" role="alert" *ngIf="formError">{{ formError }}</div>
-
-            <div class="field">
-                <label>Name *</label>
-                <input type="text" [(ngModel)]="form.name" [class.invalid]="errors['name']"
-                    placeholder="z. B. Bad putzen" />
-                <span class="field-error" *ngIf="errors['name']">{{ errors['name'] }}</span>
-            </div>
-
-            <div class="field">
-                <label>Beschreibung</label>
-                <textarea [(ngModel)]="form.description" rows="2" placeholder="Details..."></textarea>
-            </div>
-
-            <div class="field-row">
-                <div class="field">
-                    <label>Kategorie</label>
-                    <select [(ngModel)]="form.category">
-                        <option *ngFor="let c of categories" [value]="c">{{ categoryIcons[c] }} {{ categoryLabels[c] }}
-                        </option>
-                    </select>
-                </div>
-                <div class="field">
-                    <label>Intervall (Tage) *</label>
-                    <input type="number" [(ngModel)]="form.intervalDays" min="1"
-                        [class.invalid]="errors['intervalDays']" />
-                    <span class="field-error" *ngIf="errors['intervalDays']">{{ errors['intervalDays'] }}</span>
-                </div>
-            </div>
-
-            <div class="field">
-                <label>Farbe (optional)</label>
-                <div class="color-row">
-                    <input type="color" [(ngModel)]="form.color"
-                        style="width:40px;height:36px;padding:2px;cursor:pointer;" />
-                    <input type="text" [(ngModel)]="form.color" placeholder="#4a9eff" style="flex:1;" />
-                </div>
-            </div>
-
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" (click)="closeModal()">Abbrechen</button>
-            <button class="btn-primary" (click)="submitTask()" [disabled]="saving">
-                {{ modalMode === 'add' ? 'Erstellen' : 'Speichern' }}
-            </button>
-        </div>
     </div>
 </div>
 
-<!-- Complete Modal -->
-<div class="modal-backdrop" *ngIf="showCompleteModal" (click)="onBackdropClick($event)">
-    <div class="modal-panel modal-sm" aria-label="Reinigung" appDialog (dialogDismiss)="closeModal()">
-        <div class="modal-header">
-            <h3>{{ completingTask?.name }} erledigt</h3>
-            <button class="modal-close" (click)="closeModal()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="form-feedback" role="alert" *ngIf="formError">{{ formError }}</div>
-            <div class="field">
-                <label>Datum</label>
-                <input type="date" [(ngModel)]="completeDate" />
-            </div>
-            <div class="field">
-                <label>Notiz (optional)</label>
-                <input type="text" [(ngModel)]="completeNote" placeholder="z. B. Gründlich gereinigt" />
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" (click)="closeModal()">Abbrechen</button>
-            <button class="btn-primary" (click)="submitComplete()" [disabled]="saving">Speichern</button>
-        </div>
-    </div>
-</div>
+@if (undoAction) {
+<div class="undo-toast" role="status"><span>{{ undoAction.message }}</span><button (click)="undo()">Rückgängig</button></div>
+}
+
+@if (editing !== undefined) {
+<app-cleaning-editor [task]="editing" [people]="people" (saved)="onSaved($event)" (changed)="replace($event)"
+    (deleted)="onDeleted($event)" (completeRequested)="openComplete($event)" (closed)="closeEditor()" />
+}
+
+@if (completing) {
+<app-cleaning-complete [task]="completing" [people]="people" [saving]="completeSaving" [error]="completeError"
+    (confirmed)="confirmComplete($event)" (closed)="completing = null" />
+}

@@ -584,25 +584,42 @@ class ExternalMealGuestSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+def _person_name(user):
+    if not user:
+        return None
+    return f"{user.first_name} {user.last_name}".strip() or user.email
+
+
+def _household_member_ids(household):
+    memberships = HouseholdMembership.objects.filter(household=household)
+    return {str(uid) for uid in memberships.values_list('user_id', flat=True)}
+
+
 class CleaningLogSerializer(serializers.ModelSerializer):
     doneAt = serializers.DateField(source='done_at')
-    doneBy = serializers.PrimaryKeyRelatedField(source='done_by', read_only=True)
+    # Defaults to whoever logs it; may name another WG member ("Anna hat geputzt").
+    doneBy = serializers.UUIDField(source='done_by_id', required=False, allow_null=True)
     doneByName = serializers.SerializerMethodField()
 
     class Meta:
         model = CleaningLog
         fields = ['id', 'task', 'doneAt', 'doneBy', 'doneByName', 'note', 'created_at']
-        read_only_fields = ['id', 'task', 'doneBy', 'doneByName', 'created_at']
+        read_only_fields = ['id', 'task', 'doneByName', 'created_at']
 
     def get_doneByName(self, obj):
-        if obj.done_by:
-            return f"{obj.done_by.first_name} {obj.done_by.last_name}".strip() or obj.done_by.email
-        return None
+        return _person_name(obj.done_by)
 
 
 class CleaningTaskSerializer(serializers.ModelSerializer):
-    intervalDays = serializers.IntegerField(source='interval_days')
+    intervalDays = serializers.IntegerField(source='interval_days', min_value=1, max_value=730)
     isActive = serializers.BooleanField(source='is_active', required=False)
+    assignedTo = serializers.UUIDField(source='assigned_to_id', required=False, allow_null=True)
+    assignedToName = serializers.SerializerMethodField()
+    rotation = serializers.ListField(child=serializers.UUIDField(), required=False, max_length=20)
+    checklist = serializers.ListField(child=serializers.CharField(allow_blank=True, max_length=200),
+                                      required=False, max_length=30)
+    durationMinutes = serializers.IntegerField(source='duration_minutes', required=False, allow_null=True,
+                                               min_value=1, max_value=600)
     logs = CleaningLogSerializer(many=True, read_only=True)
     lastDoneAt = serializers.SerializerMethodField()
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
@@ -611,12 +628,44 @@ class CleaningTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = CleaningTask
         fields = [
-            'id', 'name', 'description', 'category', 'intervalDays', 'color',
-            'isActive', 'logs', 'lastDoneAt', 'createdAt', 'updatedAt'
+            'id', 'name', 'description', 'category', 'intervalDays', 'color', 'isActive',
+            'assignedTo', 'assignedToName', 'rotation', 'checklist', 'durationMinutes',
+            'logs', 'lastDoneAt', 'createdAt', 'updatedAt'
         ]
-        read_only_fields = ['id', 'logs', 'lastDoneAt', 'createdAt', 'updatedAt']
+        read_only_fields = ['id', 'assignedToName', 'logs', 'lastDoneAt', 'createdAt', 'updatedAt']
+
+    def get_assignedToName(self, obj):
+        return _person_name(obj.assigned_to)
 
     def get_lastDoneAt(self, obj):
         # Uses the prefetched logs instead of one query per task.
         dates = [log.done_at for log in obj.logs.all()]
         return str(max(dates)) if dates else None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['rotation'] = [str(uid) for uid in instance.rotation or []]
+        return data
+
+    def validate(self, attrs):
+        if 'checklist' in attrs:
+            attrs['checklist'] = [' '.join(step.split()) for step in attrs['checklist'] if step.strip()]
+        if 'assigned_to_id' not in attrs and 'rotation' not in attrs:
+            return attrs
+        request = self.context.get('request')
+        household = getattr(self.instance, 'household', None) or getattr(request.user, 'active_household', None)
+        members = _household_member_ids(household)
+        rotation = attrs.get('rotation', getattr(self.instance, 'rotation', []) or [])
+        rotation = list(dict.fromkeys(str(uid) for uid in rotation))  # unique, order kept
+        if any(uid not in members for uid in rotation):
+            raise serializers.ValidationError({'rotation': 'Nur Mitglieder dieser WG können sich abwechseln.'})
+        assigned = attrs.get('assigned_to_id', getattr(self.instance, 'assigned_to_id', None))
+        if assigned and str(assigned) not in members:
+            raise serializers.ValidationError({'assignedTo': 'Nur Mitglieder dieser WG können zuständig sein.'})
+        if len(rotation) < 2:
+            rotation = []
+        elif not assigned or str(assigned) not in rotation:
+            assigned = rotation[0]  # a rotation always has someone whose turn it is
+        attrs['rotation'] = rotation
+        attrs['assigned_to_id'] = assigned
+        return attrs

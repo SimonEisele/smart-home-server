@@ -31,7 +31,10 @@ export class DialogDirective implements AfterViewInit, OnDestroy {
     }
     this.trap = this.factory.create(this.element.nativeElement);
     // Prefer the editable field to avoid putting initial focus on a destructive action.
-    const field = this.element.nativeElement.querySelector<HTMLElement>('input:not([type=checkbox]):not([type=radio]):not([disabled]),textarea:not([disabled]),select:not([disabled])');
+    // Fields marked data-no-autofocus are skipped (e.g. optional ones that would pop up the phone keyboard).
+    const skip = ':not([disabled]):not([data-no-autofocus])';
+    const field = this.element.nativeElement.querySelector<HTMLElement>(
+      `input:not([type=checkbox]):not([type=radio])${skip},textarea${skip},select${skip}`);
     (field ?? this.element.nativeElement).focus();
   }
 

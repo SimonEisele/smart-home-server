@@ -1,0 +1,254 @@
+<div class="editor-backdrop" (click)="close()">
+    <form class="editor" (click)="$event.stopPropagation()" (ngSubmit)="save()" appDialog (dialogDismiss)="close()"
+        [attr.aria-label]="isNew ? 'Neue Putzaufgabe' : 'Putzaufgabe bearbeiten'">
+        <header class="editor-head">
+            <span class="editor-kind">{{ isNew ? 'Neue Putzaufgabe' : 'Putzaufgabe' }}</span>
+            @if (!isNew && task?.lastDoneAt) { <span class="editor-meta">zuletzt {{ agoText(task!.lastDoneAt!) }}</span> }
+            <button type="button" class="editor-close" (click)="close()" aria-label="Schliessen"
+                [disabled]="saving">✕</button>
+        </header>
+
+        <div class="editor-body">
+            @if (formError) { <div class="form-feedback" role="alert">{{ formError }}</div> }
+
+            <!-- What -->
+            <div class="what">
+                <label class="sr-only" for="clean-name">Was wird geputzt?</label>
+                <input id="clean-name" name="name" class="title-input" [(ngModel)]="form.name" maxlength="200"
+                    placeholder="Was wird geputzt? z. B. Bad putzen" autocomplete="off" [class.invalid]="errors.name"
+                    [attr.aria-invalid]="!!errors.name" />
+                @if (errors.name) { <span class="field-error" role="alert">{{ errors.name }}</span> }
+                <label class="sr-only" for="clean-notes">Notizen</label>
+                <textarea id="clean-notes" name="description" class="notes-input" [(ngModel)]="form.description"
+                    rows="2" placeholder="Hinweise, z. B. welches Putzmittel …"></textarea>
+            </div>
+
+            <!-- Room -->
+            <section class="row" aria-labelledby="room-label">
+                <h4 id="room-label">Raum</h4>
+                <div class="row-body">
+                    <div class="chips" role="group" aria-labelledby="room-label">
+                        @for (r of ROOMS; track r.key) {
+                        <button type="button" class="pick" [class.selected]="form.category === r.key"
+                            [attr.aria-pressed]="form.category === r.key" (click)="form.category = r.key">
+                            <span aria-hidden="true">{{ r.icon }}</span> {{ r.label }}</button>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            <!-- How often -->
+            <section class="row" aria-labelledby="interval-label">
+                <h4 id="interval-label">Wie oft</h4>
+                <div class="row-body">
+                    <div class="chips" role="group" aria-labelledby="interval-label">
+                        @for (p of INTERVALS; track p.days) {
+                        <button type="button" class="pick" [class.selected]="!customInterval && form.intervalDays === p.days"
+                            [attr.aria-pressed]="!customInterval && form.intervalDays === p.days"
+                            (click)="setInterval(p.days)">{{ p.label }}</button>
+                        }
+                        <button type="button" class="pick" [class.selected]="customInterval"
+                            [attr.aria-pressed]="customInterval" (click)="customInterval = true">Andere</button>
+                    </div>
+                    @if (customInterval) {
+                    <label class="interval">alle <input type="number" name="intervalDays" min="1" max="730"
+                            [(ngModel)]="form.intervalDays" [class.invalid]="errors.interval" /> Tage</label>
+                    }
+                    <span class="hint" [class.error]="errors.interval">{{ errors.interval || intervalText + ' – nach dem
+                        Erledigen startet die Frist neu.' }}</span>
+                </div>
+            </section>
+
+            <!-- Who -->
+            <section class="row" aria-labelledby="who-label">
+                <h4 id="who-label">Wer</h4>
+                <div class="row-body">
+                    <div class="segmented" role="group" aria-labelledby="who-label">
+                        <button type="button" [class.active]="form.mode === 'open'" [attr.aria-pressed]="form.mode === 'open'"
+                            (click)="setMode('open')">Offen</button>
+                        <button type="button" [class.active]="form.mode === 'fixed'" [attr.aria-pressed]="form.mode === 'fixed'"
+                            (click)="setMode('fixed')">Eine Person</button>
+                        @if (people.length > 1) {
+                        <button type="button" [class.active]="form.mode === 'rotation'"
+                            [attr.aria-pressed]="form.mode === 'rotation'" (click)="setMode('rotation')">↻ Abwechselnd</button>
+                        }
+                    </div>
+
+                    @if (form.mode === 'fixed') {
+                    <div class="chips" role="group" aria-label="Zuständig">
+                        @for (person of people; track person.id) {
+                        <button type="button" class="pick person" [class.selected]="form.assignedTo === person.id"
+                            [attr.aria-pressed]="form.assignedTo === person.id" (click)="form.assignedTo = person.id">
+                            <span class="avatar" [style.background]="personColor(person.id)" aria-hidden="true">{{
+                                initials(person.name) }}</span>{{ person.name }}@if (person.isMe) { <small>(ich)</small> }
+                        </button>
+                        }
+                    </div>
+                    }
+
+                    @if (form.mode === 'rotation') {
+                    <div class="chips" role="group" aria-label="Wer macht mit">
+                        <span class="chips-label">Machen mit</span>
+                        @for (person of people; track person.id) {
+                        <button type="button" class="pick person" [class.selected]="form.rotation.includes(person.id)"
+                            [attr.aria-pressed]="form.rotation.includes(person.id)" (click)="toggleRotation(person.id)">
+                            <span class="avatar" [style.background]="personColor(person.id)" aria-hidden="true">{{
+                                initials(person.name) }}</span>{{ person.name }}</button>
+                        }
+                    </div>
+                    @if (form.rotation.length > 1) {
+                    <ol class="turns" aria-label="Reihenfolge">
+                        @for (id of form.rotation; track id; let i = $index; let last = $last) {
+                        <li [class.current]="form.assignedTo === id">
+                            <span class="avatar" [style.background]="personColor(id)" aria-hidden="true">{{
+                                initials(personName(id)) }}</span>
+                            <span class="turn-name">{{ personName(id) }}</span>
+                            @if (form.assignedTo === id) { <span class="turn-now">ist dran</span> }
+                            @else { <button type="button" class="turn-set" (click)="form.assignedTo = id">jetzt dran</button> }
+                            <span class="step-actions">
+                                <button type="button" (click)="moveRotation(i, -1)" [disabled]="i === 0"
+                                    [attr.aria-label]="personName(id) + ' früher'">↑</button>
+                                <button type="button" (click)="moveRotation(i, 1)" [disabled]="last"
+                                    [attr.aria-label]="personName(id) + ' später'">↓</button>
+                            </span>
+                        </li>
+                        }
+                    </ol>
+                    }
+                    }
+                    <span class="hint" [class.error]="errors.rotation">{{ errors.rotation || (form.mode === 'rotation'
+                        ? 'Nach jedem Erledigen ist automatisch die nächste Person dran.'
+                        : form.mode === 'open' ? 'Wer gerade Zeit hat.' : '') }}</span>
+                </div>
+            </section>
+
+            <!-- Steps -->
+            <section class="row" aria-labelledby="steps-label">
+                <h4 id="steps-label">Schritte @if (form.checklist.length) { <small>{{ form.checklist.length }}</small> }</h4>
+                <div class="row-body">
+                    @if (form.checklist.length) {
+                    <ul class="steps">
+                        @for (step of form.checklist; track $index; let i = $index; let last = $last) {
+                        <li>
+                            <span class="step-dot" aria-hidden="true">{{ i + 1 }}</span>
+                            <input class="step-text" [name]="'step-' + i" [(ngModel)]="form.checklist[i]" maxlength="200"
+                                [attr.aria-label]="'Schritt ' + (i + 1)" />
+                            <span class="step-actions">
+                                <button type="button" (click)="moveStep(i, -1)" [disabled]="i === 0"
+                                    [attr.aria-label]="'Schritt ' + (i + 1) + ' nach oben'">↑</button>
+                                <button type="button" (click)="moveStep(i, 1)" [disabled]="last"
+                                    [attr.aria-label]="'Schritt ' + (i + 1) + ' nach unten'">↓</button>
+                                <button type="button" (click)="removeStep(i)"
+                                    [attr.aria-label]="'Schritt ' + (i + 1) + ' entfernen'">✕</button>
+                            </span>
+                        </li>
+                        }
+                    </ul>
+                    }
+                    <div class="step-add">
+                        <input #stepInput name="newStep" [(ngModel)]="newStep" placeholder="+ Schritt, z. B. Spiegel putzen"
+                            aria-label="Neuer Schritt" (keydown.enter)="$event.preventDefault(); addStep()" />
+                        @if (newStep.trim()) { <button type="button" class="btn-ghost btn-sm" (click)="addStep()">Hinzufügen</button> }
+                    </div>
+                </div>
+            </section>
+
+            <!-- Duration -->
+            <section class="row" aria-labelledby="dur-label">
+                <h4 id="dur-label">Dauer</h4>
+                <div class="row-body">
+                    <div class="chips" role="group" aria-labelledby="dur-label">
+                        @for (m of DURATIONS; track m) {
+                        <button type="button" class="pick" [class.selected]="!customDuration && form.durationMinutes === m"
+                            [attr.aria-pressed]="!customDuration && form.durationMinutes === m" (click)="setDuration(m)">{{
+                            formatDuration(m) }}</button>
+                        }
+                        <button type="button" class="pick" [class.selected]="customDuration" [attr.aria-pressed]="customDuration"
+                            (click)="customDuration = true">Andere</button>
+                        <button type="button" class="pick" [class.selected]="!customDuration && !form.durationMinutes"
+                            (click)="setDuration(null)">Offen</button>
+                    </div>
+                    @if (customDuration) {
+                    <label class="interval"><input type="number" name="durationMinutes" min="1" max="600" step="5"
+                            [(ngModel)]="form.durationMinutes" /> Minuten</label>
+                    }
+                </div>
+            </section>
+
+            <!-- Colour -->
+            <section class="row" aria-labelledby="color-label">
+                <h4 id="color-label">Farbe</h4>
+                <div class="row-body">
+                    <div class="swatches" role="group" aria-labelledby="color-label">
+                        <button type="button" class="swatch none" [class.selected]="!form.color" (click)="form.color = ''"
+                            aria-label="Keine Farbe" [attr.aria-pressed]="!form.color"></button>
+                        @for (c of COLORS; track c) {
+                        <button type="button" class="swatch" [style.background]="c" [class.selected]="form.color === c"
+                            [attr.aria-pressed]="form.color === c" [attr.aria-label]="'Farbe ' + c"
+                            (click)="form.color = c"></button>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            @if (!isNew) {
+            <!-- Paused -->
+            <section class="row" aria-labelledby="active-label">
+                <h4 id="active-label">Status</h4>
+                <div class="row-body">
+                    <div class="segmented" role="group" aria-labelledby="active-label">
+                        <button type="button" [class.active]="form.isActive" [attr.aria-pressed]="form.isActive"
+                            (click)="form.isActive = true">Aktiv</button>
+                        <button type="button" [class.active]="!form.isActive" [attr.aria-pressed]="!form.isActive"
+                            (click)="form.isActive = false">Pausiert</button>
+                    </div>
+                    @if (!form.isActive) { <span class="hint">Pausiert erscheint nicht im Plan und Kalender, z. B. während
+                        der Ferien.</span> }
+                </div>
+            </section>
+
+            <!-- History -->
+            <section class="row" aria-labelledby="hist-label">
+                <h4 id="hist-label">Verlauf @if (task?.logs?.length) { <small>{{ task!.logs!.length }}</small> }</h4>
+                <div class="row-body">
+                    @if (task?.logs?.length) {
+                    <ul class="history">
+                        @for (log of logs; track log.id) {
+                        <li>
+                            <span class="avatar" [style.background]="personColor(log.doneBy)" aria-hidden="true">{{
+                                initials(log.doneByName) }}</span>
+                            <span class="hist-text"><strong>{{ shortDate(log.doneAt) }}</strong> · {{ log.doneByName ||
+                                'Unbekannt' }}@if (log.note) { <em>„{{ log.note }}“</em> }</span>
+                            <button type="button" class="hist-del" [class.confirm]="confirmLogId === log.id"
+                                (click)="removeLog(log)" [disabled]="saving"
+                                [attr.aria-label]="'Eintrag vom ' + shortDate(log.doneAt) + ' entfernen'">{{
+                                confirmLogId === log.id ? 'Entfernen?' : '✕' }}</button>
+                        </li>
+                        }
+                    </ul>
+                    @if (task!.logs!.length > 5) {
+                    <button type="button" class="more-toggle" (click)="showAllLogs = !showAllLogs">{{ showAllLogs ?
+                        'Weniger anzeigen' : 'Alle ' + task!.logs!.length + ' Einträge' }}</button>
+                    }
+                    } @else {
+                    <span class="hint">Noch nie erledigt.</span>
+                    }
+                </div>
+            </section>
+            }
+        </div>
+
+        <footer class="editor-foot">
+            @if (!isNew) {
+            <button type="button" class="btn-ghost delete" [class.confirm]="confirmDelete" (click)="remove()"
+                [disabled]="saving">{{ confirmDelete ? 'Wirklich löschen?' : 'Löschen' }}</button>
+            }
+            <span class="spacer"></span>
+            @if (!isNew && task?.isActive !== false) {
+            <button type="button" class="btn-secondary" (click)="complete()" [disabled]="saving">✓ Erledigt</button>
+            }
+            <button type="submit" class="btn-primary" [disabled]="saving">{{ saving ? 'Speichert …' : isNew ? 'Erstellen'
+                : 'Speichern' }}</button>
+        </footer>
+    </form>
+</div>

@@ -238,11 +238,17 @@ class Toolbox:
 
     def tool_get_cleaning(self):
         tasks = []
-        for task in CleaningTask.objects.filter(household=self.household, is_active=True).prefetch_related('logs'):
+        members = User.objects.filter(memberships__household=self.household)
+        people = {str(p.id): p.first_name or p.email for p in members}
+        active = CleaningTask.objects.filter(household=self.household, is_active=True)
+        for task in active.select_related('assigned_to').prefetch_related('logs'):
             last = max((log.done_at for log in task.logs.all()), default=None)
             tasks.append({'name': task.name, 'room': task.get_category_display(), 'everyDays': task.interval_days,
                           'lastDone': str(last) if last else None,
-                          'nextDue': str(last + timedelta(days=task.interval_days)) if last else 'jetzt'})
+                          'nextDue': str(last + timedelta(days=task.interval_days)) if last else 'jetzt',
+                          'turn': people.get(str(task.assigned_to_id)),
+                          'rotation': [people[uid] for uid in task.rotation or [] if uid in people],
+                          'steps': task.checklist or [], 'minutes': task.duration_minutes})
         return {'tasks': tasks}
 
     # ── Propose ────────────────────────────────────────────────────────────

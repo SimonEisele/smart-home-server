@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { CleaningLog, CleaningTask } from '../model/cleaning.model';
+import { CleaningCompletion, CleaningLog, CleaningPerson, CleaningTask } from '../model/cleaning.model';
 
 @Injectable({ providedIn: 'root' })
 export class CleaningService {
@@ -38,6 +38,24 @@ export class CleaningService {
     return this.http
       .post<{ data: CleaningLog }>(`${this.base}/${taskId}/logs/`, { doneAt, note: note ?? '' })
       .pipe(map(res => res.data));
+  }
+
+  /** Log a completion (by default today and by me) and get the task back with whose turn is next. */
+  complete(taskId: string, entry: { doneAt: string; doneBy?: string | null; note?: string }): Observable<CleaningCompletion> {
+    return this.http
+      .post<{ data: CleaningLog; task: CleaningTask }>(`${this.base}/${taskId}/logs/`, { note: '', ...entry })
+      .pipe(map(res => ({ log: res.data, task: res.task })));
+  }
+
+  /** Remove a completion; returns the task (the turn goes back if this completion had moved it). */
+  undo(logId: string): Observable<CleaningTask> {
+    return this.http
+      .delete<{ success: boolean; task: CleaningTask }>(`${environment.apiUrl}/cleaning-logs/${logId}/`)
+      .pipe(map(res => res.task));
+  }
+
+  getPeople(): Observable<CleaningPerson[]> {
+    return this.http.get<{ data: CleaningPerson[] }>(`${environment.apiUrl}/calendar/people/`).pipe(map(res => res.data));
   }
 
   deleteLog(logId: string): Observable<void> {

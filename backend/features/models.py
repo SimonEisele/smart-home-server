@@ -354,8 +354,24 @@ class CleaningTask(models.Model):
     interval_days = models.IntegerField(default=7)
     color = models.CharField(max_length=30, blank=True)
     is_active = models.BooleanField(default=True)
+    # Who does it next; with a rotation it moves on to the next person after every completion.
+    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='assigned_cleaning_tasks')
+    rotation = models.JSONField(default=list, blank=True)  # ordered user ids taking turns
+    checklist = models.JSONField(default=list, blank=True)  # steps as plain strings
+    duration_minutes = models.PositiveSmallIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def next_in_rotation(self, after_user_id):
+        """The person after `after_user_id` in the rotation (or after the current one if not part of it)."""
+        order = [str(uid) for uid in self.rotation or []]
+        if len(order) < 2:
+            return self.assigned_to_id
+        key = str(after_user_id) if str(after_user_id) in order else str(self.assigned_to_id)
+        if key not in order:
+            return order[0]
+        return order[(order.index(key) + 1) % len(order)]
 
 
 class CleaningLog(models.Model):
@@ -364,6 +380,9 @@ class CleaningLog(models.Model):
     done_at = models.DateField()
     done_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='cleaning_logs')
     note = models.CharField(max_length=400, blank=True)
+    # Assignment before this completion moved the rotation on, so deleting it (undo) can restore it.
+    rotated = models.BooleanField(default=False)
+    assigned_before = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
 
 

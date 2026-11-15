@@ -14,7 +14,7 @@ import { buildWeek } from '../utils/calendar.utils';
 describe('Calendar tasks and cleaning', () => {
   const calendar = { createEvent: vi.fn(), deleteEvent: vi.fn() };
   const todos = { completeTodo: vi.fn(), updateTodo: vi.fn() };
-  const cleaning = { logCompletion: vi.fn(), deleteLog: vi.fn() };
+  const cleaning = { complete: vi.fn(), undo: vi.fn() };
   let page: CalendarPage;
 
   beforeEach(() => {
@@ -63,14 +63,16 @@ describe('Calendar tasks and cleaning', () => {
     const today = page.weekDays.find(d => d.isToday)!.dateStr;
     const bath: CleaningTask = { id: 'bad', name: 'Bad', category: 'bathroom', intervalDays: 7, isActive: true, lastDoneAt: null };
     page.cleaningTasks = [bath];
-    cleaning.logCompletion.mockReturnValue(of({ id: 'log', task: 'bad', doneAt: today }));
-    cleaning.deleteLog.mockReturnValue(of(undefined));
+    const lisa = { ...bath, lastDoneAt: today, rotation: ['s', 'l'], assignedTo: 'l', assignedToName: 'Lisa Muster' };
+    cleaning.complete.mockReturnValue(of({ log: { id: 'log', task: 'bad', doneAt: today }, task: lisa }));
+    cleaning.undo.mockReturnValue(of(bath));
     page.completeTask(page.tasksForDay(today)[0], today);
-    expect(cleaning.logCompletion).toHaveBeenCalledWith('bad', today);
+    expect(cleaning.complete).toHaveBeenCalledWith('bad', { doneAt: today });
     expect(page.cleaningTasks[0].lastDoneAt).toBe(today);
     expect(page.tasksForDay(today)).toEqual([]);
+    expect(page.undoAction?.message).toContain('als Nächstes Lisa');
     page.undo();
-    expect(cleaning.deleteLog).toHaveBeenCalledWith('log');
+    expect(cleaning.undo).toHaveBeenCalledWith('log');
     expect(page.cleaningTasks[0].lastDoneAt).toBeNull();
   });
 

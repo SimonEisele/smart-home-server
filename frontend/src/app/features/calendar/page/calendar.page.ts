@@ -561,16 +561,15 @@ export class CalendarPage implements OnInit, OnDestroy {
     } else if (item.cleaning && this.cleaningService) {
       const task = item.cleaning, today = localIsoDate(new Date());
       const doneAt = dateStr < today ? dateStr : today;
-      this.cleaningService.logCompletion(task.id, doneAt).pipe(takeUntilDestroyed(this.destroyRef), finalize(done)).subscribe({
-        next: log => {
-          const previous = task.lastDoneAt ?? null;
-          this.cleaningTasks = this.cleaningTasks.map(t => t.id === task.id
-            ? { ...t, logs: [log, ...(t.logs ?? [])], lastDoneAt: previous && previous > log.doneAt ? previous : log.doneAt } : t);
-          this.offerUndo(`„${task.name}“ geputzt`, () => this.cleaningService!.deleteLog(log.id).subscribe(() => {
-            this.cleaningTasks = this.cleaningTasks.map(t => t.id === task.id
-              ? { ...t, logs: (t.logs ?? []).filter(l => l.id !== log.id), lastDoneAt: previous } : t);
+      this.cleaningService.complete(task.id, { doneAt }).pipe(takeUntilDestroyed(this.destroyRef), finalize(done)).subscribe({
+        next: ({ log, task: updated }) => {
+          const replace = (fresh: CleaningTask) => {
+            this.cleaningTasks = this.cleaningTasks.map(t => t.id === fresh.id ? fresh : t);
             this.cdr.markForCheck();
-          }));
+          };
+          replace(updated);
+          const turn = updated.rotation?.length && updated.assignedToName ? ` · als Nächstes ${updated.assignedToName.split(' ')[0]}` : '';
+          this.offerUndo(`„${task.name}“ geputzt${turn}`, () => this.cleaningService!.undo(log.id).subscribe(replace));
         },
         error: () => { this.planningError = 'Die Reinigung konnte nicht gespeichert werden. Bitte erneut versuchen.'; },
       });

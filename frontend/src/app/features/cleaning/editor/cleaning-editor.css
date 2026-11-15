@@ -1,0 +1,163 @@
+/* Additions to the shared task editor styles (todo-editor.css). */
+
+.step-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-card-border);
+  color: var(--color-muted);
+  font-size: .68rem;
+  font-weight: 700;
+}
+
+/* Rotation order */
+.turns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--color-card-border);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.turns li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 2px 6px 2px 12px;
+  border-radius: 9px;
+}
+
+.turns li.current {
+  background: var(--color-accent-soft);
+}
+
+.turns .avatar {
+  margin-left: 0;
+}
+
+.turn-name {
+  flex: 1;
+  min-width: 0;
+  font-size: .88rem;
+}
+
+.turn-now {
+  font-size: .74rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.turn-set {
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  color: var(--color-muted);
+  font-size: .74rem;
+  cursor: pointer;
+}
+
+.turn-set:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.turns .step-actions {
+  opacity: 1;
+}
+
+/* Colours */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12);
+  cursor: pointer;
+}
+
+.swatch.none {
+  background: linear-gradient(135deg, transparent 45%, var(--color-muted) 46%, var(--color-muted) 54%, transparent 55%),
+    var(--color-surface-soft);
+  border-color: var(--color-card-border);
+}
+
+.swatch.selected {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* History */
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+
+.history li:hover {
+  background: var(--color-surface-soft);
+}
+
+.history .avatar {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+.hist-text {
+  flex: 1;
+  min-width: 0;
+  font-size: .86rem;
+}
+
+.hist-text em {
+  margin-left: 6px;
+  color: var(--color-muted);
+}
+
+.hist-del {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-muted);
+  font-size: .78rem;
+  cursor: pointer;
+}
+
+.hist-del:hover {
+  color: var(--color-danger);
+}
+
+.hist-del.confirm {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-weight: 600;
+}
