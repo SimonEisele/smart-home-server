@@ -12,3 +12,11 @@
   - Gibt es die Zutat schon, wird die Zeile direkt damit verknüpft («war schon im Katalog»).
   - Ist sie archiviert, wird «Wieder aktivieren» angeboten.
   - Sonst steht der Grund direkt im Hinweis bei der Zutat statt oben im Fenster.
+
+## Ursache auf dem Pi
+- In der Pi-Datenbank hatte `features_ingredient` eine Spalte `image_url` (NOT NULL), die kein Modell und keine
+  Migration kennt. Jedes Neuanlegen scheiterte mit «NOT NULL constraint failed: features_ingredient.image_url».
+- Migration `0033_drop_stray_ingredient_image_url` entfernt die Spalte, falls vorhanden. Auf neuem SQLite direkt,
+  auf älterem über einen Tabellen-Neuaufbau. Datenbanken ohne die Spalte bleiben unverändert.
+- Neu: `python manage.py check_schema` vergleicht alle Tabellen mit den Modellen und meldet solche Abweichungen.
+  Der Befehl ändert nichts an der Datenbank.
