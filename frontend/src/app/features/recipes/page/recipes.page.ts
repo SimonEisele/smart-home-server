@@ -25,6 +25,7 @@ import {
 } from '../model/recipes.model';
 import { RecipesService } from '../service/recipes.service';
 import { apiErrorMessage } from '../../../shared/utils/api-error';
+import { uuid } from '../../../shared/utils/uuid';
 import { parseIngredientList, parseStepList } from '../utils/recipe-import';
 
 type RecipeForm = Partial<Recipe> & {
@@ -345,7 +346,7 @@ export class RecipesPage implements OnInit {
   addIngredient(sectionId?: number): void {
     this.form.ingredients = [
       ...this.form.ingredients,
-      { id: crypto.randomUUID(), name: '', quantityPerPerson: undefined, unit: '', sectionId },
+      { id: uuid(), name: '', quantityPerPerson: undefined, unit: '', sectionId },
     ];
     this.ingredientPrevNames = [...this.ingredientPrevNames, ''];
   }
@@ -384,7 +385,7 @@ export class RecipesPage implements OnInit {
     if (next >= this.form.ingredients.length || this.form.ingredients[next].name.trim()) {
       const ingredients = [...this.form.ingredients];
       ingredients.splice(next, 0, {
-        id: crypto.randomUUID(),
+        id: uuid(),
         name: '',
         quantityPerPerson: undefined,
         unit: '',
@@ -418,7 +419,7 @@ export class RecipesPage implements OnInit {
           (i) => ingredientKey(i.name) === ingredientKey(item.name),
         );
         return {
-          id: crypto.randomUUID(),
+          id: uuid(),
           name: match?.name ?? item.name,
           ingredientId: match?.id,
           quantityPerPerson: item.quantity ?? undefined,
@@ -505,7 +506,7 @@ export class RecipesPage implements OnInit {
     if (!row) {
       const match = this.catalogMatch(name);
       row = {
-        id: crypto.randomUUID(),
+        id: uuid(),
         name: match?.name ?? name,
         ingredientId: match?.id,
         quantityPerPerson: quantity,
@@ -726,7 +727,7 @@ export class RecipesPage implements OnInit {
   /** Starts a new recipe prefilled with a copy of the one being edited. */
   duplicate(): void {
     if (this.saving || this.modalMode !== 'edit') return;
-    const ids = new Map(this.form.ingredients.map((i) => [i.id, crypto.randomUUID()]));
+    const ids = new Map(this.form.ingredients.map((i) => [i.id, uuid()]));
     const { id: _id, createdAt: _c, updatedAt: _u, ...copy } = this.form as RecipeForm & { id?: string };
     this.form = {
       ...copy,
@@ -762,7 +763,7 @@ export class RecipesPage implements OnInit {
       sideNotes: (recipe.sideNotes ?? []).map((n) => ({ ...n })),
       ingredients: (recipe.ingredients ?? []).map((i) => ({
         ...i,
-        id: i.id ?? crypto.randomUUID(),
+        id: i.id ?? uuid(),
       })),
       steps: (recipe.steps ?? []).map((s) => ({
         order: s.order,

@@ -40,6 +40,7 @@ export class Navbar {
       { path: '/ingredients', label: 'Zutaten', icon: 'ingredients.svg' },
     ] },
     { label: 'Mehr', items: [
+      { path: '/fitness', label: 'Fitness', icon: 'fitness.svg' },
       { path: '/weather', label: 'Wetter', icon: 'weather.svg' },
       { path: '/assistant', label: 'Assistent', icon: 'assistant.svg' },
     ] },

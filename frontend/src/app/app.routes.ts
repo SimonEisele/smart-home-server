@@ -15,6 +15,7 @@ export const routes: Routes = [
   { path: 'ingredients', loadComponent: () => import('./features/ingredients/page/ingredients.page').then(m => m.IngredientsPage), canActivate: [authGuard] },
   { path: 'shoppinglist', loadComponent: () => import('./features/shoppinglist/page/shoppinglist.page').then(m => m.ShoppinglistPage), canActivate: [authGuard] },
   { path: 'calendar', loadComponent: () => import('./features/calendar/page/calendar.page').then(m => m.CalendarPage), canActivate: [authGuard] },
+  { path: 'fitness', loadComponent: () => import('./features/fitness/page/fitness.page').then(m => m.FitnessPage), canActivate: [authGuard] },
   { path: 'cleaning', loadComponent: () => import('./features/cleaning/page/cleaning.page').then(m => m.CleaningPage), canActivate: [authGuard] },
   { path: 'assistant', loadComponent: () => import('./features/assistant/assistant.page').then(m => m.AssistantPage), canActivate: [authGuard] },
   { path: 'account', loadComponent: () => import('./core/account-manager/account-manager').then(m => m.AccountManager), canActivate: [authGuard] },

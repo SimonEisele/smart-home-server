@@ -41,6 +41,14 @@ from .views import (
     TodoListCreateView,
     UserMealAttendanceView,
 )
+from .views.fitness import (
+    ExerciseTypeListCreateView,
+    FitnessProfileView,
+    GymMachineDetailView,
+    GymMachineListCreateView,
+    WorkoutDetailView,
+    WorkoutListCreateView,
+)
 
 urlpatterns = [
     path('ingredients/', IngredientListView.as_view()),
@@ -83,4 +91,10 @@ urlpatterns = [
     path('cleaning-tasks/<uuid:id>/', CleaningTaskDetailView.as_view()),
     path('cleaning-tasks/<uuid:task_id>/logs/', CleaningLogListCreateView.as_view()),
     path('cleaning-logs/<uuid:id>/', CleaningLogDetailView.as_view()),
+    path('fitness/exercise-types/', ExerciseTypeListCreateView.as_view()),
+    path('fitness/machines/', GymMachineListCreateView.as_view()),
+    path('fitness/machines/<int:id>/', GymMachineDetailView.as_view()),
+    path('fitness/profile/', FitnessProfileView.as_view()),
+    path('fitness/workouts/', WorkoutListCreateView.as_view()),
+    path('fitness/workouts/<uuid:id>/', WorkoutDetailView.as_view()),
 ]

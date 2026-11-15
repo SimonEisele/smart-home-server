@@ -1,0 +1,201 @@
+<div class="editor-backdrop" (click)="close()">
+    <form class="editor wide" (click)="$event.stopPropagation()" (ngSubmit)="save()" appDialog (dialogDismiss)="close()"
+        [attr.aria-label]="isNew ? 'Neues Training' : 'Training bearbeiten'">
+        <header class="editor-head">
+            <span class="editor-kind">{{ isNew ? 'Neues Training' : 'Training' }}</span>
+            @if (date) { <span class="editor-meta">{{ formatDay(date) }}</span> }
+            <button type="button" class="editor-close" (click)="close()" aria-label="Schliessen"
+                [disabled]="saving">✕</button>
+        </header>
+
+        <div class="editor-body">
+            @if (formError) { <div class="form-feedback" role="alert">{{ formError }}</div> }
+
+            <!-- When & where -->
+            <section class="row" aria-labelledby="w-when">
+                <h4 id="w-when">Wann</h4>
+                <div class="row-body">
+                    <div class="chips">
+                        <button type="button" class="pick" [class.selected]="date === today" (click)="date = today">Heute</button>
+                        <button type="button" class="pick" [class.selected]="date === yesterday"
+                            (click)="date = yesterday">Gestern</button>
+                        <input class="pick-input" type="date" name="date" [(ngModel)]="date" [max]="today"
+                            aria-label="Datum" data-no-autofocus />
+                    </div>
+                    @if (dateError) { <span class="hint error" role="alert">{{ dateError }}</span> }
+                    <div class="inline-fields">
+                        <label>Dauer<span class="unit-input"><input type="number" name="duration" min="1" max="600"
+                                    inputmode="numeric" [(ngModel)]="durationMinutes" placeholder="–" data-no-autofocus />
+                                min</span></label>
+                        <label class="grow">Studio<input name="gym" [(ngModel)]="gym" maxlength="80" list="gym-options"
+                                placeholder="z. B. Activ Fitness Bern" data-no-autofocus /></label>
+                        <datalist id="gym-options">@for (g of gyms; track g) {<option [value]="g"></option>}</datalist>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Exercises -->
+            <section class="row exercises" aria-labelledby="w-ex">
+                <h4 id="w-ex">Übungen @if (entries.length) { <small>{{ entries.length }}</small> }</h4>
+                <div class="row-body">
+                    @for (entry of entries; track entry.key; let i = $index; let last = $last) {
+                    <article class="entry" [class.cardio]="isCardio(entry)">
+                        <header class="entry-head">
+                            <strong>{{ entry.exerciseName }}</strong>
+                            <select class="machine-select" [name]="'machine-' + entry.key"
+                                [ngModel]="entry.newMachine ? 'new' : (entry.machine ?? '')"
+                                (ngModelChange)="changeMachine(entry, $event)"
+                                [attr.aria-label]="entry.exerciseName + ': Gerät'">
+                                <option value="">Ohne bestimmtes Gerät</option>
+                                @for (m of machinesFor(entry.exerciseType); track m.id) {
+                                <option [value]="m.id">{{ machineLabel(m) }}@if (m.weightFactor !== 1) { (×{{ m.weightFactor }}) }</option>
+                                }
+                                <option value="new">+ Neues Gerät …</option>
+                            </select>
+                            <span class="step-actions">
+                                <button type="button" (click)="moveEntry(i, -1)" [disabled]="i === 0"
+                                    [attr.aria-label]="entry.exerciseName + ' nach oben'">↑</button>
+                                <button type="button" (click)="moveEntry(i, 1)" [disabled]="last"
+                                    [attr.aria-label]="entry.exerciseName + ' nach unten'">↓</button>
+                                <button type="button" (click)="removeEntry(i)"
+                                    [attr.aria-label]="entry.exerciseName + ' entfernen'">✕</button>
+                            </span>
+                        </header>
+
+                        @if (entry.newMachine) {
+                        <div class="new-machine">
+                            <label>Hersteller<input [name]="'mf-' + entry.key" list="manufacturers" maxlength="60"
+                                    [(ngModel)]="entry.newMachine.manufacturer" placeholder="z. B. Technogym" /></label>
+                            <label>Modell<input [name]="'md-' + entry.key" maxlength="80"
+                                    [(ngModel)]="entry.newMachine.model" placeholder="optional" /></label>
+                            <label>Faktor<input [name]="'wf-' + entry.key" type="number" min="0.1" max="10" step="0.05"
+                                    [(ngModel)]="entry.newMachine.weightFactor" /></label>
+                            <button type="button" class="btn-primary btn-sm" (click)="createMachine(entry)"
+                                [disabled]="!entry.newMachine.manufacturer.trim() || saving">Gerät speichern</button>
+                            <span class="hint">Faktor 1 = Referenz. Zeigt dieses Gerät z. B. 50 kg, die sich wie 60 kg an
+                                deinem Referenzgerät anfühlen, Faktor 1.2. Lässt sich später unter «Geräte» anpassen.</span>
+                        </div>
+                        }
+
+                        @if (previous(entry); as prev) {
+                        <span class="last-time">Letztes Mal ({{ formatDay(prev.date) }}): {{ entrySummary(prev.entry) }}</span>
+                        }
+
+                        @if (isCardio(entry)) {
+                        <div class="cardio-fields">
+                            <label>Dauer<span class="unit-input"><input type="number" min="0" step="any" inputmode="decimal"
+                                        data-no-autofocus [name]="'cd-' + entry.key" [(ngModel)]="entry.durationMinutes" /> min</span></label>
+                            <label>Distanz<span class="unit-input"><input type="number" min="0" step="any"
+                                        inputmode="decimal" data-no-autofocus [name]="'ck-' + entry.key" [(ngModel)]="entry.distanceKm" />
+                                    km</span></label>
+                            <label>Stufe<input data-no-autofocus [name]="'cl-' + entry.key" maxlength="20" [(ngModel)]="entry.level"
+                                    placeholder="z. B. 8" /></label>
+                        </div>
+                        } @else {
+                        <ol class="sets">
+                            @for (set of entry.sets; track $index; let j = $index) {
+                            <li>
+                                <span class="set-no" aria-hidden="true">{{ j + 1 }}</span>
+                                <label><span class="sr-only">Satz {{ j + 1 }} Wiederholungen</span><input type="number" min="0"
+                                        max="1000" inputmode="numeric" data-no-autofocus [name]="'r-' + entry.key + '-' + j"
+                                        [(ngModel)]="set.reps" placeholder="Wdh." /></label>
+                                <span class="times" aria-hidden="true">×</span>
+                                <span class="weight">
+                                    <button type="button" class="bump" (click)="bump(set, -2.5)"
+                                        [attr.aria-label]="'Satz ' + (j + 1) + ' 2.5 kg weniger'">−</button>
+                                    <label><span class="sr-only">Satz {{ j + 1 }} Gewicht in kg</span><input type="number"
+                                            min="0" step="any" inputmode="decimal" data-no-autofocus [name]="'w-' + entry.key + '-' + j"
+                                            [(ngModel)]="set.weight" placeholder="kg" /></label>
+                                    <button type="button" class="bump" (click)="bump(set, 2.5)"
+                                        [attr.aria-label]="'Satz ' + (j + 1) + ' 2.5 kg mehr'">+</button>
+                                </span>
+                                <button type="button" class="set-del" (click)="removeSet(entry, j)"
+                                    [attr.aria-label]="'Satz ' + (j + 1) + ' entfernen'">✕</button>
+                            </li>
+                            }
+                        </ol>
+                        <button type="button" class="btn-ghost btn-sm add-set" (click)="addSet(entry)">+ Satz</button>
+                        }
+                    </article>
+                    }
+
+                    @if (pickerOpen) {
+                    <div class="picker">
+                        <input name="pickerQuery" [(ngModel)]="pickerQuery" placeholder="Übung oder Gerät suchen …"
+                            aria-label="Übung oder Gerät suchen" />
+                        @if (recentMachines.length) {
+                        <div class="picker-group">
+                            <span class="chips-label">Zuletzt verwendet</span>
+                            <div class="chips">
+                                @for (m of recentMachines; track m.id) {
+                                <button type="button" class="pick" (click)="addMachine(m)">{{ m.exerciseName }}
+                                    <small>{{ machineLabel(m) }}</small></button>
+                                }
+                            </div>
+                        </div>
+                        }
+                        @for (group of typeGroups; track group.label) {
+                        <div class="picker-group">
+                            <span class="chips-label">{{ group.label }}</span>
+                            <div class="chips">
+                                @for (t of group.types; track t.id) {
+                                <button type="button" class="pick" (click)="addType(t)">{{ t.name }}</button>
+                                }
+                            </div>
+                        </div>
+                        }
+                        @if (!typeGroups.length && !recentMachines.length) {
+                        <span class="hint">Nichts gefunden. Neue Übungen legst du unter «Geräte» an.</span>
+                        }
+                        @if (entries.length) {
+                        <button type="button" class="btn-ghost btn-sm" (click)="pickerOpen = false">Fertig</button>
+                        }
+                    </div>
+                    } @else {
+                    <button type="button" class="pick add add-exercise" (click)="pickerOpen = true">+ Übung</button>
+                    }
+                </div>
+            </section>
+
+            <!-- Calories -->
+            <section class="row" aria-labelledby="w-kcal">
+                <h4 id="w-kcal">Kalorien</h4>
+                <div class="row-body">
+                    <div class="inline-fields">
+                        <label>Eigener Wert<span class="unit-input"><input type="number" name="calories" min="0"
+                                    max="10000" inputmode="numeric" [(ngModel)]="calories" [placeholder]="'≈ ' + estimate"
+                                    data-no-autofocus /> kcal</span></label>
+                        <label>Körpergewicht<span class="unit-input"><input type="number" name="weight" min="20" max="400"
+                                    step="0.1" inputmode="decimal" [(ngModel)]="weight" placeholder="75"
+                                    data-no-autofocus /> kg</span></label>
+                    </div>
+                    <span class="hint">
+                        @if (calories != null) { Dein Wert zählt. Geschätzt wären ≈ {{ estimate }} kcal. }
+                        @else { Geschätzt ≈ <strong>{{ estimate }} kcal</strong> aus Übungen, Dauer und Körpergewicht.
+                        Einen Wert von Uhr oder Gerät hier eintragen, um ihn zu ersetzen. }
+                    </span>
+                </div>
+            </section>
+
+            <section class="row" aria-labelledby="w-notes">
+                <h4 id="w-notes">Notizen</h4>
+                <div class="row-body">
+                    <textarea name="notes" rows="2" [(ngModel)]="notes" aria-labelledby="w-notes" data-no-autofocus
+                        placeholder="z. B. Schulter etwas schonen"></textarea>
+                </div>
+            </section>
+        </div>
+
+        <datalist id="manufacturers">@for (m of MANUFACTURERS; track m) {<option [value]="m"></option>}</datalist>
+
+        <footer class="editor-foot">
+            @if (!isNew) {
+            <button type="button" class="btn-ghost delete" [class.confirm]="confirmDelete" (click)="remove()"
+                [disabled]="saving">{{ confirmDelete ? 'Wirklich löschen?' : 'Löschen' }}</button>
+            }
+            <span class="spacer"></span>
+            <button type="button" class="btn-secondary" (click)="close()" [disabled]="saving">Abbrechen</button>
+            <button type="submit" class="btn-primary" [disabled]="saving">{{ saving ? 'Speichert …' : 'Speichern' }}</button>
+        </footer>
+    </form>
+</div>

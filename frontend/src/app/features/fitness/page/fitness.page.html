@@ -1,0 +1,242 @@
+<div class="fit-page app-page">
+    <header class="page-header">
+        <div class="page-heading">
+            <p class="eyebrow">Persönlich · nur für dich sichtbar</p>
+            <h1 class="page-title">Fitness</h1>
+            <p class="page-subtitle">
+                @if (workouts.length) { {{ workouts.length }} Trainings erfasst · zuletzt {{ lastWorkoutText }} }
+                @else { Trainings, Geräte und Fortschritt an einem Ort. }
+            </p>
+        </div>
+        <div class="page-actions">
+            <button class="btn-primary" (click)="openAdd()">+ Training</button>
+        </div>
+    </header>
+
+    @if (loadError) {
+    <div class="form-feedback" role="alert">{{ loadError }} <button (click)="load()">Erneut versuchen</button></div>
+    }
+    @if (actionError) { <div class="form-feedback" role="alert">{{ actionError }}</div> }
+
+    @if (workouts.length) {
+    <section class="stats" aria-label="Überblick">
+        <div class="stat"><strong>{{ monthCount }}</strong><span>Trainings diesen Monat</span></div>
+        <div class="stat"><strong>{{ formatNumber(weekCalories, 0) }}</strong><span>kcal diese Woche</span></div>
+        <div class="stat"><strong>{{ perWeek }}</strong><span>pro Woche (Ø 8 Wochen)</span></div>
+        <div class="stat"><strong>{{ records.length }}</strong><span>Übungen mit Bestwert</span></div>
+    </section>
+    }
+
+    <div class="segmented tabs" role="tablist" aria-label="Bereich">
+        <button role="tab" [class.active]="tab === 'workouts'" [attr.aria-selected]="tab === 'workouts'"
+            (click)="setTab('workouts')">Trainings</button>
+        <button role="tab" [class.active]="tab === 'progress'" [attr.aria-selected]="tab === 'progress'"
+            (click)="setTab('progress')">Fortschritt</button>
+        <button role="tab" [class.active]="tab === 'machines'" [attr.aria-selected]="tab === 'machines'"
+            (click)="setTab('machines')">Geräte</button>
+    </div>
+
+    @if (loading && !workouts.length && !types.length) { <p class="muted" role="status">Wird geladen…</p> }
+
+    <!-- ── Trainings ─────────────────────────────────────────────── -->
+    @if (tab === 'workouts' && !loading) {
+    @if (!workouts.length) {
+    <div class="empty">
+        <p class="empty-title">Noch kein Training erfasst.</p>
+        <p>Trage nach dem Gym deine Geräte mit Sätzen, Wiederholungen und Gewicht ein. Beim nächsten Mal schlägt die
+            App die Werte vom letzten Training vor.</p>
+        <button class="btn-primary" (click)="openAdd()">+ Erstes Training</button>
+    </div>
+    }
+    @for (month of months; track month.label) {
+    <section class="month" [attr.aria-label]="month.label">
+        <h2 class="group-title">{{ month.label }} <span class="group-count">{{ month.workouts.length }}</span></h2>
+        <ul class="workout-list">
+            @for (w of month.workouts; track w.id) {
+            @let kcal = calories(w);
+            <li class="workout">
+                <button class="workout-open" (click)="openEdit(w)" [attr.aria-label]="'Training vom ' + dayLabel(w.date) + ' öffnen'">
+                    <span class="w-date"><strong>{{ dayLabel(w.date) }}</strong>@if (w.gym) { <small>{{ w.gym }}</small> }</span>
+                    <span class="w-entries">
+                        @for (e of w.entries; track $index) {
+                        <span class="e-chip" [class.cardio]="e.kind === 'cardio'"><b>{{ e.exerciseName }}</b>@if (entrySummary(e)) { <i>{{ entrySummary(e) }}</i> }</span>
+                        }
+                        @if (!w.entries.length) { <span class="muted">Keine Übungen</span> }
+                    </span>
+                    <span class="w-meta">
+                        @if (w.durationMinutes) { <span>{{ w.durationMinutes }} min</span> }
+                        <span class="kcal" [title]="kcal.estimated ? 'Geschätzt' : 'Eigener Wert'">{{ kcal.estimated ? '≈ ' : '' }}{{
+                            formatNumber(kcal.value, 0) }} kcal</span>
+                    </span>
+                </button>
+            </li>
+            }
+        </ul>
+    </section>
+    }
+    }
+
+    <!-- ── Fortschritt ───────────────────────────────────────────── -->
+    @if (tab === 'progress' && !loading) {
+    @if (!usedTypes.length) {
+    <div class="empty"><p class="empty-title">Noch keine Daten.</p><p>Sobald du Trainings erfasst hast, siehst du hier
+            deinen Verlauf pro Gerät.</p></div>
+    } @else {
+    <section class="fit-card">
+        <div class="chips exercise-chips" role="group" aria-label="Übung">
+            @for (t of usedTypes; track t.id) {
+            <button class="chip" [class.active]="t.id === exerciseId" [attr.aria-pressed]="t.id === exerciseId"
+                (click)="selectExercise(t.id)">{{ t.name }}</button>
+            }
+        </div>
+        <div class="chart-controls">
+            <div class="segmented" role="group" aria-label="Messgrösse">
+                @for (m of metrics; track m) {
+                <button [class.active]="metric === m" [attr.aria-pressed]="metric === m" (click)="metric = m">{{
+                    METRIC_LABELS[m].label }}</button>
+                }
+            </div>
+            @if (exercise?.kind !== 'cardio') {
+            @if (machineCount > 1) {
+            <label class="toggle"><input type="checkbox" [(ngModel)]="perMachine" /> Geräte vergleichen</label>
+            }
+            <label class="toggle" [title]="hasFactors ? '' : 'Unter «Geräte» kannst du Faktoren pro Hersteller setzen'">
+                <input type="checkbox" [(ngModel)]="normalized" [disabled]="!hasFactors" /> Mit Hersteller-Faktor</label>
+            }
+        </div>
+        <h2 class="chart-title">{{ exercise?.name }} · {{ METRIC_LABELS[metric].label }} @if (normalized) { <small>(umgerechnet)</small> }</h2>
+        @if (chartSeries.length) {
+        <app-line-chart [series]="chartSeries" [unit]="METRIC_LABELS[metric].unit"
+            [ariaLabel]="(exercise?.name ?? '') + ': ' + METRIC_LABELS[metric].label" />
+        } @else { <p class="muted">Für diese Messgrösse fehlen Werte.</p> }
+    </section>
+
+    <div class="progress-grid">
+        <section class="fit-card">
+            <div class="card-head">
+                <h2 class="chart-title">Letzte 12 Wochen</h2>
+                <div class="segmented small" role="group" aria-label="Wochenwert">
+                    <button [class.active]="weekMetric === 'workouts'" (click)="weekMetric = 'workouts'">Trainings</button>
+                    <button [class.active]="weekMetric === 'calories'" (click)="weekMetric = 'calories'">kcal</button>
+                    <button [class.active]="weekMetric === 'minutes'" (click)="weekMetric = 'minutes'">Minuten</button>
+                </div>
+            </div>
+            <app-bar-chart [bars]="weekBars" [unit]="weekUnit" [ariaLabel]="'Pro Woche: ' + weekUnit" />
+        </section>
+
+        <section class="fit-card records" aria-labelledby="rec-title">
+            <h2 class="chart-title" id="rec-title">Bestwerte</h2>
+            <p class="muted fine">Geschätztes Maximum für 1 Wiederholung, mit Hersteller-Faktor.</p>
+            <ul>
+                @for (r of records; track r.exerciseType) {
+                <li>
+                    <button (click)="selectExercise(r.exerciseType)">
+                        <span><b>{{ r.name }}</b><small>{{ r.reps }} × {{ formatNumber(r.weight) }} kg@if (r.machineLabel) { ·
+                                {{ r.machineLabel }} } · {{ dayLabel(r.date) }}</small></span>
+                        <strong>{{ formatNumber(r.value, 0) }} kg</strong>
+                    </button>
+                </li>
+                }
+            </ul>
+        </section>
+    </div>
+    }
+    }
+
+    <!-- ── Geräte ────────────────────────────────────────────────── -->
+    @if (tab === 'machines' && !loading) {
+    @if (notice) { <p class="notice" role="status">{{ notice }}</p> }
+    <div class="machines-grid">
+        <section class="fit-card">
+            <h2 class="chart-title">Gerät hinzufügen</h2>
+            <form class="machine-form" (ngSubmit)="addMachine()">
+                <label>Übung<select name="mType" [(ngModel)]="machineDraft.exerciseType" required>
+                        <option [ngValue]="null" disabled>Bitte wählen</option>
+                        @for (t of types; track t.id) { <option [ngValue]="t.id">{{ t.name }}</option> }
+                    </select></label>
+                <label>Hersteller<input name="mMf" list="fit-manufacturers" maxlength="60"
+                        [(ngModel)]="machineDraft.manufacturer" placeholder="z. B. Gym80" /></label>
+                <label>Modell<input name="mModel" maxlength="80" [(ngModel)]="machineDraft.model"
+                        placeholder="optional, z. B. Sygnum" /></label>
+                <label>Faktor<input name="mFactor" type="number" min="0.1" max="10" step="0.05"
+                        [(ngModel)]="machineDraft.weightFactor" /></label>
+                <button type="submit" class="btn-primary"
+                    [disabled]="saving || !machineDraft.exerciseType || !machineDraft.manufacturer.trim()">Hinzufügen</button>
+            </form>
+            <datalist id="fit-manufacturers">@for (m of MANUFACTURERS; track m) {<option [value]="m"></option>}</datalist>
+            <p class="muted fine">
+                <b>Faktor:</b> macht Geräte verschiedener Hersteller vergleichbar. Dein Hauptgerät bleibt bei 1. Fühlen
+                sich 50 kg an einem anderen Gerät an wie 60 kg an deinem Hauptgerät, setze dort 1.2. Die Grafiken
+                rechnen mit «Mit Hersteller-Faktor» alles auf dein Hauptgerät um.
+            </p>
+            @if (!showTypeForm) {
+            <button class="btn-ghost btn-sm" (click)="showTypeForm = true">+ Eigene Übung</button>
+            } @else {
+            <form class="machine-form" (ngSubmit)="addType()">
+                <label>Name<input name="tName" maxlength="80" [(ngModel)]="typeDraft.name" placeholder="z. B. Hip Thrust" /></label>
+                <label>Art<select name="tKind" [(ngModel)]="typeDraft.kind">
+                        <option value="strength">Kraft</option>
+                        <option value="cardio">Cardio</option>
+                    </select></label>
+                @if (typeDraft.kind === 'strength') {
+                <label>Muskelgruppe<select name="tMuscle" [(ngModel)]="typeDraft.muscleGroup">
+                        @for (m of MUSCLES; track m[0]) { @if (m[0] !== 'cardio') { <option [value]="m[0]">{{ m[1] }}</option> } }
+                    </select></label>
+                }
+                <button type="submit" class="btn-primary" [disabled]="saving || !typeDraft.name.trim()">Übung anlegen</button>
+                <button type="button" class="btn-ghost" (click)="showTypeForm = false">Abbrechen</button>
+            </form>
+            }
+        </section>
+
+        <section class="fit-card">
+            <h2 class="chart-title">Mein Profil</h2>
+            <form class="machine-form" (ngSubmit)="saveProfile()">
+                <label>Körpergewicht<span class="unit-input"><input name="pWeight" type="number" min="20" max="400"
+                            step="0.1" [(ngModel)]="profile.bodyWeightKg" placeholder="75" /> kg</span></label>
+                <label>Standard-Studio<input name="pGym" maxlength="80" [(ngModel)]="profile.defaultGym"
+                        placeholder="z. B. Activ Fitness Bern" /></label>
+                <button type="submit" class="btn-secondary" [disabled]="saving">Speichern</button>
+            </form>
+            <p class="muted fine">Das Körpergewicht wird für die Kalorienschätzung gebraucht (ohne Angabe 75 kg). Jedes
+                Training merkt sich das Gewicht vom Tag, spätere Änderungen verändern alte Trainings nicht.</p>
+        </section>
+    </div>
+
+    <section class="fit-card">
+        <h2 class="chart-title">Gerätekatalog <small>für alle in der App</small></h2>
+        @if (!machineGroups.length) { <p class="muted">Noch keine Geräte. Füge oben dein erstes hinzu oder direkt im
+            Training über «+ Neues Gerät».</p> }
+        @for (g of machineGroups; track g.type.id) {
+        <div class="machine-group">
+            <h3>{{ g.type.name }} <small>{{ MUSCLE_LABELS[g.type.muscleGroup] }}</small></h3>
+            <ul>
+                @for (m of g.machines; track m.id) {
+                @let best = machineBest(m);
+                <li>
+                    <span class="m-name"><b>{{ m.manufacturer }}</b> {{ m.model }}</span>
+                    <span class="m-best">@if (best) { bestes: {{ formatNumber(best.raw) }} kg@if (m.weightFactor !== 1) { ≙ {{
+                        formatNumber(best.normalized) }} kg } }</span>
+                    @if (g.type.kind !== 'cardio') {
+                    <label class="m-factor">Faktor<input type="number" min="0.1" max="10" step="0.05"
+                            [ngModel]="m.weightFactor" (change)="updateFactor(m, $any($event.target).valueAsNumber)"
+                            [attr.aria-label]="'Faktor ' + machineLabel(m)" /></label>
+                    }
+                    @if (!usedMachine(m)) {
+                    <button class="m-del" [class.confirm]="confirmMachineId === m.id" (click)="deleteMachine(m)"
+                        [attr.aria-label]="machineLabel(m) + ' löschen'">{{ confirmMachineId === m.id ? 'Löschen?' : '✕' }}</button>
+                    } @else { <span class="m-del-placeholder"></span> }
+                </li>
+                }
+            </ul>
+        </div>
+        }
+    </section>
+    }
+</div>
+
+@if (editing !== undefined) {
+<app-workout-editor [workout]="editing" [workouts]="workouts" [types]="types" [machines]="machines"
+    [bodyWeightKg]="profile.bodyWeightKg" [defaultGym]="profile.defaultGym" (saved)="onSaved($event)"
+    (deleted)="onDeleted($event)" (machineCreated)="onMachineCreated($event)" (closed)="editing = undefined" />
+}

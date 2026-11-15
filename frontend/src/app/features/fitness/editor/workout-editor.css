@@ -1,0 +1,235 @@
+/* Additions to the shared editor styles (todo-editor.css). */
+
+.editor.wide {
+  width: min(720px, 100%);
+}
+
+.inline-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.inline-fields label,
+.cardio-fields label,
+.new-machine label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: .74rem;
+  color: var(--color-muted);
+}
+
+.inline-fields .grow {
+  flex: 1;
+  min-width: 180px;
+}
+
+.unit-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: .84rem;
+}
+
+.unit-input input {
+  width: 96px;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-card-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-surface-soft) 60%, transparent);
+}
+
+.entry-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.entry-head strong {
+  font-size: .95rem;
+}
+
+.machine-select[class] {
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
+  min-height: 32px;
+  padding: 2px 8px;
+  font-size: .82rem;
+}
+
+.entry-head .step-actions {
+  margin-left: auto;
+  opacity: 1;
+}
+
+.last-time {
+  font-size: .76rem;
+  color: var(--color-muted);
+}
+
+.sets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sets li {
+  display: grid;
+  grid-template-columns: 22px 76px 12px auto 30px;
+  align-items: center;
+  gap: 8px;
+}
+
+.set-no {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  font-size: .7rem;
+  color: var(--color-muted);
+}
+
+.sets input {
+  width: 100%;
+  min-height: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.times {
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.weight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.weight label {
+  width: 84px;
+}
+
+.bump,
+.set-del {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--color-card-border);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.bump:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent-border);
+}
+
+.set-del {
+  border-color: transparent;
+  background: none;
+}
+
+.set-del:hover {
+  color: var(--color-danger);
+}
+
+.add-set {
+  align-self: flex-start;
+}
+
+.cardio-fields,
+.new-machine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.cardio-fields input[type=number] {
+  width: 90px;
+}
+
+.cardio-fields label:last-child input {
+  width: 90px;
+}
+
+.new-machine {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--color-accent-border);
+}
+
+.new-machine input[type=number] {
+  width: 80px;
+}
+
+.new-machine .hint {
+  flex-basis: 100%;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-accent-border);
+  background: color-mix(in srgb, var(--color-accent-soft) 40%, transparent);
+}
+
+.picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.picker .btn-ghost {
+  align-self: flex-end;
+}
+
+.add-exercise {
+  align-self: flex-start;
+}
+
+@media (max-width: 599px) {
+  .sets li {
+    grid-template-columns: 22px 64px 10px 1fr 30px;
+    gap: 6px;
+  }
+
+  .weight label {
+    flex: 1;
+    width: auto;
+    min-width: 56px;
+  }
+
+  .machine-select[class] {
+    max-width: none;
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .unit-input input {
+    width: 80px;
+  }
+}

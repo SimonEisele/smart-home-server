@@ -552,3 +552,84 @@ class CalendarFeedToken(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['user', 'household'], name='one_feed_token_per_member')]
+
+
+# Fitness: a shared catalog of exercise types and gym machines, personal workouts per account.
+class ExerciseType(models.Model):
+    """What is trained, e.g. "Beinpresse" or "Laufband" – independent of the manufacturer."""
+    KIND_CHOICES = [('strength', 'Kraft'), ('cardio', 'Cardio')]
+    MUSCLE_CHOICES = [
+        ('beine', 'Beine'), ('brust', 'Brust'), ('ruecken', 'Rücken'), ('schultern', 'Schultern'),
+        ('arme', 'Arme'), ('bauch', 'Bauch & Rumpf'), ('ganzkoerper', 'Ganzkörper'), ('cardio', 'Ausdauer'),
+    ]
+
+    name = models.CharField(max_length=80, unique=True)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default='strength')
+    muscle_group = models.CharField(max_length=20, choices=MUSCLE_CHOICES, default='ganzkoerper')
+    # Metabolic equivalent for the calorie estimate (kcal ≈ MET × body weight in kg × hours).
+    met = models.FloatField(default=5.0)
+
+    class Meta:
+        ordering = ['kind', 'name']
+
+
+class GymMachine(models.Model):
+    """A concrete machine, e.g. Technogym Selection 700 Beinpresse.
+
+    `weight_factor` converts its displayed weight to the reference scale of the exercise type
+    (reference kg = machine kg × factor), so machines of different makers become comparable.
+    """
+    exercise_type = models.ForeignKey(ExerciseType, on_delete=models.CASCADE, related_name='machines')
+    manufacturer = models.CharField(max_length=60)
+    model = models.CharField(max_length=80, blank=True)
+    weight_factor = models.FloatField(default=1.0)
+    notes = models.CharField(max_length=200, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['manufacturer', 'model']
+        constraints = [models.UniqueConstraint(fields=['exercise_type', 'manufacturer', 'model'],
+                                               name='unique_gym_machine')]
+
+
+class FitnessProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='fitness_profile')
+    body_weight_kg = models.FloatField(null=True, blank=True)
+    default_gym = models.CharField(max_length=80, blank=True)
+
+
+class Workout(models.Model):
+    """One gym day of one person (private to that account)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='workouts')
+    date = models.DateField()
+    duration_minutes = models.PositiveSmallIntegerField(null=True, blank=True)
+    gym = models.CharField(max_length=80, blank=True)
+    notes = models.TextField(blank=True)
+    # Own value (e.g. from a watch); otherwise the app estimates.
+    calories = models.PositiveIntegerField(null=True, blank=True)
+    # Body weight on that day, so later changes do not rewrite old estimates.
+    body_weight_kg = models.FloatField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+
+
+class WorkoutEntry(models.Model):
+    workout = models.ForeignKey(Workout, on_delete=models.CASCADE, related_name='entries')
+    position = models.PositiveSmallIntegerField(default=0)
+    exercise_type = models.ForeignKey(ExerciseType, on_delete=models.PROTECT, related_name='+')
+    machine = models.ForeignKey(GymMachine, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    # Strength: [{"reps": 10, "weight": 50.0}, ...]; weight as shown on the machine.
+    sets = models.JSONField(default=list, blank=True)
+    # Cardio
+    duration_minutes = models.FloatField(null=True, blank=True)
+    distance_km = models.FloatField(null=True, blank=True)
+    level = models.CharField(max_length=20, blank=True)
+    notes = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ['position', 'id']
