@@ -273,6 +273,7 @@
                                         </option>
                                     </select></label>
                             </div>
+                            <p class="prompt-error" role="alert" *ngIf="newIngredientPrompt.error">{{ newIngredientPrompt.error }}</p>
                             <div class="prompt-actions">
                                 <button type="button" class="btn-ghost" (click)="dismissNewIngredient()">
                                     Nur in diesem Rezept</button><button type="button" class="btn-primary"
@@ -290,6 +291,7 @@
                             <button type="button" class="btn-ghost" (click)="addIngredient(); focusLastIngredient()">+ Zutat</button>
                             <span class="helper">Enter springt in die nächste Zeile.</span>
                         </div>
+                        <p class="helper catalog-notice" role="status" *ngIf="catalogNotice">{{ catalogNotice }}</p>
                         <p class="helper unlinked-hint" *ngIf="!catalogError && unlinkedIngredientNames.length">
                             {{ unlinkedIngredientNames.length }} {{ unlinkedIngredientNames.length === 1 ? 'Zutat ist' :
                             'Zutaten sind' }} nicht im Katalog und landen beim Einkauf unter „Sonstiges“. Tippe auf den

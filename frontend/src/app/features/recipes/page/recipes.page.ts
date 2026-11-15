@@ -74,8 +74,10 @@ export class RecipesPage implements OnInit {
   ingredientPrevNames: string[] = [];
   /** Catalog choice for a typed name; `archived` is set when it exists but is archived. */
   newIngredientPrompt: {
-    rowId?: string; name: string; category: string; defaultUnit: string; archived?: Ingredient;
+    rowId?: string; name: string; category: string; defaultUnit: string; archived?: Ingredient; error?: string;
   } | null = null;
+  /** Short confirmation after an ingredient was linked to the catalog. */
+  catalogNotice = '';
   /** Rows whose unit was filled from the catalog (and may be replaced when the name changes). */
   private autoUnitIds = new Set<string>();
   /** "Zutat hinzufügen" field per step: a recipe ingredient or a new one, with an optional amount. */
@@ -625,6 +627,8 @@ export class RecipesPage implements OnInit {
     if (!this.newIngredientPrompt || this.ingredientSaving) return;
     this.ingredientSaving = true;
     this.formError = '';
+    this.catalogNotice = '';
+    this.newIngredientPrompt = { ...this.newIngredientPrompt, error: undefined };
     const { name, category, defaultUnit, archived } = this.newIngredientPrompt;
     const request = archived
       ? this.service.updateIngredient(archived.id, { archived: false })
@@ -648,10 +652,41 @@ export class RecipesPage implements OnInit {
           this.cdr.detectChanges();
         },
         error: (error) => {
-          this.formError = this.errorText(error, 'Die Zutat konnte nicht angelegt werden.');
-          this.cdr.markForCheck();
+          // Usually the entry exists after all (added elsewhere, archived, other spelling): reload and use it.
+          this.resolveExisting(name, this.errorText(error, 'Die Zutat konnte nicht angelegt werden.'));
         },
       });
+  }
+
+  /** After a refused "anlegen": find the existing catalog entry and link it, or show why it failed. */
+  private resolveExisting(name: string, message: string): void {
+    this.service.getIngredients().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (all) => {
+        this.ingredientCatalog = all.filter((i) => !i.archived);
+        this.archivedCatalog = all.filter((i) => i.archived);
+        const quoted = /„(.+?)“/.exec(message)?.[1];
+        const key = ingredientKey(quoted ?? name);
+        const active = this.ingredientCatalog.find((i) => ingredientKey(i.name) === key)
+          ?? this.ingredientCatalog.find((i) => ingredientKey(i.name) === ingredientKey(name));
+        const archived = this.archivedCatalog.find((i) => ingredientKey(i.name) === key);
+        if (active) {
+          const rowName = this.newIngredientPrompt?.name ?? name;
+          for (const row of this.form.ingredients) if (ingredientKey(row.name) === ingredientKey(rowName)) row.name = active.name;
+          this.linkRows(active);
+          this.newIngredientPrompt = null;
+          this.catalogNotice = `„${active.name}“ war schon im Katalog und ist jetzt verknüpft.`;
+        } else if (archived && this.newIngredientPrompt) {
+          this.newIngredientPrompt = { ...this.newIngredientPrompt, archived };
+        } else if (this.newIngredientPrompt) {
+          this.newIngredientPrompt = { ...this.newIngredientPrompt, error: message };
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        if (this.newIngredientPrompt) this.newIngredientPrompt = { ...this.newIngredientPrompt, error: message };
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   /** Rows (and step links) typed with this name now point at the catalog entry. */
@@ -936,6 +971,7 @@ export class RecipesPage implements OnInit {
     this.showDiscardConfirm = false;
     this.stepDrafts = [];
     this.autoUnitIds = new Set();
+    this.catalogNotice = '';
     this.importMode = null;
     this.importText = '';
     this.newIngredientPrompt = null;

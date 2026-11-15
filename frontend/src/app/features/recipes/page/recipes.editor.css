@@ -186,3 +186,16 @@ button.cat-badge.new:hover {
         padding: 6px 4px;
     }
 }
+
+.prompt-error {
+    margin: 12px 0 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+    font-weight: 600;
+}
+
+.catalog-notice {
+    color: var(--color-accent);
+}

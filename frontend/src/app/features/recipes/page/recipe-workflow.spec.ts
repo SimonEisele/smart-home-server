@@ -124,6 +124,30 @@ describe('Recipe editing workflow', () => {
     expect(page.availableForStep(page.form.steps[1]).map((i) => i.name)).toEqual(['Mehl', 'Butter']);
     expect(page.draft(0).name).toBe('');
   });
+  it('links the existing entry when the server says the ingredient is already in the catalog', () => {
+    page.openEdit(recipe);
+    page.form.ingredients[0].name = 'Hackfleisch (gemischt)';
+    page.onIngredientNameChange(0);
+    page.toggleCatalogPrompt(0);
+    service.createIngredient.mockReturnValue(throwError(() => ({ status: 400, error: { error: { code: 'VALIDATION_ERROR',
+      message: 'Gibt es schon im Katalog als „Hackfleisch gemischt“.' } } })));
+    service.getIngredients.mockReturnValue(of([{ id: 21, name: 'Hackfleisch gemischt', category: 'fleisch', defaultUnit: 'g' }]));
+    page.confirmNewIngredient();
+    expect(page.form.ingredients[0]).toMatchObject({ name: 'Hackfleisch gemischt', ingredientId: 21 });
+    expect(page.newIngredientPrompt).toBeNull();
+    expect(page.catalogNotice).toContain('verknüpft');
+  });
+  it('shows a refused catalog entry inside the prompt', () => {
+    page.openEdit(recipe);
+    page.form.ingredients[0].name = 'Rindsgulasch';
+    page.onIngredientNameChange(0);
+    page.toggleCatalogPrompt(0);
+    service.createIngredient.mockReturnValue(throwError(() => ({ status: 400, error: { error: { code: 'VALIDATION_ERROR',
+      message: 'Die Zutat konnte nicht gespeichert werden (Datenbank: NOT NULL constraint failed).' } } })));
+    service.getIngredients.mockReturnValue(of([]));
+    page.confirmNewIngredient();
+    expect(page.newIngredientPrompt?.error).toContain('NOT NULL');
+  });
   it('filters ingredients and categories and sorts duration', () => {
     page.search = 'mehl';
     expect(page.filtered).toEqual([recipe]);

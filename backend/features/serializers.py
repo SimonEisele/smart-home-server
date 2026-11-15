@@ -1,3 +1,4 @@
+import logging
 import re
 import uuid
 import math
@@ -25,6 +26,9 @@ from .models import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 class IngredientSerializer(serializers.ModelSerializer):
     usageCount = serializers.IntegerField(source='usage_count', read_only=True, default=0)
 
@@ -32,26 +36,44 @@ class IngredientSerializer(serializers.ModelSerializer):
         try:
             with transaction.atomic():
                 return super().create(validated_data)
-        except IntegrityError:
-            raise serializers.ValidationError({'name': 'Diese Zutat ist bereits im Katalog vorhanden.'})
+        except IntegrityError as error:
+            raise self._integrity_error(validated_data.get('name', ''), None, error)
 
     def update(self, instance, validated_data):
         try:
             with transaction.atomic():
                 return super().update(instance, validated_data)
-        except IntegrityError:
-            raise serializers.ValidationError({'name': 'Diese Zutat ist bereits im Katalog vorhanden.'})
+        except IntegrityError as error:
+            raise self._integrity_error(validated_data.get('name', instance.name), instance, error)
+
+    @staticmethod
+    def _existing(name, instance=None):
+        """A catalog entry with the same name (any case/spacing, ß = ss), including archived ones."""
+        name = ' '.join(str(name).split())
+        matches = Ingredient.objects.filter(Q(normalized_name=normalize_name(name)) | Q(name__iexact=name))
+        if instance:
+            matches = matches.exclude(pk=instance.pk)
+        return matches.first()
+
+    @staticmethod
+    def _duplicate_message(existing):
+        hidden = ' (archiviert – im Zutatenkatalog wieder aktivieren)' if existing.archived else ''
+        return f'Gibt es schon im Katalog als „{existing.name}“{hidden}.'
+
+    def _integrity_error(self, name, instance, error):
+        """Only claim a duplicate when there is one; otherwise report what the database refused."""
+        existing = self._existing(name, instance)
+        if existing:
+            return serializers.ValidationError({'name': self._duplicate_message(existing)})
+        logger.exception('Zutat %r konnte nicht gespeichert werden', name)
+        return serializers.ValidationError({'name': f'Die Zutat konnte nicht gespeichert werden (Datenbank: {error}).'})
 
     def validate_name(self, value):
         value = ' '.join(value.split())
-        matches = Ingredient.objects.filter(normalized_name=normalize_name(value))
-        if self.instance:
-            matches = matches.exclude(pk=self.instance.pk)
-        existing = matches.first()
+        existing = self._existing(value, self.instance)
         if existing:
             # Name the entry it collides with: "Weisswein" and "Weißwein" or a different case are the same.
-            hidden = ' (archiviert – im Zutatenkatalog wieder aktivieren)' if existing.archived else ''
-            raise serializers.ValidationError(f'Gibt es schon im Katalog als „{existing.name}“{hidden}.')
+            raise serializers.ValidationError(self._duplicate_message(existing))
         return value
 
     def validate_defaultUnit(self, value):

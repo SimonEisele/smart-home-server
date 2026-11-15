@@ -31,6 +31,20 @@ class IngredientWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn('„Testweißwein“ (archiviert', str(response.data))
 
+    def test_stale_key_is_still_found_and_database_errors_are_not_called_duplicates(self):
+        stale = Ingredient.objects.create(name='Hackfleisch (gemischt)', category='fleisch')
+        Ingredient.objects.filter(pk=stale.pk).update(normalized_name='veraltet')
+        response = self.client.post('/api/ingredients/', {'name': 'hackfleisch (gemischt)'}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('„Hackfleisch (gemischt)“', str(response.data))
+        from django.db import IntegrityError
+        from unittest import mock
+        with mock.patch.object(Ingredient, 'save', side_effect=IntegrityError('NOT NULL constraint failed: x')):
+            response = self.client.post('/api/ingredients/', {'name': 'Rindsgulasch'}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('NOT NULL constraint failed', str(response.data))
+        self.assertNotIn('Gibt es schon', str(response.data))
+
     def test_unit_aliases_and_unknown_unit_validation(self):
         response = self.client.post('/api/ingredients/', {'name': 'Test-Ei', 'defaultUnit': 'Stk.'}, format='json')
         self.assertEqual(response.status_code, 201)
