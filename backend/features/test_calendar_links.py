@@ -220,6 +220,28 @@ class TimetableAndSharingTests(CalendarTestCase):
         response = self.client.post('/api/calendar/external/', {'name': 'Gross', 'icsContent': huge}, format='json')
         self.assertIn('zu gross', response.data['error']['message'])
 
+    def test_own_calendars_follow_the_account_into_every_wg(self):
+        self.link(self.client, visibility='shared')
+        calendar = ExternalCalendar.objects.get()
+        other = Household.objects.create(name='Ferienhaus')
+        HouseholdMembership.objects.create(user=self.simon, household=other, role='member')
+        tom = User.objects.create_user('tom@example.com', 'pw', active_household=other, first_name='Tom')
+        HouseholdMembership.objects.create(user=tom, household=other, role='member')
+        self.simon.active_household = other
+        self.simon.save()
+        mine = self.client.get('/api/calendar/external/').data['data'][0]
+        self.assertEqual((mine['sharedHere'], mine['householdName']), (False, 'Sonnenhof'))
+        self.assertIn('Team-Meeting', [e['title'] for e in self.week(self.client)])
+        # Still shared with the WG where it was linked, not with the other WG.
+        self.assertEqual(self.week(self.login(tom)), [])
+        self.assertIn('Team-Meeting', [e['title'] for e in self.week(self.login(self.lisa))])
+        # Name and colour can change anywhere; who sees it only in its own WG.
+        url = f'/api/calendar/external/{calendar.id}/'
+        self.assertEqual(self.client.patch(url, {'color': '#22c55e'}, format='json').status_code, 200)
+        refused = self.client.patch(url, {'visibility': 'private'}, format='json')
+        self.assertEqual(refused.status_code, 400)
+        self.assertEqual(self.client.post(f'{url}sync/').status_code, 200)
+
     def test_sharing_with_chosen_people_only(self):
         self.link(self.client, visibility='shared', sharedWith=[str(self.lisa.id), str(self.simon.id)])
         calendar = ExternalCalendar.objects.get()

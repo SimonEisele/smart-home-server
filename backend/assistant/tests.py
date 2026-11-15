@@ -9,12 +9,12 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from features.models import CalendarEvent, Menu, Recipe, ShoppingItem, Todo
+from features.models import CalendarEvent, Ingredient, Menu, Recipe, ShoppingItem, Todo
 from users.models import Household, HouseholdMembership, User
 
 from . import providers, web
 from .providers import Reply, ToolCall
-from .tools import Toolbox
+from .tools import Toolbox, _add_to_catalog
 
 RECIPE_PAGE = """<html><head><title>Rüeblikuchen</title>
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage"},
@@ -172,8 +172,10 @@ class ChatTests(TestCase):
         carrots = proposal['payload']['ingredients'][0]
         self.assertEqual({k: carrots[k] for k in ('name', 'quantityPerPerson', 'unit')},
                          {'name': 'Rüebli', 'quantityPerPerson': 300, 'unit': 'g'})
-        self.assertEqual(proposal['details']['ingredients'], [{'text': '300 g Rüebli'}, {'text': '4 Eier'}])
-        self.assertEqual(proposal['details']['steps'][1], {'text': 'Eier schaumig rühren.', 'ingredients': ['2 Eier']})
+        # "Eier" is the catalog's "Ei"; "Rüebli" is not in the test catalog and would be added.
+        self.assertEqual(proposal['details']['ingredients'], [{'text': '300 g Rüebli', 'newCatalog': True},
+                                                              {'text': '4 Ei'}])
+        self.assertEqual(proposal['details']['steps'][1], {'text': 'Eier schaumig rühren.', 'ingredients': ['2 Ei']})
         self.assertEqual(proposal['summary'][0], '12 Stücke · 75 Min. · Backen')
         self.assertIn('Zucker', calls[2][-1]['content'])  # unknown step ingredient is reported back
         self.assertIn('Quelle: https://rezepte.example/rueblikuchen', proposal['payload']['instructions'])
@@ -184,7 +186,7 @@ class ChatTests(TestCase):
         recipe = Recipe.objects.get(name='Rüeblikuchen')
         self.assertEqual((recipe.base_servings, recipe.serving_type, len(recipe.steps)), (12, 'Stücke', 3))
         self.assertEqual([[link['name'] for link in step['ingredients']] for step in recipe.steps],
-                         [['Rüebli'], ['Eier'], []])
+                         [['Rüebli'], ['Ei'], []])
         self.assertEqual(recipe.steps[1]['ingredients'][0]['quantityPerPerson'], 2)
 
     def test_unavailable_model_gives_503(self):
@@ -272,7 +274,7 @@ class EditProposalTests(TestCase):
         self.assertNotIn('error', result)
         proposal = self.box.proposals[0]
         self.assertEqual(proposal['type'], 'recipe_update')
-        self.assertEqual(proposal['summary'], ['Mit Knoblauch'])
+        self.assertEqual(proposal['summary'], ['Mit Knoblauch', 'Neu im Zutatenkatalog: Testknoblauch'])
         self.assertEqual(proposal['changes'][0], {'label': 'Dauer', 'before': '—', 'after': '20 Min.'})
         self.assertEqual([(i['text'], i.get('status')) for i in proposal['details']['ingredients']], [
             ('250 g Testnudeln', 'changed'), ('1 Zehe Testknoblauch', 'added'), ('1 dl Testrahm', 'removed')])
@@ -285,6 +287,39 @@ class EditProposalTests(TestCase):
         rows = {row['name']: row for row in recipe.ingredients}
         self.assertEqual(str(rows['Testnudeln']['id']), str(noodles['id']))
         self.assertEqual(recipe.steps[1]['ingredients'][0]['name'], 'Testknoblauch')
+        # The new ingredient is now in the catalog and linked.
+        self.assertIsNotNone(rows['Testknoblauch']['ingredientId'])
+
+    def test_recipe_ingredients_use_catalog_names_and_only_new_ones_are_added(self):
+        Ingredient.objects.get_or_create(name='Testzwiebel', defaults={'category': 'gemuese'})
+        Ingredient.objects.get_or_create(name='Testweißwein', defaults={'category': 'saucen'})
+        Ingredient.objects.get_or_create(name='Testreste', defaults={'category': 'sonstiges', 'archived': True})
+        catalog = self.box.run('get_ingredient_catalog', {})['catalog']
+        self.assertIn('Testzwiebel', catalog['Gemüse'])
+        self.assertNotIn('Testreste', sum(catalog.values(), []))
+        result = self.box.run('propose_recipe', {
+            'name': 'Testrisotto', 'baseServings': 4,
+            'ingredients': [{'name': 'Testzwiebeln, fein gehackt', 'quantity': 2},
+                            {'name': 'testweisswein', 'quantity': 1, 'unit': 'dl'},
+                            {'name': 'Testsafranfäden', 'quantity': 1, 'unit': 'Prise', 'category': 'gewuerze'}],
+            'steps': [{'description': 'Zwiebeln dünsten.', 'ingredients': [{'name': 'Testzwiebel'}]}]})
+        self.assertEqual(result['matchedToCatalog'],
+                         ['Testzwiebeln, fein gehackt → Testzwiebel', 'testweisswein → Testweißwein'])
+        self.assertEqual(result['newCatalogIngredients'], ['Testsafranfäden'])
+        proposal = self.box.proposals[0]
+        self.assertEqual([(i['text'], i.get('newCatalog', False)) for i in proposal['details']['ingredients']], [
+            ('2 Testzwiebel', False), ('1 dl Testweißwein', False), ('1 Prise Testsafranfäden', True)])
+        self.assertEqual(proposal['summary'][-1], 'Neu im Zutatenkatalog: Testsafranfäden')
+        response = self.client.post('/api/assistant/apply/', {'type': 'recipe', 'payload': proposal['payload']},
+                                    format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        saffron = Ingredient.objects.get(name='Testsafranfäden')
+        self.assertEqual((saffron.category, saffron.default_unit), ('gewuerze', 'Prise'))
+        rows = Recipe.objects.get(name='Testrisotto').ingredients
+        self.assertTrue(all(row['ingredientId'] for row in rows))
+        # An ingredient someone added in the meantime is simply skipped.
+        _add_to_catalog([{'name': 'testsafranfäden', 'category': 'gewuerze'}])
+        self.assertEqual(Ingredient.objects.filter(normalized_name='testsafranfäden').count(), 1)
 
     def test_removing_an_ingredient_drops_its_step_links(self):
         recipe = self.recipe()

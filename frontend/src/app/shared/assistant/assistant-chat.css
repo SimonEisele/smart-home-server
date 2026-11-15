@@ -57,6 +57,7 @@
   padding: 1px 6px; border-radius: 999px; background: var(--color-accent-soft); color: var(--color-accent); }
 li[data-status='removed'] .badge { background: var(--color-danger-soft); color: var(--color-danger); }
 li[data-status='changed'] .badge { background: var(--color-info-soft); color: var(--color-info); }
+.badge.catalog { margin-left: 4px; background: var(--color-warn-soft, var(--color-surface-soft)); color: var(--color-warn); }
 
 .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .steps > li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; }

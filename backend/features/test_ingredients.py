@@ -21,9 +21,15 @@ class IngredientWorkflowTests(TestCase):
     def test_case_whitespace_and_unicode_duplicates_rejected(self):
         response = self.client.post('/api/ingredients/', {'name': '  WEIZENMEHL  '}, format='json')
         self.assertEqual(response.status_code, 400)
-        self.assertIn('bereits', str(response.data))
+        self.assertIn('Gibt es schon im Katalog', str(response.data))
         response = self.client.post('/api/ingredients/', {'name': 'Ｗｅｉｚｅｎｍｅｈｌ'}, format='json')
         self.assertEqual(response.status_code, 400)
+
+    def test_duplicate_message_names_the_existing_entry_even_with_ss_or_archived(self):
+        Ingredient.objects.create(name='Testweißwein', category='saucen', archived=True)
+        response = self.client.post('/api/ingredients/', {'name': 'Testweisswein'}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('„Testweißwein“ (archiviert', str(response.data))
 
     def test_unit_aliases_and_unknown_unit_validation(self):
         response = self.client.post('/api/ingredients/', {'name': 'Test-Ei', 'defaultUnit': 'Stk.'}, format='json')

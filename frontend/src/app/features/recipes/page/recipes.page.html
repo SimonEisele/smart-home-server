@@ -236,11 +236,15 @@
                             Einkauf unter „Sonstiges“.
                         </p>
                         <div class="catalog-prompt" *ngIf="newIngredientPrompt">
-                            <p>
+                            <p *ngIf="newIngredientPrompt.archived">
+                                „{{ newIngredientPrompt.archived.name }}“ ist im Katalog archiviert. Du kannst sie frei
+                                verwenden oder wieder aktivieren.
+                            </p>
+                            <p *ngIf="!newIngredientPrompt.archived">
                                 „{{ newIngredientPrompt.name }}“ ist noch nicht im Katalog. Du kannst sie frei
                                 verwenden oder zentral anlegen.
                             </p>
-                            <div class="field-grid">
+                            <div class="field-grid" *ngIf="!newIngredientPrompt.archived">
                                 <label>Kategorie<select aria-label="Neue Zutat Kategorie"
                                         [(ngModel)]="newIngredientPrompt.category">
                                         <option *ngFor="let cat of INGREDIENT_CATEGORIES" [value]="cat.value">
@@ -257,8 +261,8 @@
                             <div class="prompt-actions">
                                 <button type="button" class="btn-ghost" (click)="dismissNewIngredient()">
                                     Frei verwenden</button><button type="button" class="btn-primary"
-                                    (click)="confirmNewIngredient()">
-                                    Zum Katalog hinzufügen
+                                    (click)="confirmNewIngredient()" [disabled]="ingredientSaving">
+                                    {{ newIngredientPrompt.archived ? 'Wieder aktivieren' : 'Zum Katalog hinzufügen' }}
                                 </button>
                             </div>
                         </div>

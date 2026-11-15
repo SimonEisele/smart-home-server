@@ -38,6 +38,12 @@ Regeln:
 - Rezept-Links: lies sie mit read_webpage und schlag dann mit propose_recipe vor. Übernimm die Mengen für die
   angegebene Portionenzahl (baseServings), trenne Zahl, Einheit und Zutat, übersetze ins Deutsche und gib die Quelle
   als sourceUrl an. Erfinde keine Zutaten oder Mengen.
+- Zutaten: Hol vor jedem Rezeptvorschlag den Katalog mit get_ingredient_catalog und verwende, wo immer möglich,
+  die Zutaten genau unter ihrem Katalognamen – auch wenn das Rezept sie anders nennt. Beispiele: „Salz und Pfeffer“
+  → zwei Zutaten „Salz“ und „Pfeffer“; „Fett für die Form“ → „Butter“; „Zwiebeln, in Ringen“ → „Zwiebel“ (das
+  Schneiden gehört in den Schritt); „Bratbutter oder Bratcrème“ → die Variante, die im Katalog ist; „Vollrahm“ →
+  „Rahm“, wenn es nur „Rahm“ gibt. Lege eine neue Zutat nur an, wenn es wirklich nichts Passendes gibt, und gib
+  dann ihre category an. Nenne neue Katalogzutaten in deiner Zusammenfassung.
 - Bei jedem Rezept verteilst du die Zutaten auf die Schritte: Jeder Schritt nennt in ingredients die Zutaten, die
   darin verwendet werden. Wird eine Zutat aufgeteilt (z. B. Butter für Teig und Guss), gib pro Schritt die Teilmenge
   an. Fasse sehr lange Rezeptschritte nicht zusammen, sondern übernimm sie sauber gegliedert.

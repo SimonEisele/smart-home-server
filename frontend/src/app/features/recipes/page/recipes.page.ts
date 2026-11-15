@@ -72,7 +72,10 @@ export class RecipesPage implements OnInit {
   modalMode: 'add' | 'edit' = 'add';
   form: RecipeForm = this.emptyForm();
   ingredientPrevNames: string[] = [];
-  newIngredientPrompt: { name: string; category: string; defaultUnit: string } | null = null;
+  /** Catalog choice for a typed name; `archived` is set when it exists but is archived. */
+  newIngredientPrompt: { name: string; category: string; defaultUnit: string; archived?: Ingredient } | null = null;
+  /** Archived entries: not offered, but recognised so the prompt does not claim they are missing. */
+  archivedCatalog: Ingredient[] = [];
   /** Serialized form at the time the editor opened; used to warn before discarding edits. */
   private snapshot = '';
   showDiscardConfirm = false;
@@ -120,6 +123,7 @@ export class RecipesPage implements OnInit {
       .subscribe({
         next: (i) => {
           this.ingredientCatalog = i.filter((ingredient) => !ingredient.archived);
+          this.archivedCatalog = i.filter((ingredient) => ingredient.archived);
           this.cdr.markForCheck();
         },
         error: () => {
@@ -255,11 +259,7 @@ export class RecipesPage implements OnInit {
     if (!oldName || oldName === newName) {
       // Still check catalog even if name didn't change (e.g. first blur)
       if (newName && !identity) {
-        this.newIngredientPrompt = {
-          name: newName,
-          category: 'sonstiges',
-          defaultUnit: this.form.ingredients[index].unit ?? '',
-        };
+        this.newIngredientPrompt = this.catalogPrompt(newName, index);
       } else {
         this.newIngredientPrompt = null;
       }
@@ -276,11 +276,7 @@ export class RecipesPage implements OnInit {
     }));
     // Show prompt if new name isn't in catalog
     if (newName && !identity) {
-      this.newIngredientPrompt = {
-        name: newName,
-        category: 'sonstiges',
-        defaultUnit: this.form.ingredients[index].unit ?? '',
-      };
+      this.newIngredientPrompt = this.catalogPrompt(newName, index);
     } else {
       this.newIngredientPrompt = null;
     }
@@ -486,13 +482,26 @@ export class RecipesPage implements OnInit {
   stepUnit(link: RecipeStep['ingredients'][number]): string {
     return this.form.ingredients.find((i) => i.id === link.recipeIngredientId)?.unit ?? '';
   }
+  private catalogPrompt(name: string, index: number): NonNullable<typeof this.newIngredientPrompt> {
+    const archived = this.archivedCatalog.find((i) => ingredientKey(i.name) === ingredientKey(name));
+    return {
+      name,
+      category: archived?.category ?? 'sonstiges',
+      defaultUnit: this.form.ingredients[index].unit ?? '',
+      archived,
+    };
+  }
+
+  /** Adds the typed ingredient to the catalog (or re-activates an archived entry) and links the rows. */
   confirmNewIngredient(): void {
     if (!this.newIngredientPrompt || this.ingredientSaving) return;
     this.ingredientSaving = true;
     this.formError = '';
-    const { name, category, defaultUnit } = this.newIngredientPrompt;
-    this.service
-      .createIngredient({ name, category, defaultUnit })
+    const { name, category, defaultUnit, archived } = this.newIngredientPrompt;
+    const request = archived
+      ? this.service.updateIngredient(archived.id, { archived: false })
+      : this.service.createIngredient({ name, category, defaultUnit });
+    request
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => {
@@ -502,9 +511,11 @@ export class RecipesPage implements OnInit {
       )
       .subscribe({
         next: (ing) => {
-          this.ingredientCatalog = [...this.ingredientCatalog, ing].sort((a, b) =>
+          this.ingredientCatalog = [...this.ingredientCatalog.filter((i) => i.id !== ing.id), ing].sort((a, b) =>
             a.name.localeCompare(b.name),
           );
+          this.archivedCatalog = this.archivedCatalog.filter((i) => i.id !== ing.id);
+          this.linkRows(ing);
           this.newIngredientPrompt = null;
           this.cdr.detectChanges();
         },
@@ -513,6 +524,24 @@ export class RecipesPage implements OnInit {
           this.cdr.markForCheck();
         },
       });
+  }
+
+  /** Rows (and step links) typed with this name now point at the catalog entry. */
+  private linkRows(ing: Ingredient): void {
+    const key = ingredientKey(ing.name);
+    const ids = new Set<number | string | undefined>();
+    for (const row of this.form.ingredients) {
+      if (ingredientKey(row.name ?? '') !== key) continue;
+      row.ingredientId = ing.id;
+      row.name = ing.name;
+      if (!row.unit && ing.defaultUnit) row.unit = ing.defaultUnit;
+      ids.add(row.id);
+    }
+    this.form.ingredients = [...this.form.ingredients];
+    this.form.steps = this.form.steps.map((s) => ({
+      ...s,
+      ingredients: s.ingredients.map((i) => (ids.has(i.recipeIngredientId) ? { ...i, name: ing.name, ingredientId: ing.id } : i)),
+    }));
   }
 
   dismissNewIngredient(): void {

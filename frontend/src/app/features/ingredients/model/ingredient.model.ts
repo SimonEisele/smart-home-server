@@ -50,6 +50,7 @@ export const INGREDIENT_UNITS = [
   'Kopf',
   'cm',
 ];
+/** Same rule as the server: case, spaces and ß/ss («Weißwein» = «Weisswein») do not matter. */
 export function ingredientKey(value: string): string {
-  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('de');
+  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('de').replace(/ß/g, 'ss');
 }

@@ -30,6 +30,17 @@ describe('Kalender verbinden', () => {
     links.ngOnInit();
   });
 
+  it('shows own calendars from another WG with their sharing as read-only text', () => {
+    const fixture = TestBed.createComponent(CalendarLinks);
+    service.getExternalCalendars.mockReturnValue(of([{ ...created, sharedHere: false, householdName: 'Sonnenhof' }]));
+    fixture.componentInstance.tab = 'linked';
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('Verknüpft in der WG «Sonnenhof»');
+    expect(element.querySelector('.visibility-select')).toBeNull();
+    service.getExternalCalendars.mockReturnValue(of([]));
+  });
+
   it('opens the form when nothing is linked yet and offers the feed as webcal link', () => {
     expect(links.showForm).toBe(true);
     expect(links.webcalUrl).toBe('webcal://wg.example/api/calendar/feed/abc.ics');

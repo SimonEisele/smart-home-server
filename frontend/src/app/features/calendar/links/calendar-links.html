@@ -105,6 +105,10 @@
                             Termine</small>
                         }
                         @if (rowError[calendar.id]) { <small class="error-text" role="alert">{{ rowError[calendar.id] }}</small> }
+                        @if (calendar.sharedHere === false) {
+                        <small class="muted">Verknüpft in der WG «{{ calendar.householdName }}» · {{
+                            VISIBILITY_LABELS[calendar.visibility] }} – die Freigabe änderst du dort.</small>
+                        } @else {
                         <div class="share-controls">
                             <label class="sr-only" [attr.for]="'vis-' + calendar.id">Was sehen andere von {{ calendar.name
                                 }}?</label>
@@ -133,6 +137,7 @@
                             }
                             @if (!calendar.sharedWith?.length) { <small class="muted">Wähle, wer ihn sehen soll.</small> }
                         </div>
+                        }
                         }
                     </div>
                     <div class="row-actions">

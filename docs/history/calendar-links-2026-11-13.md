@@ -74,3 +74,12 @@ Der Dialog heisst jetzt **Kalender** und hat drei Bereiche: *Gemeinsam*, *Einble
   vorschlagen (`propose_event` mit `sharedCalendar`).
 - API: `GET/POST /api/calendar/shared/`, `PATCH/DELETE /api/calendar/shared/<id>/`, `GET /api/calendar/people/`;
   `POST/PATCH /api/calendar/external/` nehmen zusätzlich `icsContent`, `fileName`, `sharedWith`.
+
+## Nachtrag 2026-11-15: eigene Kalender pro Account
+- Eigene verknüpfte Kalender (Link oder .ics-Datei) erscheinen in **jeder WG**, in der man angemeldet ist –
+  nicht nur in der WG, in der sie verknüpft wurden.
+- Wer sie sonst noch sieht («WG sieht belegt/alles», bestimmte Personen), gilt weiterhin nur für die WG,
+  in der der Kalender verknüpft wurde. In einer anderen WG zeigt «Einblenden» den Hinweis
+  «Verknüpft in der WG …» und die Freigabe ist dort nicht änderbar (Name, Farbe, Link, Aktualisieren schon).
+- Ausgeblendete Kalender werden bewusst nicht pro Account gespeichert (bleibt pro Gerät/Browser).
+- API: `sharedHere`, `householdName` im Kalender; Änderung der Freigabe ausserhalb der eigenen WG → 400.

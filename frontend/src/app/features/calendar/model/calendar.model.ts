@@ -83,6 +83,9 @@ export interface ExternalCalendar {
   eventCount?: number;
   ownerName: string;
   isOwner: boolean;
+  /** Own calendars show in every WG; false when it was linked in another WG (sharing is set there). */
+  sharedHere?: boolean;
+  householdName?: string;
 }
 
 export const VISIBILITY_LABELS: Record<ExternalCalendarVisibility, string> = {

@@ -14,6 +14,8 @@ export interface ProposalIngredientLine {
   text: string;
   status?: 'added' | 'changed' | 'removed';
   before?: string;
+  /** Not in the ingredient catalog yet; added to it when the proposal is accepted. */
+  newCatalog?: boolean;
 }
 
 export interface ProposalStepLine { text: string; ingredients: string[]; status?: 'new'; }

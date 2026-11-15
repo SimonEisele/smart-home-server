@@ -53,6 +53,9 @@ class ExternalCalendarSerializer(serializers.ModelSerializer):
     eventCount = serializers.IntegerField(source='event_count', read_only=True)
     ownerName = serializers.SerializerMethodField()
     isOwner = serializers.SerializerMethodField()
+    # Own calendars follow the account into every WG; who else sees them is set per WG where it was linked.
+    sharedHere = serializers.SerializerMethodField()
+    householdName = serializers.SerializerMethodField()
     color = serializers.RegexField(r'^#[0-9a-fA-F]{6}$', required=False)
     url = serializers.CharField(max_length=2000, write_only=True, required=False, allow_blank=True)
     icsContent = serializers.CharField(write_only=True, required=False, trim_whitespace=False)
@@ -62,7 +65,8 @@ class ExternalCalendarSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExternalCalendar
         fields = ['id', 'name', 'url', 'icsContent', 'fileName', 'source', 'color', 'visibility', 'enabled',
-                  'sharedWith', 'lastSyncedAt', 'lastError', 'eventCount', 'ownerName', 'isOwner']
+                  'sharedWith', 'lastSyncedAt', 'lastError', 'eventCount', 'ownerName', 'isOwner',
+                  'sharedHere', 'householdName']
         read_only_fields = ['id', 'source']
 
     def get_ownerName(self, obj):
@@ -70,6 +74,12 @@ class ExternalCalendarSerializer(serializers.ModelSerializer):
 
     def get_isOwner(self, obj):
         return obj.owner_id == self.context['request'].user.id
+
+    def get_sharedHere(self, obj):
+        return obj.household_id == self.context['request'].user.active_household_id
+
+    def get_householdName(self, obj):
+        return obj.household.name
 
     def validate_name(self, value):
         value = value.strip()
@@ -97,6 +107,9 @@ class ExternalCalendarSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'url': 'Bitte einen iCal-Link einfügen oder eine .ics-Datei wählen.'})
         elif 'url' in attrs:
             attrs.pop('url')  # an empty link never replaces the current source
+        if self.instance and not self.get_sharedHere(self.instance) and {'visibility', 'shared_with'} & set(attrs):
+            message = f'Die Freigabe gilt für die WG «{self.instance.household.name}» und wird dort geändert.'
+            raise serializers.ValidationError({'visibility': message})
         owner = self.instance.owner if self.instance else self.context['request'].user
         if 'shared_with' in attrs:
             attrs['shared_with'] = [person for person in attrs['shared_with'] if person.pk != owner.pk]
@@ -114,13 +127,14 @@ class ExternalCalendarSerializer(serializers.ModelSerializer):
 
 
 def visible_calendars(user):
-    """Own calendars plus calendars others share with the whole WG or with this person."""
+    """Own calendars (in every WG) plus calendars others share with this WG as a whole or with this person."""
     through = ExternalCalendar.shared_with.through
     audience = through.objects.filter(externalcalendar_id=OuterRef('pk'))
     mine = through.objects.filter(user=user).values('externalcalendar_id')
-    return ExternalCalendar.objects.filter(household=user.active_household).filter(
-        Q(owner=user) | (Q(visibility__in=('busy', 'shared')) & (Q(pk__in=mine) | ~Exists(audience)))
-    ).select_related('owner').prefetch_related('shared_with')
+    to_wg = Q(household=user.active_household, visibility__in=('busy', 'shared'))
+    shared = to_wg & (Q(pk__in=mine) | ~Exists(audience))
+    return ExternalCalendar.objects.filter(Q(owner=user) | shared) \
+        .select_related('owner', 'household').prefetch_related('shared_with')
 
 
 def check_source(data):
@@ -163,8 +177,7 @@ class ExternalCalendarDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
 
     def _own(self, request, id):
-        calendar = ExternalCalendar.objects.filter(
-            id=id, owner=request.user, household=request.user.active_household).first()
+        calendar = ExternalCalendar.objects.filter(id=id, owner=request.user).first()
         if not calendar:
             raise Http404
         return calendar
@@ -193,8 +206,7 @@ class ExternalCalendarSyncView(APIView):
     permission_classes = [permissions.IsAuthenticated, HasActiveHousehold]
 
     def post(self, request, id):
-        calendar = ExternalCalendar.objects.filter(
-            id=id, owner=request.user, household=request.user.active_household).first()
+        calendar = ExternalCalendar.objects.filter(id=id, owner=request.user).first()
         if not calendar:
             raise Http404
         calendar_sync.sync(calendar)

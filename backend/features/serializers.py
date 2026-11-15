@@ -47,8 +47,11 @@ class IngredientSerializer(serializers.ModelSerializer):
         matches = Ingredient.objects.filter(normalized_name=normalize_name(value))
         if self.instance:
             matches = matches.exclude(pk=self.instance.pk)
-        if matches.exists():
-            raise serializers.ValidationError('Diese Zutat ist bereits im Katalog vorhanden.')
+        existing = matches.first()
+        if existing:
+            # Name the entry it collides with: "Weisswein" and "Weißwein" or a different case are the same.
+            hidden = ' (archiviert – im Zutatenkatalog wieder aktivieren)' if existing.archived else ''
+            raise serializers.ValidationError(f'Gibt es schon im Katalog als „{existing.name}“{hidden}.')
         return value
 
     def validate_defaultUnit(self, value):

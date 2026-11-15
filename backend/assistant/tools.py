@@ -14,10 +14,12 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from rest_framework import serializers
 
-from features.ingredient_units import normalize_name
+from features.ingredient_match import Catalog
+from features.ingredient_units import UNITS, normalize_name
 from features.models import CleaningTask, Ingredient, Menu, Recipe, SharedCalendar, ShoppingItem
 from features.serializers import (
-    CalendarEventSerializer, MenuSerializer, RecipeSerializer, ShoppingItemSerializer, TodoSerializer,
+    CalendarEventSerializer, IngredientSerializer, MenuSerializer, RecipeSerializer, ShoppingItemSerializer,
+    TodoSerializer,
 )
 from features.views.calendar import visible_events
 from users.models import User
@@ -46,8 +48,11 @@ _NUM = {'type': 'number'}
 _BOOL = {'type': 'boolean'}
 
 _AMOUNT = {'name': _STR, 'quantity': _NUM, 'unit': _STR}
+INGREDIENT_CATEGORIES = [key for key, _ in Ingredient.CATEGORY_CHOICES]
 _INGREDIENT = _schema({**_AMOUNT, 'id': {**_STR, 'description': 'Nur bei bestehenden Zutaten (aus get_recipe).'},
-                       'sectionId': _INT}, ['name'])
+                       'sectionId': _INT,
+                       'category': {'type': 'string', 'enum': INGREDIENT_CATEGORIES,
+                                    'description': 'Nur für Zutaten, die es im Katalog noch nicht gibt.'}}, ['name'])
 _STEP = _schema({'description': _STR, 'sectionId': _INT,
                  'ingredients': {'type': 'array', 'description': 'Zutaten, die in diesem Schritt verwendet werden.',
                                  'items': _schema(_AMOUNT, ['name'])}}, ['description'])
@@ -62,6 +67,10 @@ TOOLS = [
      'parameters': _schema({'query': _STR})},
     {'name': 'get_recipe', 'description': 'Ein Rezept der WG mit Zutaten und Schritten.',
      'parameters': _schema({'recipeId': _STR}, ['recipeId'])},
+    {'name': 'get_ingredient_catalog',
+     'description': 'Der Zutatenkatalog (Namen nach Kategorie). Vor jedem Rezeptvorschlag aufrufen und die Zutaten '
+                    'unter genau diesen Namen verwenden.',
+     'parameters': _schema({})},
     {'name': 'get_menu_plan', 'description': 'Menüplan ab einem Datum (höchstens 14 Tage).',
      'parameters': _schema({'start': {**_STR, 'description': 'JJJJ-MM-TT'}, 'days': _INT}, ['start'])},
     {'name': 'get_calendar',
@@ -75,7 +84,9 @@ TOOLS = [
                     'Zutaten einzeln mit Zahl und Einheit (g, kg, ml, l, EL, TL, Stück, Prise, Bund, Zehe, Dose, '
                     'Packung …); Mengen wie "nach Bedarf" ohne quantity. Jeder Schritt nennt in ingredients die '
                     'Zutaten, die darin verwendet werden (Name wie in der Zutatenliste). Wird eine Zutat auf '
-                    'mehrere Schritte verteilt, bei jedem Schritt die Teilmenge angeben.',
+                    'mehrere Schritte verteilt, bei jedem Schritt die Teilmenge angeben. Zutatennamen wie im '
+                    'Katalog (get_ingredient_catalog); nur was dort wirklich fehlt, wird als neue Zutat '
+                    'vorgeschlagen (mit category).',
      'parameters': _schema({
          'name': _STR, 'description': _STR, 'baseServings': _INT,
          'servingType': {'type': 'string', 'enum': ['Portionen', 'Stücke']},
@@ -251,6 +262,14 @@ class Toolbox:
                           'steps': task.checklist or [], 'minutes': task.duration_minutes})
         return {'tasks': tasks}
 
+    def tool_get_ingredient_catalog(self):
+        labels = dict(Ingredient.CATEGORY_CHOICES)
+        groups = {}
+        for entry in Ingredient.objects.filter(archived=False).order_by('name'):
+            groups.setdefault(labels.get(entry.category, entry.category), []).append(entry.name)
+        return {'catalog': groups,
+                'hint': 'Zutaten unter diesen Namen verwenden; Zubereitung (gehackt, in Ringen) gehört in den Schritt.'}
+
     # ── Propose ────────────────────────────────────────────────────────────
     def _propose(self, kind, title, summary, payload, **extra):
         proposal = {'id': str(uuid.uuid4()), 'type': kind, 'title': title, 'summary': summary, 'payload': payload,
@@ -275,15 +294,34 @@ class Toolbox:
         return None
 
     def _ingredient_rows(self, ingredients, previous=()):
+        """Rows with stable ids, named like the catalog where it clearly has the ingredient.
+
+        Also collects ingredients the catalog lacks (`self.new_ingredients`), which are added to the
+        catalog together with the recipe once the person accepts the proposal.
+        """
         previous = [dict(row, id=str(row['id'])) for row in previous if row.get('id')]
         known = {row['id'] for row in previous}
+        catalog = Catalog()
+        previous_names = {normalize_name(row['name']) for row in previous}
         rows, used = [], set()
+        self.new_ingredients, self.renamed = [], []
         for item in ingredients or []:
             if isinstance(item, str):
                 item = {'name': item}
             if not isinstance(item, dict) or not str(item.get('name') or '').strip():
                 continue
             name = ' '.join(str(item['name']).split())[:100]
+            unit = str(item.get('unit') or '').strip()[:20]
+            entry = catalog.match(name)
+            if entry:
+                if entry.name != name:
+                    self.renamed.append(f'{name} → {entry.name}')
+                name = entry.name
+            elif normalize_name(name) not in previous_names and \
+                    normalize_name(name) not in {normalize_name(n['name']) for n in self.new_ingredients}:
+                category = item.get('category') if item.get('category') in INGREDIENT_CATEGORIES else 'sonstiges'
+                self.new_ingredients.append({'name': name, 'category': category,
+                                             'defaultUnit': unit if unit in UNITS else ''})
             identity = str(item.get('id') or '')
             if identity not in known or identity in used:
                 key = normalize_name(name)
@@ -293,7 +331,7 @@ class Toolbox:
             old = next((old for old in previous if old['id'] == identity), {})
             row = {'id': identity, 'name': name, 'quantityPerPerson': self._quantity(item, 'quantity',
                                                                                      'quantityPerPerson'),
-                   'unit': str(item.get('unit') or '').strip()[:20]}
+                   'unit': unit}
             section = item.get('sectionId')
             if isinstance(section, int) and not isinstance(section, bool):
                 row['sectionId'] = section
@@ -301,6 +339,17 @@ class Toolbox:
                 row['sectionId'] = old['sectionId']
             rows.append(row)
         return rows
+
+    def _catalog_notes(self, result):
+        """Tell the model what was matched and what would be new in the catalog."""
+        if self.renamed:
+            result['matchedToCatalog'] = self.renamed
+        if self.new_ingredients:
+            result['newCatalogIngredients'] = [item['name'] for item in self.new_ingredients]
+            result['catalogHint'] = ('Diese Zutaten gibt es noch nicht im Katalog und werden beim Übernehmen neu '
+                                     'angelegt. Falls eine davon doch einer Katalogzutat entspricht, den Vorschlag '
+                                     'mit dem Katalognamen erneut machen.')
+        return result
 
     @staticmethod
     def _find_row(name, rows):
@@ -393,9 +442,15 @@ class Toolbox:
             summary.append(payload['description'])
         if sourceUrl:
             summary.append(f'Quelle: {sourceUrl}')
-        details = {'ingredients': [{'text': self._ingredient_text(row)} for row in rows],
+        fresh = {normalize_name(item['name']) for item in self.new_ingredients}
+        details = {'ingredients': [{'text': self._ingredient_text(row),
+                                    **({'newCatalog': True} if normalize_name(row['name']) in fresh else {})}
+                                   for row in rows],
                    'steps': self._step_details(payload['steps'], rows)}
-        result = self._propose('recipe', payload['name'], summary, payload, details=details)
+        if self.new_ingredients:
+            payload['newIngredients'] = self.new_ingredients
+            summary.append('Neu im Zutatenkatalog: ' + ', '.join(item['name'] for item in self.new_ingredients))
+        result = self._catalog_notes(self._propose('recipe', payload['name'], summary, payload, details=details))
         unlinked = [i + 1 for i, step in enumerate(payload['steps']) if not step['ingredients']]
         if warnings:
             result['warnings'] = warnings
@@ -423,13 +478,17 @@ class Toolbox:
         old_rows = [dict(row, id=str(row['id'])) for row in current['ingredients']]
         rows = old_rows
         details = {}
+        self.new_ingredients, self.renamed = [], []
         if ingredients is not None:
             rows = self._ingredient_rows(ingredients, old_rows)
             old_by_id = {row['id']: row for row in old_rows}
             listing = []
+            fresh = {normalize_name(item['name']) for item in self.new_ingredients}
             for row in rows:
                 old = old_by_id.get(row['id'])
                 entry = {'text': self._ingredient_text(row)}
+                if normalize_name(row['name']) in fresh:
+                    entry['newCatalog'] = True
                 if not old:
                     entry['status'] = 'added'
                 elif self._ingredient_text(old) != entry['text']:
@@ -469,8 +528,11 @@ class Toolbox:
         self._check(RecipeSerializer, changes, instance=recipe, partial=True)
         payload = {'id': str(recipe.id), 'updatedAt': recipe.updated_at.isoformat(), 'changes': changes}
         summary = [str(reason).strip()] if str(reason or '').strip() else []
-        result = self._propose('recipe_update', changes.get('name', recipe.name), summary, payload,
-                               changes=diff, details=details)
+        if self.new_ingredients and 'ingredients' in changes:
+            payload['newIngredients'] = self.new_ingredients
+            summary.append('Neu im Zutatenkatalog: ' + ', '.join(item['name'] for item in self.new_ingredients))
+        result = self._catalog_notes(self._propose('recipe_update', changes.get('name', recipe.name), summary,
+                                                   payload, changes=diff, details=details))
         if warnings:
             result['warnings'] = warnings
         return result
@@ -781,9 +843,12 @@ def apply_proposal(request, kind, payload):
         raise serializers.ValidationError({'payload': 'Ungültiger Vorschlag.'})
     context = {'request': request}
     if kind == 'recipe':
-        serializer = RecipeSerializer(data=payload, context=context)
-        serializer.is_valid(raise_exception=True)
-        recipe = serializer.save(household=household)
+        payload = dict(payload)
+        with transaction.atomic():
+            _add_to_catalog(payload.pop('newIngredients', None))
+            serializer = RecipeSerializer(data=payload, context=context)
+            serializer.is_valid(raise_exception=True)
+            recipe = serializer.save(household=household)
         return RecipeSerializer(recipe).data, '/recipes'
     if kind == 'event':
         serializer = CalendarEventSerializer(data=payload, context=context)
@@ -837,6 +902,21 @@ UPDATES = {
 }
 
 
+def _add_to_catalog(items):
+    """Adds the ingredients a confirmed recipe proposal introduces; ones that exist by now are skipped."""
+    if not isinstance(items, list):
+        return
+    for item in items[:40]:
+        if not isinstance(item, dict):
+            continue
+        serializer = IngredientSerializer(data={'name': item.get('name'), 'category': item.get('category'),
+                                                'defaultUnit': item.get('defaultUnit') or ''})
+        if serializer.is_valid():
+            serializer.save()
+        elif 'name' not in serializer.errors:
+            raise serializers.ValidationError({'newIngredients': serializer.errors})
+
+
 def _apply_update(request, kind, payload):
     """Applies a confirmed change, unless the entry changed since the proposal was made."""
     queryset, serializer_class = UPDATES[kind]
@@ -857,6 +937,8 @@ def _apply_update(request, kind, payload):
             raise serializers.ValidationError({'payload': 'Der Eintrag wurde inzwischen geändert. Bitte den '
                                                           'Assistenten noch einmal fragen.'})
         changes = dict(changes)
+        if kind == 'recipe_update':
+            _add_to_catalog(payload.get('newIngredients'))
         done = changes.pop('done', None) if kind == 'todo_update' else None
         if changes:
             serializer = serializer_class(instance, data=changes, partial=True, context=context)

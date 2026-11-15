@@ -26,6 +26,7 @@ describe('Recipe editing workflow', () => {
     updateRecipe: vi.fn(),
     deleteRecipe: vi.fn(),
     createIngredient: vi.fn(),
+    updateIngredient: vi.fn(),
   };
   let page: RecipesPage;
   beforeEach(() => {
@@ -45,6 +46,28 @@ describe('Recipe editing workflow', () => {
     expect(open).toHaveBeenCalledWith(
       expect.objectContaining({ source: 'recipe', servings: 12, persons: 1 }),
     );
+  });
+  it('recognises ss/ß and archived entries and links rows once added to the catalog', () => {
+    page.ingredientCatalog = [{ id: 7, name: 'Weißwein', category: 'saucen', defaultUnit: 'dl' } as never];
+    page.archivedCatalog = [{ id: 9, name: 'Safran', category: 'gewuerze', defaultUnit: '', archived: true } as never];
+    page.openEdit(recipe);
+    page.form.ingredients[0].name = 'Weisswein';
+    page.onIngredientNameChange(0);
+    expect(page.form.ingredients[0]).toMatchObject({ name: 'Weißwein', ingredientId: 7 });
+    expect(page.newIngredientPrompt).toBeNull();
+    page.form.ingredients[0].name = 'safran';
+    page.onIngredientNameChange(0);
+    expect(page.newIngredientPrompt?.archived?.id).toBe(9);
+    service.updateIngredient.mockReturnValue(of({ id: 9, name: 'Safran', category: 'gewuerze', defaultUnit: '', archived: false }));
+    page.confirmNewIngredient();
+    expect(service.updateIngredient).toHaveBeenCalledWith(9, { archived: false });
+    expect(service.createIngredient).not.toHaveBeenCalled();
+    expect(page.form.ingredients[0]).toMatchObject({ name: 'Safran', ingredientId: 9 });
+    page.form.ingredients[0].name = 'Zimtstange';
+    page.onIngredientNameChange(0);
+    service.createIngredient.mockReturnValue(of({ id: 11, name: 'Zimtstange', category: 'gewuerze', defaultUnit: 'Stück' }));
+    page.confirmNewIngredient();
+    expect(page.form.ingredients[0]).toMatchObject({ name: 'Zimtstange', ingredientId: 11 });
   });
   it('filters ingredients and categories and sorts duration', () => {
     page.search = 'mehl';

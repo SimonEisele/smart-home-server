@@ -53,6 +53,7 @@
                         @if (item.status === 'removed') { <s>{{ item.text }}</s> } @else { <span>{{ item.text }}</span> }
                         @if (item.before) { <small class="was">vorher {{ item.before }}</small> }
                         @if (item.status) { <em class="badge">{{ STATUS_LABELS[item.status] }}</em> }
+                        @if (item.newCatalog) { <em class="badge catalog" title="Wird beim Übernehmen im Zutatenkatalog angelegt">neue Zutat</em> }
                     </li>
                     }
                 </ul>
