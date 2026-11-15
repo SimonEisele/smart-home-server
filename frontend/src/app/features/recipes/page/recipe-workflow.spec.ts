@@ -57,6 +57,8 @@ describe('Recipe editing workflow', () => {
     expect(page.newIngredientPrompt).toBeNull();
     page.form.ingredients[0].name = 'safran';
     page.onIngredientNameChange(0);
+    expect(page.catalogState(page.form.ingredients[0])).toBe('archived');
+    page.toggleCatalogPrompt(0);
     expect(page.newIngredientPrompt?.archived?.id).toBe(9);
     service.updateIngredient.mockReturnValue(of({ id: 9, name: 'Safran', category: 'gewuerze', defaultUnit: '', archived: false }));
     page.confirmNewIngredient();
@@ -65,9 +67,62 @@ describe('Recipe editing workflow', () => {
     expect(page.form.ingredients[0]).toMatchObject({ name: 'Safran', ingredientId: 9 });
     page.form.ingredients[0].name = 'Zimtstange';
     page.onIngredientNameChange(0);
+    page.toggleCatalogPrompt(0);
     service.createIngredient.mockReturnValue(of({ id: 11, name: 'Zimtstange', category: 'gewuerze', defaultUnit: 'Stück' }));
     page.confirmNewIngredient();
     expect(page.form.ingredients[0]).toMatchObject({ name: 'Zimtstange', ingredientId: 11 });
+  });
+  it('fills the catalog unit only for an exact name and drops it again while typing on', () => {
+    page.ingredientCatalog = [{ id: 1, name: 'Zucker', category: 'sonstiges', defaultUnit: 'g' } as never];
+    page.openAdd();
+    page.addIngredient();
+    const row = page.form.ingredients[0];
+    row.name = 'Zucker';
+    page.onIngredientNameInput(0);
+    expect(row).toMatchObject({ unit: 'g', ingredientId: 1 });
+    row.name = 'Zuckerwatte';
+    page.onIngredientNameInput(0);
+    expect(row.unit).toBe('');
+    expect(row.ingredientId).toBeUndefined();
+    row.unit = 'Packung';
+    page.autoUnitClear(row);
+    row.name = 'Zucker';
+    page.onIngredientNameInput(0);
+    expect(row.unit).toBe('Packung'); // typed by hand: kept
+    page.onIngredientNameChange(0);
+    expect(page.catalogState(row)).toBe('linked');
+  });
+  it('suggests the catalog entry for plurals and notes ("Eier" → "Ei")', () => {
+    page.ingredientCatalog = [{ id: 2, name: 'Ei', category: 'milch', defaultUnit: 'Stück' } as never,
+      { id: 3, name: 'Zwiebel', category: 'gemuese', defaultUnit: 'Stück' } as never];
+    page.openAdd();
+    page.addIngredient();
+    page.form.ingredients[0].name = 'Eier';
+    page.onIngredientNameChange(0);
+    expect(page.catalogState(page.form.ingredients[0])).toBe('similar');
+    expect(page.catalogSuggestion('Zwiebeln, gehackt')?.name).toBe('Zwiebel');
+    page.useSuggestion(0);
+    expect(page.form.ingredients[0]).toMatchObject({ name: 'Ei', ingredientId: 2, unit: 'Stück' });
+    expect(page.newIngredientPrompt).toBeNull();
+  });
+  it('adds ingredients directly in a step: existing ones get a step amount, new ones join the list', () => {
+    page.ingredientCatalog = [{ id: 4, name: 'Butter', category: 'milch', defaultUnit: 'g' } as never];
+    page.openEdit(recipe);
+    page.draft(0).name = 'mehl';
+    page.draft(0).quantity = 200;
+    page.draft(0).unit = 'g';
+    page.addStepIngredientByName(0);
+    expect(page.form.steps[0].ingredients[0]).toMatchObject({ recipeIngredientId: 'a', name: 'Mehl', quantityPerPerson: 200, unit: 'g' });
+    expect(page.form.ingredients.length).toBe(1);
+    page.draft(0).name = 'Butter';
+    page.draft(0).quantity = 50;
+    page.addStepIngredientByName(0);
+    const butter = page.form.ingredients[1];
+    expect(butter).toMatchObject({ name: 'Butter', ingredientId: 4, quantityPerPerson: 50, unit: 'g' });
+    expect(page.form.steps[0].ingredients[1]).toMatchObject({ recipeIngredientId: butter.id, quantityPerPerson: undefined });
+    expect(page.stepsUsing(butter)).toEqual([1]);
+    expect(page.availableForStep(page.form.steps[1]).map((i) => i.name)).toEqual(['Mehl', 'Butter']);
+    expect(page.draft(0).name).toBe('');
   });
   it('filters ingredients and categories and sorts duration', () => {
     page.search = 'mehl';

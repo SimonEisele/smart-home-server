@@ -76,6 +76,9 @@
 <datalist id="ingredient-catalog">
     <option *ngFor="let ing of ingredientCatalog" [value]="ing.name"></option>
 </datalist>
+<datalist id="step-ingredient-options">
+    <option *ngFor="let name of stepIngredientOptions" [value]="name"></option>
+</datalist>
 <datalist id="recipe-units">
     <option *ngFor="let unit of ingredientUnits" [value]="unit"></option>
 </datalist>
@@ -183,7 +186,7 @@
                             <div class="heading-actions"><button type="button" class="btn-ghost"
                                     [class.active]="importMode === 'ingredients'"
                                     (click)="openImport('ingredients')">Liste einfügen</button><button type="button"
-                                    class="btn-ghost" (click)="addIngredient()">+ Zutat</button></div>
+                                    class="btn-ghost" (click)="addIngredient(); focusLastIngredient()">+ Zutat</button></div>
                         </div>
                         <div class="import-panel" *ngIf="importMode === 'ingredients'">
                             <label>Zutatenliste<textarea aria-label="Zutatenliste einfügen" rows="6"
@@ -197,18 +200,34 @@
                                     übernehmen</button></div>
                         </div>
                         <p class="helper" *ngIf="catalogError">{{ catalogError }}</p>
-                        <div class="ingredient-edit" *ngFor="let ing of form.ingredients; let i = index">
-                            <label class="ingredient-name">Zutat {{ i + 1
-                                }}<input [attr.aria-label]="'Zutat ' + (i + 1) + ' Name'" list="ingredient-catalog"
-                                    maxlength="100" [(ngModel)]="ing.name" (focus)="ingredientPrevNames[i] = ing.name"
+                        <ng-container *ngFor="let ing of form.ingredients; let i = index">
+                        <div class="ingredient-edit">
+                            <label class="ingredient-name"><span class="label-row">Zutat {{ i + 1 }}
+                                    <ng-container [ngSwitch]="catalogState(ing)">
+                                        <span *ngSwitchCase="'linked'" class="cat-badge ok" title="Im Zutatenkatalog">✓ Katalog</span>
+                                        <button *ngSwitchCase="'new'" type="button" class="cat-badge new"
+                                            [class.open]="newIngredientPrompt?.rowId === ing.id"
+                                            (click)="toggleCatalogPrompt(i)"
+                                            [attr.aria-label]="ing.name + ' ist nicht im Katalog – anlegen'">Neu · anlegen?</button>
+                                        <button *ngSwitchCase="'archived'" type="button" class="cat-badge new"
+                                            (click)="toggleCatalogPrompt(i)">Archiviert</button>
+                                        <button *ngSwitchCase="'similar'" type="button" class="cat-badge new"
+                                            [class.open]="newIngredientPrompt?.rowId === ing.id"
+                                            (click)="toggleCatalogPrompt(i)">Meinst du „{{ catalogSuggestion(ing.name)?.name }}“?</button>
+                                    </ng-container></span><input [attr.aria-label]="'Zutat ' + (i + 1) + ' Name'"
+                                    list="ingredient-catalog" maxlength="100" [(ngModel)]="ing.name"
                                     (input)="onIngredientNameInput(i)" (change)="onIngredientNameChange(i)"
                                     (keydown.enter)="onIngredientNameChange(i); onIngredientEnter(i, $event)"
-                                    placeholder="Zutat wählen oder frei eingeben" /></label><label>Menge<input
+                                    placeholder="Zutat wählen oder frei eingeben" />
+                                <small class="used-in" *ngIf="stepsUsing(ing).length">in Schritt {{ stepsUsing(ing).join(', ') }}</small>
+                            </label><label>Menge<input
                                     [attr.aria-label]="'Zutat ' + (i + 1) + ' Menge'" type="number" min="0" step="any"
-                                    [(ngModel)]="ing.quantityPerPerson" (change)="onRecipeIngredientQtyUnitChange(i)"
+                                    inputmode="decimal" [(ngModel)]="ing.quantityPerPerson"
+                                    (change)="onRecipeIngredientQtyUnitChange(i)"
                                     (keydown.enter)="onIngredientEnter(i, $event)" placeholder="Nach Bedarf" /></label><label>Einheit<input
                                     [attr.aria-label]="'Zutat ' + (i + 1) + ' Einheit'" list="recipe-units"
-                                    maxlength="20" [(ngModel)]="ing.unit" (change)="onRecipeIngredientQtyUnitChange(i)"
+                                    maxlength="20" [(ngModel)]="ing.unit" (input)="ing.id && autoUnitClear(ing)"
+                                    (change)="onRecipeIngredientQtyUnitChange(i)"
                                     (keydown.enter)="onIngredientEnter(i, $event)" placeholder="g, ml, Stück" /></label><label
                                 *ngIf="form.sections.length">Abschnitt<select
                                     [attr.aria-label]="'Zutat ' + (i + 1) + ' Abschnitt'" [(ngModel)]="ing.sectionId">
@@ -226,23 +245,19 @@
                                     class="btn-ghost remove" [attr.aria-label]="'Zutat ' + (i + 1) + ' entfernen'"
                                     (click)="removeIngredient(i)">✕</button></div>
                         </div>
-                        <p class="empty-inline" *ngIf="!form.ingredients.length">
-                            Noch keine Zutaten. Füge die erste Gesamtmenge hinzu oder füge eine ganze Liste ein.
-                        </p>
-                        <p class="helper" *ngIf="form.ingredients.length">Tipp: Enter springt in die nächste
-                            Zeile.</p>
-                        <p class="helper unlinked-hint" *ngIf="!catalogError && unlinkedIngredientNames.length">
-                            Nicht im Katalog: {{ unlinkedIngredientNames.join(', ') }}. Diese Zutaten landen beim
-                            Einkauf unter „Sonstiges“.
-                        </p>
-                        <div class="catalog-prompt" *ngIf="newIngredientPrompt">
+                        <div class="catalog-prompt" *ngIf="newIngredientPrompt && newIngredientPrompt.rowId === ing.id">
                             <p *ngIf="newIngredientPrompt.archived">
-                                „{{ newIngredientPrompt.archived.name }}“ ist im Katalog archiviert. Du kannst sie frei
-                                verwenden oder wieder aktivieren.
+                                „{{ newIngredientPrompt.archived.name }}“ ist im Katalog archiviert. Wieder aktivieren,
+                                damit sie beim Einkauf richtig einsortiert wird?
                             </p>
+                            <div class="suggestion" *ngIf="!newIngredientPrompt.archived && catalogSuggestion(ing.name) as hint">
+                                <p>Im Katalog gibt es „{{ hint.name }}“. Meinst du diese Zutat?</p>
+                                <button type="button" class="btn-primary" (click)="useSuggestion(i)">„{{ hint.name }}“
+                                    verwenden</button>
+                            </div>
                             <p *ngIf="!newIngredientPrompt.archived">
-                                „{{ newIngredientPrompt.name }}“ ist noch nicht im Katalog. Du kannst sie frei
-                                verwenden oder zentral anlegen.
+                                „{{ newIngredientPrompt.name }}“ ist noch nicht im Zutatenkatalog. Im Katalog wird sie
+                                beim Einkauf richtig einsortiert und in allen Rezepten gleich geschrieben.
                             </p>
                             <div class="field-grid" *ngIf="!newIngredientPrompt.archived">
                                 <label>Kategorie<select aria-label="Neue Zutat Kategorie"
@@ -260,12 +275,26 @@
                             </div>
                             <div class="prompt-actions">
                                 <button type="button" class="btn-ghost" (click)="dismissNewIngredient()">
-                                    Frei verwenden</button><button type="button" class="btn-primary"
+                                    Nur in diesem Rezept</button><button type="button" class="btn-primary"
                                     (click)="confirmNewIngredient()" [disabled]="ingredientSaving">
-                                    {{ newIngredientPrompt.archived ? 'Wieder aktivieren' : 'Zum Katalog hinzufügen' }}
+                                    {{ ingredientSaving ? 'Speichert …' : newIngredientPrompt.archived ? 'Wieder aktivieren' :
+                                    'Im Katalog anlegen' }}
                                 </button>
                             </div>
                         </div>
+                        </ng-container>
+                        <p class="empty-inline" *ngIf="!form.ingredients.length">
+                            Noch keine Zutaten. Füge die erste hinzu oder füge eine ganze Liste ein.
+                        </p>
+                        <div class="add-row" *ngIf="form.ingredients.length">
+                            <button type="button" class="btn-ghost" (click)="addIngredient(); focusLastIngredient()">+ Zutat</button>
+                            <span class="helper">Enter springt in die nächste Zeile.</span>
+                        </div>
+                        <p class="helper unlinked-hint" *ngIf="!catalogError && unlinkedIngredientNames.length">
+                            {{ unlinkedIngredientNames.length }} {{ unlinkedIngredientNames.length === 1 ? 'Zutat ist' :
+                            'Zutaten sind' }} nicht im Katalog und landen beim Einkauf unter „Sonstiges“. Tippe auf den
+                            gelben Hinweis bei der Zutat, um sie zuzuordnen oder aufzunehmen.
+                        </p>
                     </section>
                     <section *ngIf="editorTab === 'steps'" class="editor-section">
                         <div class="section-heading">
@@ -315,38 +344,41 @@
                                     </option>
                                 </select></label>
                             <div class="step-links">
-                                <div class="section-heading compact">
-                                    <span>Zutaten dieses Schritts</span><button type="button" class="btn-ghost"
-                                        (click)="addStepIngredient(i)" [disabled]="!form.ingredients.length">
-                                        + Verknüpfen
-                                    </button>
-                                </div>
+                                <span class="step-links-title">Zutaten in diesem Schritt</span>
                                 <div class="step-link" *ngFor="let link of step.ingredients; let j = index">
-                                    <label>Zutat<select [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1)"
-                                            [(ngModel)]="link.recipeIngredientId"
-                                            (ngModelChange)="linkStepIngredient(i, j)">
-                                            <option [ngValue]="undefined">Zutat wählen</option>
-                                            <option *ngFor="let ing of form.ingredients" [ngValue]="ing.id"
-                                                [disabled]="!ing.name.trim() || ingredientLinked(step, j, ing)">
-                                                {{ ingredientOptionLabel(ing) }}
-                                            </option>
-                                        </select></label><label>Menge in diesem Schritt<input
+                                    <span class="link-name">{{ link.name }}<small *ngIf="link.quantityPerPerson == null">
+                                            {{ stepAmountLabel(link) }}</small></span><label><span class="sr-only">Menge in diesem Schritt</span><input
                                             [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1) + ' Menge'"
-                                            type="number" min="0" step="any" [(ngModel)]="link.quantityPerPerson"
-                                            [placeholder]="stepAmountLabel(link)" /></label><label>Einheit<input
+                                            type="number" min="0" step="any" inputmode="decimal"
+                                            [(ngModel)]="link.quantityPerPerson"
+                                            [placeholder]="'Menge: alles'" /></label><label><span class="sr-only">Einheit</span><input
                                             [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1) + ' Einheit'"
                                             list="recipe-units" maxlength="20" [(ngModel)]="link.unit"
                                             [placeholder]="stepUnit(link)"
                                             [disabled]="link.quantityPerPerson == null" /></label><button type="button"
                                         class="btn-ghost"
-                                        [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat ' + (j + 1) + ' lösen'"
-                                        (click)="unlinkStepIngredient(i, j)">
-                                        ✕
-                                    </button>
+                                        [attr.aria-label]="link.name + ' aus Schritt ' + (i + 1) + ' entfernen'"
+                                        (click)="unlinkStepIngredient(i, j)">✕</button>
                                 </div>
-                                <span class="helper" *ngIf="step.ingredients.length">Menge leer lassen, um die
-                                    Gesamtmenge zu verwenden. Eigene Schrittmengen können
-                                    eine eigene Einheit haben.</span>
+                                <div class="step-chips" *ngIf="availableForStep(step).length" role="group"
+                                    [attr.aria-label]="'Zutaten für Schritt ' + (i + 1)">
+                                    <button type="button" class="chip-add" *ngFor="let ing of availableForStep(step)"
+                                        (click)="addExistingIngredientToStep(i, ing)"
+                                        [attr.aria-label]="ing.name + ' zu Schritt ' + (i + 1)">+ {{ ing.name }}</button>
+                                </div>
+                                <form class="step-add" (ngSubmit)="addStepIngredientByName(i)">
+                                    <input [attr.aria-label]="'Schritt ' + (i + 1) + ' Zutat hinzufügen'"
+                                        [name]="'stepAdd' + i" list="step-ingredient-options" maxlength="100"
+                                        [(ngModel)]="draft(i).name" placeholder="Zutat hinzufügen (auch neue) …" /><input
+                                        [attr.aria-label]="'Schritt ' + (i + 1) + ' neue Zutat Menge'" [name]="'stepQty' + i"
+                                        type="number" min="0" step="any" inputmode="decimal" [(ngModel)]="draft(i).quantity"
+                                        placeholder="Menge" /><input [attr.aria-label]="'Schritt ' + (i + 1) + ' neue Zutat Einheit'"
+                                        [name]="'stepUnit' + i" list="recipe-units" maxlength="20"
+                                        [(ngModel)]="draft(i).unit" placeholder="Einheit" /><button type="submit"
+                                        class="btn-ghost" [disabled]="!draft(i).name.trim()">Hinzufügen</button>
+                                </form>
+                                <span class="helper">Neue Zutaten landen automatisch in der Zutatenliste. Bei
+                                    bestehenden gilt eine Menge hier nur für diesen Schritt.</span>
                             </div>
                         </article>
                         <p class="empty-inline" *ngIf="!form.steps.length">

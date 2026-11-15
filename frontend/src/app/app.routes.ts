@@ -1,34 +1,23 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { TodosPage } from './features/todos/page/todos.page';
-import { Dashboard } from './dashboard/component/dashboard';
-import { WeatherPage } from './features/weather/page/weather.page';
-import { MenuplanPage } from './features/menuplan/page/menuplan.page';
-import { Register } from './core/register/register';
-import { RecipesPage } from './features/recipes/page/recipes.page';
-import { ShoppinglistPage } from './features/shoppinglist/page/shoppinglist.page';
-import { CalendarPage } from './features/calendar/page/calendar.page';
-import { AccountManager } from './core/account-manager/account-manager';
-import { IngredientsPage } from './features/ingredients/page/ingredients.page';
-import { CleaningPage } from './features/cleaning/page/cleaning.page';
 import { LandingPage } from './core/landing/landing';
-import { AssistantPage } from './features/assistant/assistant.page';
 import { authGuard, guestGuard } from './core/auth/guards/auth.guard';
 
+// Pages load on first visit, so the app starts faster (and stays within the bundle budget).
 export const routes: Routes = [
   { path: '', component: LandingPage, canActivate: [guestGuard] },
-  { path: 'register', component: Register },
-  { path: 'home', component: Dashboard, canActivate: [authGuard] },
-  { path: 'todos', component: TodosPage, canActivate: [authGuard] },
-  { path: 'weather', component: WeatherPage, canActivate: [authGuard] },
-  { path: 'menuplan', component: MenuplanPage, canActivate: [authGuard] },
-  { path: 'recipes', component: RecipesPage, canActivate: [authGuard] },
-  { path: 'ingredients', component: IngredientsPage, canActivate: [authGuard] },
-  { path: 'shoppinglist', component: ShoppinglistPage, canActivate: [authGuard] },
-  { path: 'calendar', component: CalendarPage, canActivate: [authGuard] },
-  { path: 'cleaning', component: CleaningPage, canActivate: [authGuard] },
-  { path: 'assistant', component: AssistantPage, canActivate: [authGuard] },
-  { path: 'account', component: AccountManager, canActivate: [authGuard] },
+  { path: 'register', loadComponent: () => import('./core/register/register').then(m => m.Register) },
+  { path: 'home', loadComponent: () => import('./dashboard/component/dashboard').then(m => m.Dashboard), canActivate: [authGuard] },
+  { path: 'todos', loadComponent: () => import('./features/todos/page/todos.page').then(m => m.TodosPage), canActivate: [authGuard] },
+  { path: 'weather', loadComponent: () => import('./features/weather/page/weather.page').then(m => m.WeatherPage), canActivate: [authGuard] },
+  { path: 'menuplan', loadComponent: () => import('./features/menuplan/page/menuplan.page').then(m => m.MenuplanPage), canActivate: [authGuard] },
+  { path: 'recipes', loadComponent: () => import('./features/recipes/page/recipes.page').then(m => m.RecipesPage), canActivate: [authGuard] },
+  { path: 'ingredients', loadComponent: () => import('./features/ingredients/page/ingredients.page').then(m => m.IngredientsPage), canActivate: [authGuard] },
+  { path: 'shoppinglist', loadComponent: () => import('./features/shoppinglist/page/shoppinglist.page').then(m => m.ShoppinglistPage), canActivate: [authGuard] },
+  { path: 'calendar', loadComponent: () => import('./features/calendar/page/calendar.page').then(m => m.CalendarPage), canActivate: [authGuard] },
+  { path: 'cleaning', loadComponent: () => import('./features/cleaning/page/cleaning.page').then(m => m.CleaningPage), canActivate: [authGuard] },
+  { path: 'assistant', loadComponent: () => import('./features/assistant/assistant.page').then(m => m.AssistantPage), canActivate: [authGuard] },
+  { path: 'account', loadComponent: () => import('./core/account-manager/account-manager').then(m => m.AccountManager), canActivate: [authGuard] },
   { path: '**', redirectTo: '' },
 ];
 

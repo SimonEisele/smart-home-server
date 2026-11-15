@@ -39,7 +39,7 @@ type RecipeForm = Partial<Recipe> & {
   standalone: true,
   imports: [DialogDirective, CommonModule, FormsModule],
   templateUrl: './recipes.page.html',
-  styleUrl: './recipes.page.css',
+  styleUrls: ['./recipes.page.css', './recipes.editor.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RecipesPage implements OnInit {
@@ -73,7 +73,13 @@ export class RecipesPage implements OnInit {
   form: RecipeForm = this.emptyForm();
   ingredientPrevNames: string[] = [];
   /** Catalog choice for a typed name; `archived` is set when it exists but is archived. */
-  newIngredientPrompt: { name: string; category: string; defaultUnit: string; archived?: Ingredient } | null = null;
+  newIngredientPrompt: {
+    rowId?: string; name: string; category: string; defaultUnit: string; archived?: Ingredient;
+  } | null = null;
+  /** Rows whose unit was filled from the catalog (and may be replaced when the name changes). */
+  private autoUnitIds = new Set<string>();
+  /** "Zutat hinzufügen" field per step: a recipe ingredient or a new one, with an optional amount. */
+  stepDrafts: Array<{ name: string; quantity?: number | null; unit: string }> = [];
   /** Archived entries: not offered, but recognised so the prompt does not claim they are missing. */
   archivedCatalog: Ingredient[] = [];
   /** Serialized form at the time the editor opened; used to warn before discarding edits. */
@@ -223,64 +229,115 @@ export class RecipesPage implements OnInit {
   }
 
   // ── Recipe ingredient handlers ──────────────────────────────────────────
-  /** Fires on every input event — fills the default unit immediately when a catalog match is typed/selected. */
-  onIngredientNameInput(index: number): void {
-    const name = this.form.ingredients[index].name?.trim();
-    const match = this.ingredientCatalog.find(
-      (i) => ingredientKey(i.name) === ingredientKey(name || ''),
-    );
-    this.form.ingredients[index].ingredientId = match?.id;
-    if (!name || this.form.ingredients[index].unit) return;
-    if (match) {
-      // Mutate in place so item.ing in the template stays valid
-      this.form.ingredients[index].unit = match.defaultUnit;
+  private catalogMatch(name: string | undefined): Ingredient | undefined {
+    const key = ingredientKey(name ?? '');
+    return key ? this.ingredientCatalog.find((i) => ingredientKey(i.name) === key) : undefined;
+  }
+
+  /** Links a row to the catalog entry with the same name and fills its unit (only while it is empty or auto-filled). */
+  private applyCatalog(row: RecipeIngredient, match: Ingredient | undefined): void {
+    row.ingredientId = match?.id;
+    const auto = !!row.id && this.autoUnitIds.has(row.id);
+    if (match && (!row.unit || auto)) {
+      row.unit = match.defaultUnit ?? '';
+      if (row.id && row.unit) this.autoUnitIds.add(row.id);
+    } else if (!match && auto) {
+      // "Zucker" filled g; typing on to "Zuckerwatte" must not keep it.
+      row.unit = '';
+      this.autoUnitIds.delete(row.id!);
     }
   }
 
+  /** While typing: link and fill the unit as soon as the name is exactly a catalog entry. */
+  onIngredientNameInput(index: number): void {
+    const row = this.form.ingredients[index];
+    this.applyCatalog(row, this.catalogMatch(row.name));
+    if (this.newIngredientPrompt?.rowId === row.id) this.newIngredientPrompt = null;
+  }
+
+  /** Leaving the name field: use the catalog spelling, rename the step links and offer to add new names. */
   onIngredientNameChange(index: number): void {
-    const oldName = this.ingredientPrevNames[index] ?? '';
-    const newName = this.form.ingredients[index].name?.trim() ?? '';
-    const identity = this.ingredientCatalog.find(
-      (i) => ingredientKey(i.name) === ingredientKey(newName),
-    );
-    this.form.ingredients[index].ingredientId = identity?.id;
-    if (identity) this.form.ingredients[index].name = identity.name;
-    // Auto-fill unit on blur too (covers keyboard-only usage)
-    if (newName && !this.form.ingredients[index].unit) {
-      const match = identity;
-      if (match) {
-        // Mutate in place — do NOT replace form.ingredients[index] with a new object;
-        // that would orphan item.ing in the template and lose any qty the user already typed.
-        this.form.ingredients[index].unit = match.defaultUnit;
-      }
-    }
-    this.ingredientPrevNames[index] = identity?.name ?? newName;
+    const row = this.form.ingredients[index];
+    const name = (row.name ?? '').trim().replace(/\s+/g, ' ');
+    const identity = this.catalogMatch(name);
+    row.name = identity?.name ?? name;
+    this.applyCatalog(row, identity);
+    this.ingredientPrevNames[index] = row.name;
     this.form.ingredients = [...this.form.ingredients];
-    if (!oldName || oldName === newName) {
-      // Still check catalog even if name didn't change (e.g. first blur)
-      if (newName && !identity) {
-        this.newIngredientPrompt = this.catalogPrompt(newName, index);
-      } else {
-        this.newIngredientPrompt = null;
-      }
-      this.cdr.detectChanges();
-      return;
-    }
     this.form.steps = this.form.steps.map((s) => ({
       ...s,
       ingredients: s.ingredients.map((i) =>
-        i.recipeIngredientId === this.form.ingredients[index].id
-          ? { ...i, name: identity?.name ?? newName, ingredientId: identity?.id }
-          : i,
+        i.recipeIngredientId === row.id ? { ...i, name: row.name, ingredientId: identity?.id } : i,
       ),
     }));
-    // Show prompt if new name isn't in catalog
-    if (newName && !identity) {
-      this.newIngredientPrompt = this.catalogPrompt(newName, index);
-    } else {
-      this.newIngredientPrompt = null;
-    }
+    // New names only get a badge; the catalog panel opens when it is tapped (no interruption while typing a list).
+    if (identity && this.newIngredientPrompt?.rowId === row.id) this.newIngredientPrompt = null;
     this.cdr.detectChanges();
+  }
+
+  /**
+   * A catalog entry the typed name probably means: the part before a comma or bracket, or a simple
+   * singular/plural form ("Eier" → "Ei", "Zwiebeln, gehackt" → "Zwiebel"). Same rules as the assistant.
+   */
+  catalogSuggestion(name: string | undefined): Ingredient | undefined {
+    const endings = ['n', 'en', 'e', 's', 'er', 'nen'];
+    const variants = (key: string) => {
+      const found = new Set([key]);
+      for (const end of endings) {
+        found.add(key + end);
+        if (key.endsWith(end) && key.length - end.length >= 3) found.add(key.slice(0, -end.length));
+      }
+      return found;
+    };
+    for (const candidate of [name ?? '', (name ?? '').split(/[,(;]/)[0]]) {
+      const key = ingredientKey(candidate);
+      if (!key) continue;
+      const wanted = variants(key);
+      const hits = this.ingredientCatalog.filter((i) => [...variants(ingredientKey(i.name))].some((v) => wanted.has(v)));
+      if (hits.length === 1) return hits[0];
+      const exact = hits.find((i) => ingredientKey(i.name) === key);
+      if (exact) return exact;
+    }
+    return undefined;
+  }
+
+  /** Takes the suggested catalog entry for a row (e.g. "Eier" → "Ei"). */
+  useSuggestion(index: number): void {
+    const row = this.form.ingredients[index];
+    const match = this.catalogSuggestion(row.name);
+    if (!match) return;
+    row.name = match.name;
+    this.onIngredientNameChange(index);
+    this.newIngredientPrompt = null;
+  }
+
+  /** A unit typed by hand is never replaced by the catalog default. */
+  autoUnitClear(row: RecipeIngredient): void {
+    if (row.id) this.autoUnitIds.delete(row.id);
+  }
+
+  focusLastIngredient(): void {
+    this.focusField(`Zutat ${this.form.ingredients.length} Name`);
+  }
+
+  /** Catalog state of a row, shown as a small badge. */
+  catalogState(row: RecipeIngredient): 'linked' | 'archived' | 'similar' | 'new' | 'empty' {
+    if (!row.name?.trim()) return 'empty';
+    if (this.catalogMatch(row.name)) return 'linked';
+    if (this.archivedCatalog.some((i) => ingredientKey(i.name) === ingredientKey(row.name))) return 'archived';
+    return this.catalogSuggestion(row.name) ? 'similar' : 'new';
+  }
+
+  /** Opens (or closes) the "add to catalog" panel below a row. */
+  toggleCatalogPrompt(index: number): void {
+    const row = this.form.ingredients[index];
+    this.newIngredientPrompt = this.newIngredientPrompt?.rowId === row.id ? null : this.catalogPrompt(row.name.trim(), index);
+  }
+
+  /** Step numbers that use a recipe ingredient. */
+  stepsUsing(row: RecipeIngredient): number[] {
+    return this.form.steps.flatMap((step, i) =>
+      step.ingredients.some((link) => link.recipeIngredientId === row.id) ? [i + 1] : []);
   }
 
   addIngredient(sectionId?: number): void {
@@ -293,6 +350,7 @@ export class RecipesPage implements OnInit {
 
   removeIngredient(index: number): void {
     const removed = this.form.ingredients[index];
+    if (this.newIngredientPrompt?.rowId === removed.id) this.newIngredientPrompt = null;
     this.form.ingredients = this.form.ingredients.filter((_, i) => i !== index);
     this.ingredientPrevNames = this.ingredientPrevNames.filter((_, i) => i !== index);
     this.form.steps = this.form.steps.map((step) => ({
@@ -362,7 +420,8 @@ export class RecipesPage implements OnInit {
           name: match?.name ?? item.name,
           ingredientId: match?.id,
           quantityPerPerson: item.quantity ?? undefined,
-          unit: item.unit || match?.defaultUnit || '',
+          // "Salz" without an amount stays without a unit instead of getting "TL".
+          unit: item.unit || (item.quantity != null ? match?.defaultUnit : '') || '',
         } as RecipeIngredient;
       });
       const kept = this.form.ingredients.filter((i) => i.name.trim());
@@ -397,12 +456,77 @@ export class RecipesPage implements OnInit {
       ...this.form.steps,
       { order: this.form.steps.length + 1, description: '', ingredients: [], sectionId },
     ];
+    this.focusField(`Schritt ${this.form.steps.length} Beschreibung`);
   }
 
   removeStep(i: number): void {
     this.form.steps = this.form.steps
       .filter((_, idx) => idx !== i)
       .map((s, idx) => ({ ...s, order: idx + 1 }));
+    this.stepDrafts = this.stepDrafts.filter((_, idx) => idx !== i);
+  }
+
+  draft(stepIdx: number): { name: string; quantity?: number | null; unit: string } {
+    return (this.stepDrafts[stepIdx] ??= { name: '', quantity: undefined, unit: '' });
+  }
+
+  /** Recipe ingredients with a name that this step does not use yet (offered as one-tap chips). */
+  availableForStep(step: RecipeStep): RecipeIngredient[] {
+    return this.form.ingredients.filter(
+      (row) => row.name.trim() && !step.ingredients.some((link) => link.recipeIngredientId === row.id),
+    );
+  }
+
+  /** Names for the step field: the recipe's ingredients first, then the catalog. */
+  get stepIngredientOptions(): string[] {
+    const seen = new Set<string>();
+    return [...this.form.ingredients.map((i) => i.name), ...this.ingredientCatalog.map((i) => i.name)].filter((name) => {
+      const key = ingredientKey(name ?? '');
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  /**
+   * Adds an ingredient to a step by name. An ingredient the recipe already has is linked (a typed amount
+   * becomes the amount for this step); a new one is added to the ingredient list with that amount.
+   */
+  addStepIngredientByName(stepIdx: number): void {
+    const draft = this.draft(stepIdx);
+    const name = draft.name.trim().replace(/\s+/g, ' ');
+    if (!name) return;
+    const step = this.form.steps[stepIdx];
+    const quantity = draft.quantity != null && Number.isFinite(draft.quantity) && draft.quantity >= 0 ? draft.quantity : undefined;
+    let row = this.form.ingredients.find((i) => ingredientKey(i.name) === ingredientKey(name));
+    let created = false;
+    if (!row) {
+      const match = this.catalogMatch(name);
+      row = {
+        id: crypto.randomUUID(),
+        name: match?.name ?? name,
+        ingredientId: match?.id,
+        quantityPerPerson: quantity,
+        unit: draft.unit.trim() || match?.defaultUnit || '',
+        sectionId: step.sectionId,
+      };
+      this.form.ingredients = [...this.form.ingredients.filter((i) => i.name.trim() || i.quantityPerPerson != null), row];
+      this.ingredientPrevNames = this.form.ingredients.map((i) => i.name);
+      created = true;
+    }
+    if (!step.ingredients.some((link) => link.recipeIngredientId === row!.id)) {
+      this.form.steps = this.form.steps.map((s, i) => i === stepIdx ? {
+        ...s,
+        ingredients: [...s.ingredients, {
+          recipeIngredientId: row!.id, name: row!.name, ingredientId: row!.ingredientId,
+          // A new row already holds the amount; an existing one keeps its total and this step gets its share.
+          quantityPerPerson: created ? undefined : quantity,
+          unit: created || quantity == null ? '' : draft.unit.trim(),
+        }],
+      } : s);
+    }
+    this.stepDrafts[stepIdx] = { name: '', quantity: undefined, unit: '' };
+    this.focusField(`Schritt ${stepIdx + 1} Zutat hinzufügen`);
   }
 
   addStepIngredient(stepIdx: number): void {
@@ -432,6 +556,9 @@ export class RecipesPage implements OnInit {
     const steps = [...this.form.steps];
     [steps[index], steps[target]] = [steps[target], steps[index]];
     this.form.steps = steps.map((step, i) => ({ ...step, order: i + 1 }));
+    const drafts = [...this.stepDrafts];
+    [drafts[index], drafts[target]] = [drafts[target], drafts[index]];
+    this.stepDrafts = drafts;
   }
   linkStepIngredient(stepIdx: number, linkIdx: number): void {
     const link = this.form.steps[stepIdx].ingredients[linkIdx];
@@ -485,6 +612,7 @@ export class RecipesPage implements OnInit {
   private catalogPrompt(name: string, index: number): NonNullable<typeof this.newIngredientPrompt> {
     const archived = this.archivedCatalog.find((i) => ingredientKey(i.name) === ingredientKey(name));
     return {
+      rowId: this.form.ingredients[index].id,
       name,
       category: archived?.category ?? 'sonstiges',
       defaultUnit: this.form.ingredients[index].unit ?? '',
@@ -806,6 +934,8 @@ export class RecipesPage implements OnInit {
 
   private resetEditorState(): void {
     this.showDiscardConfirm = false;
+    this.stepDrafts = [];
+    this.autoUnitIds = new Set();
     this.importMode = null;
     this.importText = '';
     this.newIngredientPrompt = null;
